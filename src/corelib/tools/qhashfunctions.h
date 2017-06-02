@@ -106,7 +106,11 @@ Q_CORE_EXPORT Q_DECL_PURE_FUNCTION uint qt_hash(QStringView key, uint chained = 
 
 template <class T> inline uint qHash(const T *key, uint seed = 0) Q_DECL_NOTHROW
 {
+#ifdef __CHERI_PURE_CAPABILITY__
+    return qHash((vaddr_t)key, seed);
+#else
     return qHash(reinterpret_cast<quintptr>(key), seed);
+#endif
 }
 template<typename T> inline uint qHash(const T &t, uint seed)
     Q_DECL_NOEXCEPT_EXPR(noexcept(qHash(t)))
