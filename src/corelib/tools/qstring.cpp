@@ -561,9 +561,9 @@ static int ucstrncmp(const QChar *a, const QChar *b, size_t l)
         return 0;
 
     // check alignment
-    if ((reinterpret_cast<quintptr>(a) & 2) == (reinterpret_cast<quintptr>(b) & 2)) {
+    if ((reinterpret_cast<qvaddr>(a) & 2) == (reinterpret_cast<qvaddr>(b) & 2)) {
         // both addresses have the same alignment
-        if (reinterpret_cast<quintptr>(a) & 2) {
+        if (reinterpret_cast<qvaddr>(a) & 2) {
             // both addresses are not aligned to 4-bytes boundaries
             // compare the first character
             if (*a != *b)

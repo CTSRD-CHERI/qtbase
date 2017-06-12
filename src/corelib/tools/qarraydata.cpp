@@ -118,7 +118,7 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
     QArrayData *header = static_cast<QArrayData *>(::malloc(allocSize));
     if (header) {
         quintptr data = (quintptr(header) + sizeof(QArrayData) + alignment - 1)
-                & ~(alignment - 1);
+                & quintptr(~(alignment - 1));
 
 #if !defined(QT_NO_UNSHARABLE_CONTAINERS)
         header->ref.atomic.store(bool(!(options & Unsharable)));

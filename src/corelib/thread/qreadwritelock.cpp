@@ -73,7 +73,7 @@ enum {
 const auto dummyLockedForRead = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(StateLockedForRead));
 const auto dummyLockedForWrite = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(StateLockedForWrite));
 inline bool isUncontendedLocked(const QReadWriteLockPrivate *d)
-{ return quintptr(d) & StateMask; }
+{ return quintptr(d) & quintptr(StateMask); }
 }
 
 /*! \class QReadWriteLock
@@ -144,7 +144,7 @@ inline bool isUncontendedLocked(const QReadWriteLockPrivate *d)
 QReadWriteLock::QReadWriteLock(RecursionMode recursionMode)
     : d_ptr(recursionMode == Recursive ? new QReadWriteLockPrivate(true) : nullptr)
 {
-    Q_ASSERT_X(!(quintptr(d_ptr.load()) & StateMask), "QReadWriteLock::QReadWriteLock", "bad d_ptr alignment");
+    Q_ASSERT_X(!(quintptr(d_ptr.load()) & quintptr(StateMask)), "QReadWriteLock::QReadWriteLock", "bad d_ptr alignment");
 }
 
 /*!
@@ -233,7 +233,7 @@ bool QReadWriteLock::tryLockForRead(int timeout)
             return true;
         }
 
-        if ((quintptr(d) & StateMask) == StateLockedForRead) {
+        if ((quintptr(d) & quintptr(StateMask)) == StateLockedForRead) {
             // locked for read, increase the counter
             const auto val = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(d) + (1U<<4));
             Q_ASSERT_X(quintptr(val) > (1U<<4), "QReadWriteLock::tryLockForRead()",
@@ -403,7 +403,7 @@ void QReadWriteLock::unlock()
             return;
         }
 
-        if ((quintptr(d) & StateMask) == StateLockedForRead) {
+        if ((quintptr(d) & quintptr(StateMask)) == StateLockedForRead) {
             Q_ASSERT(quintptr(d) > (1U<<4)); //otherwise that would be the fast case
             // Just decrease the reader's count.
             auto val = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(d) - (1U<<4));
@@ -446,7 +446,7 @@ void QReadWriteLock::unlock()
 QReadWriteLock::StateForWaitCondition QReadWriteLock::stateForWaitCondition() const
 {
     QReadWriteLockPrivate *d = d_ptr.load();
-    switch (quintptr(d) & StateMask) {
+    switch (quintptr(d) & quintptr(StateMask)) {
     case StateLockedForRead: return LockedForRead;
     case StateLockedForWrite: return LockedForWrite;
     }

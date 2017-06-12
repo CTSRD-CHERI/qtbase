@@ -2615,7 +2615,7 @@ static inline QDateTimePrivate::StatusFlags getStatus(const QDateTimeData &d)
     if (d.isShort()) {
         // same as, but producing better code
         //return StatusFlag(d.data.status);
-        return QDateTimePrivate::StatusFlag(qintptr(d.d) & 0xFF);
+        return QDateTimePrivate::StatusFlag(qintptr(d.d) & quintptr(0xFF));
     }
     return d->m_status;
 }
@@ -2887,7 +2887,7 @@ inline QDateTime::Data &QDateTime::Data::operator=(const Data &other)
         }
     }
 
-    if (!(quintptr(x) & QDateTimePrivate::ShortData) && !x->ref.deref())
+    if (!(quintptr(x) & quintptr(QDateTimePrivate::ShortData)) && !x->ref.deref())
         delete x;
     return *this;
 }
@@ -2900,7 +2900,7 @@ inline QDateTime::Data::~Data()
 
 inline bool QDateTime::Data::isShort() const
 {
-    bool b = quintptr(d) & QDateTimePrivate::ShortData;
+    bool b = quintptr(d) & quintptr(QDateTimePrivate::ShortData);
 
     // sanity check:
     Q_ASSERT(b || (d->m_status & QDateTimePrivate::ShortData) == 0);
