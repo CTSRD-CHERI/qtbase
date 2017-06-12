@@ -103,6 +103,8 @@ void *qReallocAligned(void *oldptr, size_t newsize, size_t oldsize, size_t align
     // However, we need to store the actual pointer, so we need to allocate actually size +
     // alignment anyway.
 
+    // XXXAR: FIXME: this will probably not work!
+
     void *real = realloc(actualptr, newsize + alignment);
     if (!real)
         return 0;
