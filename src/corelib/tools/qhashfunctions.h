@@ -110,12 +110,7 @@ Q_CORE_EXPORT Q_DECL_PURE_FUNCTION uint qt_hash(QStringView key, uint chained = 
 
 template <class T> inline uint qHash(const T *key, uint seed = 0) Q_DECL_NOTHROW
 {
-#ifdef __CHERI_PURE_CAPABILITY__
-    // FIXME: casting needs to be fixed in C++ error: cast from pointer to smaller type 'vaddr_t' (aka 'unsigned long') loses information
-    return qHash((vaddr_t)(quintptr)key, seed);
-#else
-    return qHash(reinterpret_cast<quintptr>(key), seed);
-#endif
+    return qHash(reinterpret_cast<qvaddr>(key), seed);
 }
 
 template<typename T> inline uint qHash(const T &t, uint seed)
