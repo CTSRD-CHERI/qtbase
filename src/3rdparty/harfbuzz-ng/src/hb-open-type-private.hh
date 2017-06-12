@@ -130,12 +130,23 @@ static inline Type& StructAfter(TObject &X)
 
 /* Global nul-content Null pool.  Enlarge as necessary. */
 /* TODO This really should be a extern HB_INTERNAL and defined somewhere... */
-static const void *_NullPool[(256+8) / sizeof (void *)];
+#ifndef __CHERI_PURE_CAPABILITY__
+#define NULL_POOL_SIZE ((256+8) / sizeof (void *))
+#else
+// XXXAR: not entirely sure what this should be, let's just multiply by 2
+#define NULL_POOL_SIZE ((2*(256+8)) / sizeof (void *))
+#endif
+static const void *_NullPool[NULL_POOL_SIZE];
+
+template<size_t a, size_t b> constexpr void check_size_less_eq() {
+  static_assert(a <= b, "size too small");
+}
 
 /* Generic nul-content Null objects. */
 template <typename Type>
 static inline const Type& Null (void) {
-  ASSERT_STATIC (sizeof (Type) <= sizeof (_NullPool));
+  // ASSERT_STATIC (sizeof (Type) <= sizeof (_NullPool));
+  check_size_less_eq<sizeof(Type), sizeof(_NullPool)>();
   return *CastP<Type> (_NullPool);
 }
 
