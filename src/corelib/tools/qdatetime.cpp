@@ -3726,7 +3726,12 @@ void QDateTime::setMSecsSinceEpoch(qint64 msecs)
 
     if (msecsCanBeSmall(msecs) && d.isShort()) {
         // we can keep short
+#ifndef __CHERI_PURE_CAPABILITY__
+        // XXXAR: compiler crash
         d.data.msecs = qintptr(msecs);
+#else
+        d.data.msecs = msecs;
+#endif
         d.data.status = status;
     } else {
         d.detach();
