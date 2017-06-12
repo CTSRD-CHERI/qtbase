@@ -204,7 +204,7 @@ public:
         if (Q_LIKELY(m)) {
             // call QMutex::lock() instead of QBasicMutex::lock()
             static_cast<QMutex *>(m)->lock();
-            val |= 1;
+            val |= quintptr(1);
         }
     }
 #else
