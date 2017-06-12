@@ -324,7 +324,7 @@ public:
 #endif
         for ( ; i < len; ++i)
             l[i] = uc[i];
-        for ( ; (quintptr)(l+i) & 0x3; ++i)
+        for ( ; (qvaddr)(l+i) & 0x3; ++i)
             l[i] = 0;
         return *this;
     }

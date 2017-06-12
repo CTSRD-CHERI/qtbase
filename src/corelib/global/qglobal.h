@@ -457,9 +457,12 @@ template <class T> struct QIntegerForSizeof: QIntegerForSize<sizeof(T)> { };
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
 typedef QIntegerForSizeof<void*>::Unsigned quintptr;
-typedef QIntegerForSizeof<void*>::Signed qptrdiff;
-typedef qptrdiff qintptr;
+typedef QIntegerForSizeof<void*>::Signed qintptr;
+// FIXME: this is wrong but qptrdiff is used interchangebly with qintptr
+typedef qintptr qptrdiff;
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
+// Needed for CHERI:
+typedef size_t qvaddr;
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
