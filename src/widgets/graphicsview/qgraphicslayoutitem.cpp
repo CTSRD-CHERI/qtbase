@@ -714,8 +714,14 @@ void QGraphicsLayoutItem::setMaximumHeight(qreal height)
 void QGraphicsLayoutItem::setGeometry(const QRectF &rect)
 {
     Q_D(QGraphicsLayoutItem);
+#ifndef __CHERI_PURE_CAPABILITY__
     QSizeF effectiveSize = rect.size().expandedTo(effectiveSizeHint(Qt::MinimumSize))
                                 .boundedTo(effectiveSizeHint(Qt::MaximumSize));
+#else
+    QSizeF effectiveSize = rect.size();
+    effectiveSize = effectiveSize.expandedTo(effectiveSizeHint(Qt::MinimumSize));
+    effectiveSize = effectiveSize.boundedTo(effectiveSizeHint(Qt::MaximumSize));
+#endif
     d->geom = QRectF(rect.topLeft(), effectiveSize);
 }
 
