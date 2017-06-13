@@ -636,7 +636,7 @@ void QGraphicsWidgetPrivate::windowFrameMouseMoveEvent(QGraphicsSceneMouseEvent 
     case Qt::NoSection:
         break;
     }
-
+#if 0
     if (windowData->grabbedSection != Qt::NoSection) {
         _q_boundGeometryToSizeConstraints(windowData->startGeometry, &newGeometry,
                                           windowData->grabbedSection,
@@ -645,6 +645,7 @@ void QGraphicsWidgetPrivate::windowFrameMouseMoveEvent(QGraphicsSceneMouseEvent 
                                           q);
         q->setGeometry(newGeometry);
     }
+#endif
 }
 
 void QGraphicsWidgetPrivate::windowFrameHoverMoveEvent(QGraphicsSceneHoverEvent *event)

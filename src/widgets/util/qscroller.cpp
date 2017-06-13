@@ -951,6 +951,8 @@ void QScrollerPrivate::timerTick()
         typedef void (QScrollerPrivate::*timerhandler_t)();
         timerhandler_t handler;
     };
+#if 0
+    // compiler crash emitting member pointers
 
     timerevent timerevents[] = {
         { QScroller::Dragging, &QScrollerPrivate::timerEventWhileDragging },
@@ -965,6 +967,7 @@ void QScrollerPrivate::timerTick()
             return;
         }
     }
+#endif
 
 #ifndef QT_NO_ANIMATION
     scrollTimer->stop();
@@ -994,7 +997,8 @@ bool QScroller::handleInput(Input input, const QPointF &position, qint64 timesta
         typedef bool (QScrollerPrivate::*inputhandler_t)(const QPointF &position, qint64 timestamp);
         inputhandler_t handler;
     };
-
+#if 0
+    // same compiler crash
     statechange statechanges[] = {
         { QScroller::Inactive,  InputPress,   &QScrollerPrivate::pressWhileInactive },
         { QScroller::Pressed,   InputMove,    &QScrollerPrivate::moveWhilePressed },
@@ -1010,6 +1014,7 @@ bool QScroller::handleInput(Input input, const QPointF &position, qint64 timesta
          if (d->state == sc->state && input == sc->input)
              return (d->*sc->handler)(position - d->overshootPosition, timestamp);
     }
+#endif
     return false;
 }
 

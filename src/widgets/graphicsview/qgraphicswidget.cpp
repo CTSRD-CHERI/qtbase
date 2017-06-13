@@ -354,6 +354,8 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
     QGraphicsLayoutItemPrivate *d = QGraphicsLayoutItem::d_ptr.data();
     QRectF newGeom;
     QPointF oldPos = d->geom.topLeft();
+#if 0
+    // compiler crash
     if (!wd->inSetPos) {
         setAttribute(Qt::WA_Resized);
         newGeom = rect;
@@ -381,6 +383,7 @@ void QGraphicsWidget::setGeometry(const QRectF &rect)
             }
         }
     }
+#endif
 
     // Update the layout item geometry
     {

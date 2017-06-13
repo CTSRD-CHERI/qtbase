@@ -702,6 +702,8 @@ void QAbstractItemView::setModel(QAbstractItemModel *model)
     }
     d->model = (model ? model : QAbstractItemModelPrivate::staticEmptyModel());
 
+#if 0
+    // crashes compiler
     // These asserts do basic sanity checking of the model
     Q_ASSERT_X(d->model->index(0,0) == d->model->index(0,0),
                "QAbstractItemView::setModel",
@@ -710,6 +712,7 @@ void QAbstractItemView::setModel(QAbstractItemModel *model)
     Q_ASSERT_X(!d->model->index(0,0).parent().isValid(),
                "QAbstractItemView::setModel",
                "The parent of a top level index should be invalid");
+#endif
 
     if (d->model != QAbstractItemModelPrivate::staticEmptyModel()) {
         connect(d->model, SIGNAL(destroyed()),
