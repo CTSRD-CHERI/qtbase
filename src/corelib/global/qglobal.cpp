@@ -163,6 +163,23 @@ Q_STATIC_ASSERT_X(sizeof(size_t) == sizeof(void *), "size_t and a pointer don't 
 Q_STATIC_ASSERT(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
 Q_STATIC_ASSERT((std::is_same<qsizetype, qptrdiff>::value));
 
+Q_STATIC_ASSERT_X(sizeof(quint64) == 8, "quint64 is not 64 bits!");
+Q_STATIC_ASSERT_X(sizeof(qint64) == 8, "qint64 is not 64 bits!");
+Q_STATIC_ASSERT_X(sizeof(quint32) == 4, "quint32 is not 32 bits!");
+Q_STATIC_ASSERT_X(sizeof(qint32) == 4, "qint32 is not 32 bits!");
+Q_STATIC_ASSERT_X(sizeof(quint16) == 2, "quint16 is not 16 bits!");
+Q_STATIC_ASSERT_X(sizeof(qint16) == 2, "qint16 is not 16 bits!");
+Q_STATIC_ASSERT_X(sizeof(quint8) == 1, "quint8 is not 8 bits!");
+Q_STATIC_ASSERT_X(sizeof(qint8) == 1, "qint8 is not 8 bits!");
+Q_STATIC_ASSERT_X(sizeof(qlonglong) == 8, "Qt assumes that long long is 64 bits");
+Q_STATIC_ASSERT_X(sizeof(qulonglong) == 8, "Qt assumes that unsigned long long is 64 bits");
+#ifdef __CHERI__
+Q_STATIC_ASSERT_X(sizeof(qregisteruint) == 8, "Qt on CHERI assumes that qregisteruint is 64 bits");
+Q_STATIC_ASSERT_X(sizeof(qvaddr) == 8, "Qt on CHERI assumes thatqvaddr is 64 bits");
+#endif
+
+
+
 /*!
     \class QFlag
     \inmodule QtCore
