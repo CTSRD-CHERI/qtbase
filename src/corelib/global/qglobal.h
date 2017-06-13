@@ -461,8 +461,12 @@ typedef QIntegerForSizeof<void*>::Signed qintptr;
 // FIXME: this is wrong but qptrdiff is used interchangebly with qintptr
 typedef qintptr qptrdiff;
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
-// Needed for CHERI:
-typedef size_t qvaddr;
+#ifdef __CHERI__
+// TODO: use __memory_address
+typedef qregisteruint qvaddr;
+#else
+typedef quintptr qvaddr;
+#endif
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
