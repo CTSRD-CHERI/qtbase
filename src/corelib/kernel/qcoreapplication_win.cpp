@@ -959,7 +959,7 @@ QString decodeMSG(const MSG& msg)
                                           FLAG_STRING((qptrdiff)HWND_TOPMOST,   "HWND_TOPMOST"),
                                           FLAG_STRING());
                 if (hwndAfter.isEmpty())
-                    hwndAfter = QString::number((quintptr)winPos->hwndInsertAfter, 16);
+                    hwndAfter = QString::number((qvaddr)winPos->hwndInsertAfter, 16);
                 QString flags = flagCheck(winPos->flags,
                                           FLGSTR(SWP_DRAWFRAME),
                                           FLGSTR(SWP_FRAMECHANGED),
