@@ -192,7 +192,7 @@ protected:
         space[0].~Bar();
 
         const QByteArray postFix =  '_'
-            + QByteArray::number(reinterpret_cast<quintptr>(QThread::currentThreadId()));
+            + QByteArray::number(reinterpret_cast<qvaddr>(QThread::currentThreadId()));
 
         for (int i = 0; i < 1000; ++i) {
             const QByteArray name = "Bar" + QByteArray::number(i) + postFix;

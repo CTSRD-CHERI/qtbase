@@ -4225,7 +4225,7 @@ public:
         if (role != Qt::DisplayRole)
             return QVariant();
 
-        return QString::number(index.internalId());
+        return QString::number((qvaddr)index.internalId());
     }
 
     QModelIndex index(int, int, const QModelIndex& parent = QModelIndex()) const override

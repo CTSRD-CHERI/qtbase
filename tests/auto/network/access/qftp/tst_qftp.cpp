@@ -276,7 +276,7 @@ void tst_QFtp::init()
 
     inFileDirExistsFunction = false;
 
-    uniqueExtension = QString::number((quintptr)this) + QString::number(QRandomGenerator::global()->generate())
+    uniqueExtension = QString::number((qvaddr)this) + QString::number(QRandomGenerator::global()->generate())
         + QString::number((qulonglong)time(0));
 }
 
