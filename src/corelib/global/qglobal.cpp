@@ -819,7 +819,7 @@ Q_STATIC_ASSERT_X(sizeof(qvaddr) == 8, "Qt on CHERI assumes thatqvaddr is 64 bit
     on a system with 64-bit pointers, quintptr is a typedef for
     quint64.
 
-    Note that quintptr is unsigned. Use qptrdiff for signed values.
+    Note that quintptr is unsigned. Use qintptr for signed values.
 
     \sa qptrdiff, quint32, quint64
 */
@@ -831,13 +831,16 @@ Q_STATIC_ASSERT_X(sizeof(qvaddr) == 8, "Qt on CHERI assumes thatqvaddr is 64 bit
     Integral type for representing pointer differences.
 
     Typedef for either qint32 or qint64. This type is guaranteed to be
-    the same size as a pointer on all platforms supported by Qt. On a
-    system with 32-bit pointers, quintptr is a typedef for quint32; on
+    the same size as a pointer on all platforms supported by Qt except for those
+    targeting a CHERI CPU. On a CHERI CPU qptrdiff will be the same size as the
+    size of a virtual memory address except that it is signed
+
+    On a system with 32-bit pointers, quintptr is a typedef for quint32; on
     a system with 64-bit pointers, quintptr is a typedef for quint64.
 
-    Note that qptrdiff is signed. Use quintptr for unsigned values.
+    Note that qptrdiff is signed. Use qvaddr for unsigned values.
 
-    \sa quintptr, qint32, qint64
+    \sa quintptr, qint32, qint64, qvaddr
 */
 
 /*!

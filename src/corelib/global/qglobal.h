@@ -434,10 +434,10 @@ namespace QtPrivate {
 
 
 /*
-  quintptr and qptrdiff is guaranteed to be the same size as a pointer, i.e.
+  quintptr and qintptr is guaranteed to be the same size as a pointer, i.e.
 
       sizeof(void *) == sizeof(quintptr)
-      && sizeof(void *) == sizeof(qptrdiff)
+      && sizeof(void *) == sizeof(qintptr)
 
   size_t and qsizetype are not guaranteed to be the same size as a pointer, but
   they usually are.
@@ -458,8 +458,8 @@ typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
 typedef QIntegerForSizeof<void*>::Unsigned quintptr;
 typedef QIntegerForSizeof<void*>::Signed qintptr;
-// FIXME: this is wrong but qptrdiff is used interchangebly with qintptr
-typedef qintptr qptrdiff;
+// XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
+typedef ptrdiff_t qptrdiff;
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
 #ifdef __CHERI__
 // TODO: use __memory_address

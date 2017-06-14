@@ -70,6 +70,7 @@
 #define TYPE_SUPPORTED_long         1
 #define TYPE_SUPPORTED_ulong        1
 #define TYPE_SUPPORTED_qptrdiff     1
+#define TYPE_SUPPORTED_qintptr      1
 #define TYPE_SUPPORTED_quintptr     1
 #if (defined(__SIZEOF_WCHAR_T__) && (__SIZEOF_WCHAR_T__-0) > 2) \
     || (defined(WCHAR_MAX) && (WCHAR_MAX-0 > 0x10000))
