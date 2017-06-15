@@ -584,7 +584,7 @@ void tst_QWidget_window::tst_dnd()
     // Compare logs.
     QStringList expectedLog;
     const int expectedLogSize = int(sizeof(expectedLogC) / sizeof(expectedLogC[0]));
-    const QString mimeDataAddress = QString::number(quintptr(&mimeData));
+    const QString mimeDataAddress = QString::number(qvaddr(&mimeData));
     const QString mimeDataAddressPlaceHolder = QLatin1String("MIME_DATA_ADDRESS");
     for (int i= 0; i < expectedLogSize; ++i)
         expectedLog.push_back(QString::fromLatin1(expectedLogC[i]).replace(mimeDataAddressPlaceHolder, mimeDataAddress));
