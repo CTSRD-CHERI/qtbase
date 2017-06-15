@@ -857,7 +857,7 @@ void tst_QMap::keyIterator()
     QCOMPARE(*(++key_it), (++it).key());
     QCOMPARE(*(--key_it), (--it).key());
 
-    QCOMPARE(std::count(map.keyBegin(), map.keyEnd(), 99), 1);
+    QCOMPARE(std::count(map.keyBegin(), map.keyEnd(), 99), qptrdiff(1));
 
     // DefaultConstructible test
     typedef QMap<int, int>::key_iterator keyIterator;
