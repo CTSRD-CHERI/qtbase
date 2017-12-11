@@ -159,9 +159,14 @@ Q_STATIC_ASSERT_X(std::numeric_limits<float>::radix == 2,
                   "Qt assumes binary IEEE 754 floating point");
 
 // not required by the definition of size_t, but we depend on this
+#ifndef __CHERI_PURE_CAPABILITY__
 Q_STATIC_ASSERT_X(sizeof(size_t) == sizeof(void *), "size_t and a pointer don't have the same size");
+#endif
 Q_STATIC_ASSERT(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
+#if 0
+// XXXAR: these are not the same type
 Q_STATIC_ASSERT((std::is_same<qsizetype, qptrdiff>::value));
+#endif
 
 Q_STATIC_ASSERT_X(sizeof(quint64) == 8, "quint64 is not 64 bits!");
 Q_STATIC_ASSERT_X(sizeof(qint64) == 8, "qint64 is not 64 bits!");
