@@ -104,13 +104,28 @@ void *qReallocAligned(void *oldptr, size_t newsize, size_t oldsize, size_t align
     // alignment anyway.
 
     // XXXAR: FIXME: this will probably not work!
+    // alignment is greater than sizeof(void*) so there should be space for one void* before the return value?
 
     void *real = realloc(actualptr, newsize + alignment);
     if (!real)
         return 0;
-
+#ifndef __CHERI_PURE_CAPABILITY__
     quintptr faked = reinterpret_cast<quintptr>(real) + alignment;
     faked &= ~(alignment - 1);
+#else
+    Q_ASSERT((alignment & (alignment - 1)) == 0); // must be a power of two
+    uint alignp2 = __builtin_ctzl(alignment);
+    // TODO: allow __builtin_align_up() with non-constant arguments
+    // NOTE: we have to always add alignment and then align down so that there
+    // is space to store the original pointer before the return value.
+    //
+    // This is not quite the same as __builtin_align_up() since that will
+    // not change the pointer if real + alignment is already aligned!
+    char* faked = static_cast<char *>(real) + alignment;
+    qvaddr diff = reinterpret_cast<qvaddr>(faked) & ~(alignment - 1);
+    faked -= diff;
+    // faked = __builtin_p2align_down(faked, alignp2);
+#endif
     void **faked_ptr = reinterpret_cast<void **>(faked);
 
     if (oldptr) {
