@@ -161,6 +161,10 @@ Q_STATIC_ASSERT_X(std::numeric_limits<float>::radix == 2,
 // not required by the definition of size_t, but we depend on this
 #ifndef __CHERI_PURE_CAPABILITY__
 Q_STATIC_ASSERT_X(sizeof(size_t) == sizeof(void *), "size_t and a pointer don't have the same size");
+#else
+Q_STATIC_ASSERT_X((std::is_same<qintptr, __intcap_t>::value), "Bad qintptr");
+Q_STATIC_ASSERT_X((std::is_same<quintptr, __uintcap_t>::value), "Bad quintptr");
+
 #endif
 Q_STATIC_ASSERT(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
 #if 0
