@@ -1159,6 +1159,46 @@ inline int qIntCast(float f) { return int(f); }
 Q_CORE_EXPORT void qsrand(uint seed);
 Q_CORE_EXPORT int qrand();
 
+
+inline qvaddr qGetLowPointerBits(quintptr ptr, qvaddr mask) {
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Work around https://github.com/CTSRD-CHERI/clang/issues/189
+    // which caused QMutexLocker::unlock() to always be a no-op
+    QT_WARNING_PUSH
+    QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
+    quintptr result = ptr & mask;
+    // Bitwise and inteherits
+    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(result)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
+    // Bitwise operations on uintcap_t always operate on the offset field
+    return __builtin_cheri_offset_get(reinterpret_cast<void*>(result));
+    QT_WARNING_POP
+#else
+    return ptr & mask;
+#endif
+}
+
+inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
+    // XXXAR: this function is not actually needed since bitwise or works
+    // as expected but I added it for symmetry.
+    return ptr | bits;
+}
+
+inline quintptr qClearLowPointerBits(quintptr ptr, qvaddr negatedmask) {
+#ifdef __CHERI_PURE_CAPABILITY__
+    // See https://github.com/CTSRD-CHERI/clang/issues/189
+    QT_WARNING_PUSH
+    QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
+    Q_ASSERT(qptrdiff(negatedmask) < 0); // high bit should be set
+    quintptr result = ptr & negatedmask;
+    // Bitwise operations on uintcap_t always operate on the offset field
+    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(result)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
+    return result;
+    QT_WARNING_POP
+#else
+    return ptr & negatedmask;
+#endif
+}
+
 #define QT_MODULE(x)
 
 #if !defined(QT_BOOTSTRAPPED) && defined(QT_REDUCE_RELOCATIONS) && defined(__ELF__) && \
