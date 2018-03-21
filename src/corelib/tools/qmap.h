@@ -93,10 +93,10 @@ struct Q_CORE_EXPORT QMapNodeBase
     const QMapNodeBase *previousNode() const;
     QMapNodeBase *previousNode() { return const_cast<QMapNodeBase *>(const_cast<const QMapNodeBase *>(this)->previousNode()); }
 
-    Color color() const { return Color(p & 1); }
-    void setColor(Color c) { if (c == Black) p |= Black; else p &= ~Black; }
-    QMapNodeBase *parent() const { return reinterpret_cast<QMapNodeBase *>(p & ~Mask); }
-    void setParent(QMapNodeBase *pp) { p = (p & Mask) | quintptr(pp); }
+    Color color() const { return Color(qGetLowPointerBits(p, 1)); }
+    void setColor(Color c) { if (c == Black) p |= Black; else p = qClearLowPointerBits(p, ~Black); }
+    QMapNodeBase *parent() const { return reinterpret_cast<QMapNodeBase *>(qClearLowPointerBits(p, ~Mask)); }
+    void setParent(QMapNodeBase *pp) { p = quintptr(pp) | qGetLowPointerBits(p, Mask); }
 
     template <typename T>
     static typename std::enable_if<QTypeInfo<T>::isComplex>::type

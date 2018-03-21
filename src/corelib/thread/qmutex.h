@@ -198,7 +198,7 @@ public:
 #ifndef Q_CLANG_QDOC
     inline explicit QMutexLocker(QBasicMutex *m) QT_MUTEX_LOCK_NOEXCEPT
     {
-        Q_ASSERT_X((reinterpret_cast<quintptr>(m) & quintptr(1u)) == quintptr(0),
+        Q_ASSERT_X(__builtin_is_aligned(m, 2),
                    "QMutexLocker", "QMutex pointer is misaligned");
         val = quintptr(m);
         if (Q_LIKELY(m)) {
@@ -214,8 +214,8 @@ public:
 
     inline void unlock() Q_DECL_NOTHROW
     {
-        if ((val & quintptr(1u)) == quintptr(1u)) {
-            val &= ~quintptr(1u);
+        if (qGetLowPointerBits(val, 1u) == 1u) {
+            val = qClearLowPointerBits(val, ~1u);
             mutex()->unlock();
         }
     }
@@ -223,7 +223,7 @@ public:
     inline void relock() QT_MUTEX_LOCK_NOEXCEPT
     {
         if (val) {
-            if ((val & quintptr(1u)) == quintptr(0u)) {
+            if (qGetLowPointerBits(val, 1u) == 0u) {
                 mutex()->lock();
                 val |= quintptr(1u);
             }
@@ -237,7 +237,7 @@ public:
 
     inline QMutex *mutex() const
     {
-        return reinterpret_cast<QMutex *>(val & ~quintptr(1u));
+        return reinterpret_cast<QMutex *>(qClearLowPointerBits(val, ~1u));
     }
 
 #if defined(Q_CC_MSVC)
