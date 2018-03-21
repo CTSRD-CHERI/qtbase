@@ -43,6 +43,7 @@
 #include <QtCore/qglobal.h>
 #include <QtCore/qatomic.h>
 #include <new>
+#include <cstdio>
 
 #if QT_HAS_INCLUDE(<chrono>)
 #  include <chrono>
@@ -75,18 +76,27 @@ public:
 
     // BasicLockable concept
     inline void lock() QT_MUTEX_LOCK_NOEXCEPT {
-        if (!fastTryLock())
+	printf("%s(%p)\n", __func__, static_cast<void*>(this));
+        if (!fastTryLock()) {
+	    printf("%s(%p) fastTryLock failed, falling back to slow path\n", __func__, static_cast<void*>(this));
             lockInternal();
+	}
+	printf("%s(%p) acquired mutex\n", __func__, static_cast<void*>(this));
     }
 
     // BasicLockable concept
     inline void unlock() Q_DECL_NOTHROW {
+	printf("%s(%p)\n", __func__, static_cast<void*>(this));
         Q_ASSERT(d_ptr.load()); //mutex must be locked
-        if (!fastTryUnlock())
+        if (!fastTryUnlock()) {
+	    printf("%s(%p) fast path failed, falling back to slow unlock\n", __func__, static_cast<void*>(this));
             unlockInternal();
+	}
+	printf("%s(%p) released mutex\n", __func__, static_cast<void*>(this));
     }
 
     bool tryLock() Q_DECL_NOTHROW {
+	printf("%s(%p)\n", __func__, static_cast<void*>(this));
         return fastTryLock();
     }
 
@@ -98,9 +108,11 @@ public:
 
 private:
     inline bool fastTryLock() Q_DECL_NOTHROW {
+        printf("%s: d_ptr = %#p\n", __func__, static_cast<void*>(d_ptr.load()));
         return d_ptr.testAndSetAcquire(Q_NULLPTR, dummyLocked());
     }
     inline bool fastTryUnlock() Q_DECL_NOTHROW {
+	printf("%s: d_ptr = %#p\n", __func__, static_cast<void*>(d_ptr.load()));
         return d_ptr.testAndSetRelease(dummyLocked(), Q_NULLPTR);
     }
     inline bool fastTryLock(QMutexData *&current) Q_DECL_NOTHROW {
@@ -202,9 +214,11 @@ public:
                    "QMutexLocker", "QMutex pointer is misaligned");
         val = quintptr(m);
         if (Q_LIKELY(m)) {
+	    printf("QMUTEXLOCKER(%#p)\n", reinterpret_cast<void*>(val));
             // call QMutex::lock() instead of QBasicMutex::lock()
             static_cast<QMutex *>(m)->lock();
             val |= 1;
+	    printf("QMUTEXLOCKER after lock(%#p)\n", reinterpret_cast<void*>(val));
         }
     }
 #else
@@ -214,8 +228,10 @@ public:
 
     inline void unlock() Q_DECL_NOTHROW
     {
+	printf("QMUTEXLOCKER unlock(%#p)\n", reinterpret_cast<void*>(val));
         if (qGetLowPointerBits(val, 1u) == 1u) {
             val = qClearLowPointerBits(val, ~1u);
+            printf("QMUTEXLOCKER about to call m->unlock(%#p)\n", reinterpret_cast<void*>(val));
             mutex()->unlock();
         }
     }
@@ -223,6 +239,7 @@ public:
     inline void relock() QT_MUTEX_LOCK_NOEXCEPT
     {
         if (val) {
+	    printf("QMUTEXLOCKER relock(%#p)\n", reinterpret_cast<void*>(val));
             if (qGetLowPointerBits(val, 1u) == 0u) {
                 mutex()->lock();
                 val |= quintptr(1u);

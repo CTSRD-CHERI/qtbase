@@ -220,13 +220,20 @@ QMutex::~QMutex()
 */
 void QMutex::lock() QT_MUTEX_LOCK_NOEXCEPT
 {
+    fprintf(stderr, "\n%s(%p)\n", Q_FUNC_INFO, static_cast<void*>(this));
     QMutexData *current;
-    if (fastTryLock(current))
+    if (fastTryLock(current)) {
+	fprintf(stderr, "%s(%p) fastTryLock succeeded\n", Q_FUNC_INFO, static_cast<void*>(this));
         return;
+    }
+    fprintf(stderr, "%s(%p) fastTryLock failed\n", Q_FUNC_INFO, static_cast<void*>(this));
+
     if (QT_PREPEND_NAMESPACE(isRecursive)(current))
         static_cast<QRecursiveMutexPrivate *>(current)->lock(-1);
     else
         lockInternal();
+
+    fprintf(stderr, "%s(%p) acquired mutex\n", Q_FUNC_INFO, static_cast<void*>(this));
 }
 
 /*! \fn bool QMutex::tryLock(int timeout)
@@ -333,9 +340,13 @@ bool QMutex::tryLock(int timeout) QT_MUTEX_LOCK_NOEXCEPT
 */
 void QMutex::unlock() Q_DECL_NOTHROW
 {
+    fprintf(stderr, "\n%s(%p)\n", Q_FUNC_INFO, static_cast<void*>(this));
     QMutexData *current;
-    if (fastTryUnlock(current))
+    if (fastTryUnlock(current)) {
+	fprintf(stderr, "%s(%p) fastTryUnlock succeeded\n", Q_FUNC_INFO, static_cast<void*>(this));
         return;
+    }
+    fprintf(stderr, "%s(%p) fastTryUnlock failed\n", Q_FUNC_INFO, static_cast<void*>(this));
     if (QT_PREPEND_NAMESPACE(isRecursive)(current))
         static_cast<QRecursiveMutexPrivate *>(current)->unlock();
     else
@@ -496,9 +507,12 @@ void QBasicMutex::lockInternal() QT_MUTEX_LOCK_NOEXCEPT
  */
 bool QBasicMutex::lockInternal(int timeout) QT_MUTEX_LOCK_NOEXCEPT
 {
+    fprintf(stderr, "%s(%p)\n", Q_FUNC_INFO, static_cast<void*>(this));
+
     Q_ASSERT(!isRecursive());
 
     while (!fastTryLock()) {
+        fprintf(stderr, "QBasicMutex::fastTryLock() failed\n");
         QMutexData *copy = d_ptr.loadAcquire();
         if (!copy) // if d is 0, the mutex is unlocked
             continue;
@@ -572,6 +586,7 @@ bool QBasicMutex::lockInternal(int timeout) QT_MUTEX_LOCK_NOEXCEPT
             continue;
         }
 
+        fprintf(stderr, "QMutex::lockInternal() Waiting for %d. Copy= %#p, d_ptr.load() = %#p \n", timeout, copy, static_cast<void*>(d_ptr.loadAcquire()));
         if (d->wait(timeout)) {
             // reset the possiblyUnlocked flag if needed (and deref its corresponding reference)
             if (d->possiblyUnlocked.load() && d->possiblyUnlocked.testAndSetRelaxed(true, false))
@@ -604,6 +619,8 @@ bool QBasicMutex::lockInternal(int timeout) QT_MUTEX_LOCK_NOEXCEPT
 */
 void QBasicMutex::unlockInternal() Q_DECL_NOTHROW
 {
+    fprintf(stderr, "%s(%p)\n", Q_FUNC_INFO, static_cast<void*>(this));
+
     QMutexData *copy = d_ptr.loadAcquire();
     Q_ASSERT(copy); //we must be locked
     Q_ASSERT(copy != dummyLocked()); // testAndSetRelease(dummyLocked(), 0) failed
@@ -697,6 +714,8 @@ void QMutexPrivate::derefWaiters(int value) Q_DECL_NOTHROW
  */
 inline bool QRecursiveMutexPrivate::lock(int timeout) QT_MUTEX_LOCK_NOEXCEPT
 {
+    fprintf(stderr, "%s(%p)\n", Q_FUNC_INFO, static_cast<void*>(this));
+
     Qt::HANDLE self = QThread::currentThreadId();
     if (owner.load() == self) {
         ++count;
@@ -720,6 +739,8 @@ inline bool QRecursiveMutexPrivate::lock(int timeout) QT_MUTEX_LOCK_NOEXCEPT
  */
 inline void QRecursiveMutexPrivate::unlock() Q_DECL_NOTHROW
 {
+    fprintf(stderr, "%s(%p)\n", Q_FUNC_INFO, static_cast<void*>(this));
+
     if (count > 0) {
         count--;
     } else {
