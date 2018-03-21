@@ -1160,43 +1160,59 @@ Q_CORE_EXPORT void qsrand(uint seed);
 Q_CORE_EXPORT int qrand();
 
 
-inline qvaddr qGetLowPointerBits(quintptr ptr, qvaddr mask) {
+template<unsigned lowBitsMask>
+inline qvaddr qGetLowPointerBits(quintptr ptr) {
+    Q_STATIC_ASSERT_X(lowBitsMask < 31, "Cannot use more than the low 5 pointer bits");
 #ifdef __CHERI_PURE_CAPABILITY__
     // Work around https://github.com/CTSRD-CHERI/clang/issues/189
     // which caused QMutexLocker::unlock() to always be a no-op
     QT_WARNING_PUSH
     QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
-    quintptr result = ptr & mask;
-    // Bitwise and inteherits
-    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(result)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
+    // The additional bits are stored using bitwise or -> they are stored in the
+    // offset field. Note: extracting them with bitwise and returns a
+    // LHS-derived capability, so we only want to return the offset of that
+    // result. The simple approach of `if ((x & 3) == 3)` would always return
+    // false since the LHS of the == is a valid capability with offset 3 and
+    // the RHS is an untagged intcap_t with offset 3
+    // See https://github.com/CTSRD-CHERI/clang/issues/189
+    quintptr result = ptr & lowBitsMask;
+    // This assert is here to validate the assumption that bitwise and only
+    // ever changes the offset field
+    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(ptr)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
     // Bitwise operations on uintcap_t always operate on the offset field
     return __builtin_cheri_offset_get(reinterpret_cast<void*>(result));
     QT_WARNING_POP
 #else
-    return ptr & mask;
+    return ptr & lowBitsMask;
 #endif
 }
 
-inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
-    // XXXAR: this function is not actually needed since bitwise or works
-    // as expected but I added it for symmetry.
-    return ptr | bits;
-}
-
-inline quintptr qClearLowPointerBits(quintptr ptr, qvaddr negatedmask) {
+template<unsigned lowBitsMask>
+inline quintptr qClearLowPointerBits(quintptr ptr) {
+    Q_STATIC_ASSERT_X(lowBitsMask < 31, "Cannot use more than the low 5 pointer bits");
+    constexpr qvaddr clearingMask = ~qvaddr(lowBitsMask);
+    Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
 #ifdef __CHERI_PURE_CAPABILITY__
     // See https://github.com/CTSRD-CHERI/clang/issues/189
     QT_WARNING_PUSH
     QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
-    Q_ASSERT(qptrdiff(negatedmask) < 0); // high bit should be set
-    quintptr result = ptr & negatedmask;
+    quintptr result = ptr & clearingMask;
     // Bitwise operations on uintcap_t always operate on the offset field
-    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(result)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
+    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(ptr)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
     return result;
     QT_WARNING_POP
 #else
-    return ptr & negatedmask;
+    return ptr & clearingMask;
 #endif
+}
+
+// This one is not a template since unlike the mask values the bits parameter
+// might not be a compile-time constant
+// XXXAR: this function is not actually needed since bitwise or works
+// as expected but I added it for symmetry.
+inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
+    Q_ASSERT(bits < 31 && "Cannot use more than the low 5 pointer bits");
+    return ptr | bits;
 }
 
 #define QT_MODULE(x)

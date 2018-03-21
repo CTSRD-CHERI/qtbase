@@ -229,8 +229,8 @@ public:
     inline void unlock() Q_DECL_NOTHROW
     {
 	printf("QMUTEXLOCKER unlock(%#p)\n", reinterpret_cast<void*>(val));
-        if (qGetLowPointerBits(val, 1u) == 1u) {
-            val = qClearLowPointerBits(val, ~1u);
+        if (qGetLowPointerBits<1u>(val) == 1u) {
+            val = qClearLowPointerBits<1u>(val);
             printf("QMUTEXLOCKER about to call m->unlock(%#p)\n", reinterpret_cast<void*>(val));
             mutex()->unlock();
         }
@@ -240,7 +240,7 @@ public:
     {
         if (val) {
 	    printf("QMUTEXLOCKER relock(%#p)\n", reinterpret_cast<void*>(val));
-            if (qGetLowPointerBits(val, 1u) == 0u) {
+            if (qGetLowPointerBits<1u>(val) == 0u) {
                 mutex()->lock();
                 val |= quintptr(1u);
             }
@@ -254,7 +254,7 @@ public:
 
     inline QMutex *mutex() const
     {
-        return reinterpret_cast<QMutex *>(qClearLowPointerBits(val, ~1u));
+        return reinterpret_cast<QMutex *>(qClearLowPointerBits<1u>(val));
     }
 
 #if defined(Q_CC_MSVC)

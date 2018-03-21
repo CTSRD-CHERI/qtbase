@@ -92,8 +92,8 @@ public:
     inline void unlock()
     {
         if (q_val) {
-            if (qGetLowPointerBits(q_val, 1u) == 1u) {
-                q_val = qClearLowPointerBits(q_val, ~1u);
+            if (qGetLowPointerBits<1u>(q_val) == 1u) {
+                q_val = qClearLowPointerBits<1u>(q_val);
                 readWriteLock()->unlock();
             }
         }
@@ -102,7 +102,7 @@ public:
     inline void relock()
     {
         if (q_val) {
-            if (qGetLowPointerBits(q_val, 1u) == quintptr(0u)) {
+            if (qGetLowPointerBits<1u>(q_val) == quintptr(0u)) {
                 readWriteLock()->lockForRead();
                 q_val |= quintptr(1u);
             }
@@ -110,7 +110,7 @@ public:
     }
 
     inline QReadWriteLock *readWriteLock() const
-    { return reinterpret_cast<QReadWriteLock *>(qClearLowPointerBits(q_val, ~1u)); }
+    { return reinterpret_cast<QReadWriteLock *>(qClearLowPointerBits<1u>(q_val)); }
 
 private:
     Q_DISABLE_COPY(QReadLocker)
@@ -136,8 +136,8 @@ public:
     inline void unlock()
     {
         if (q_val) {
-            if (qGetLowPointerBits(q_val, 1u) == 1u) {
-                q_val = qClearLowPointerBits(q_val, ~1u);
+            if (qGetLowPointerBits<1u>(q_val) == 1u) {
+                q_val = qClearLowPointerBits<1u>(q_val);
                 readWriteLock()->unlock();
             }
         }
@@ -146,7 +146,7 @@ public:
     inline void relock()
     {
         if (q_val) {
-            if (qGetLowPointerBits(q_val, 1u) == 0u) {
+            if (qGetLowPointerBits<1u>(q_val) == 0u) {
                 readWriteLock()->lockForWrite();
                 q_val |= quintptr(1u);
             }
@@ -154,7 +154,7 @@ public:
     }
 
     inline QReadWriteLock *readWriteLock() const
-    { return reinterpret_cast<QReadWriteLock *>(qClearLowPointerBits(q_val, ~1u)); }
+    { return reinterpret_cast<QReadWriteLock *>(qClearLowPointerBits<1u>(q_val)); }
 
 
 private:
