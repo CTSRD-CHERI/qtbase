@@ -117,8 +117,13 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
     size_t allocSize = calculateBlockSize(capacity, objectSize, headerSize, options);
     QArrayData *header = static_cast<QArrayData *>(::malloc(allocSize));
     if (header) {
+        // XXXAR: this is a __builtin_align_up (but again we need bootstrap compat)
+	// TODO: add qAlignUp()i
+	QT_WARNING_PUSH
+	QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
         quintptr data = (quintptr(header) + sizeof(QArrayData) + alignment - 1)
                 & ~(alignment - 1);
+	QT_WARNING_POP
 
 #if !defined(QT_NO_UNSHARABLE_CONTAINERS)
         header->ref.atomic.store(bool(!(options & Unsharable)));
