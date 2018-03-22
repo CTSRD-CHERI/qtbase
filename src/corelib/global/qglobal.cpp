@@ -3149,7 +3149,9 @@ Q_NORETURN void qTerminate() Q_DECL_NOTHROW
 */
 void qt_assert(const char *assertion, const char *file, int line) Q_DECL_NOTHROW
 {
-    QMessageLogger(file, line, nullptr).fatal("ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
+    fprintf(stderr, "ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
+    abort();
+    // QMessageLogger(file, line, nullptr).fatal("ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
 }
 
 /*
@@ -3157,7 +3159,9 @@ void qt_assert(const char *assertion, const char *file, int line) Q_DECL_NOTHROW
 */
 void qt_assert_x(const char *where, const char *what, const char *file, int line) Q_DECL_NOTHROW
 {
-    QMessageLogger(file, line, nullptr).fatal("ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
+    fprintf(stderr, "ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
+    abort();
+    // QMessageLogger(file, line, nullptr).fatal("ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
 }
 
 
