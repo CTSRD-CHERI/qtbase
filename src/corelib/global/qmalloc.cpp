@@ -114,7 +114,7 @@ void *qReallocAligned(void *oldptr, size_t newsize, size_t oldsize, size_t align
     faked &= ~(alignment - 1);
 #else
     Q_ASSERT((alignment & (alignment - 1)) == 0); // must be a power of two
-    uint alignp2 = __builtin_ctzl(alignment);
+    // uint alignp2 = __builtin_ctzl(alignment);
     // TODO: allow __builtin_align_up() with non-constant arguments
     // NOTE: we have to always add alignment and then align down so that there
     // is space to store the original pointer before the return value.
