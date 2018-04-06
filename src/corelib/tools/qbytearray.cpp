@@ -62,7 +62,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define IS_RAW_DATA(d) ((d)->offset != sizeof(QByteArrayData))
+#define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QByteArrayData))
 
 QT_BEGIN_NAMESPACE
 
@@ -4339,11 +4339,25 @@ QByteArray &QByteArray::setRawData(const char *data, uint size)
     } else {
         if (data) {
             d->size = size;
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = data - reinterpret_cast<char *>(d);
+#else
+            d->setPointer(data);
+#endif
         } else {
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = sizeof(QByteArrayData);
+#else
+            d->setOffset(sizeof(QByteArrayData));
+#endif
             d->size = 0;
+            // Temporarily set alloc to 1 to allow writing to the first byte of
+            // d->data(). On capability architectures like CHERI data() would
+            // return a zero-length pointer that traps on write access if we
+            // didn't set alloc
+            d->alloc = 1;
             *d->data() = 0;
+            d->alloc = 0;
         }
     }
     return *this;

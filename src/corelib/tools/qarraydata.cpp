@@ -80,6 +80,14 @@ static inline size_t calculateBlockSize(size_t &capacity, size_t objectSize, siz
 
 static QArrayData *reallocateData(QArrayData *header, size_t allocSize, uint options)
 {
+    qarraydata_dbg("%s: current length = %ld, allocSize=%zd -- h=%#p, offset=%#p\n", __func__,
+        cheri_bytes_remaining(header), allocSize, static_cast<void*>(header),
+        reinterpret_cast<void*>(header->_internal_cheri_offset));
+#ifdef __CHERI_PURE_CAPABILITY__
+    // XXXAR: we could also just move the pointer?
+    Q_ASSERT(!__builtin_cheri_tag_get(reinterpret_cast<void*>(header->_internal_cheri_offset)) &&
+             "To able to use ::realloc QArrayData must not contain pointers!");
+#endif
     header = static_cast<QArrayData *>(::realloc(header, allocSize));
     qarraydata_dbg("%s: result length = %ld -- h=%#p\n", __func__, cheri_bytes_remaining(header), static_cast<void*>(header));
     if (header)
@@ -119,12 +127,13 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
     QArrayData *header = static_cast<QArrayData *>(::malloc(allocSize));
     if (header) {
         // XXXAR: this is a __builtin_align_up (but again we need bootstrap compat)
-	// TODO: add qAlignUp()i
-	QT_WARNING_PUSH
-	QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
+        // TODO: add qAlignUp()i
+#if __has_builtin(__builtin_align_up)
+        quintptr data = __builtin_align_up(quintptr(header) + sizeof(QArrayData), alignment);
+#else
         quintptr data = (quintptr(header) + sizeof(QArrayData) + alignment - 1)
                 & ~(alignment - 1);
-	QT_WARNING_POP
+#endif
 
 #if !defined(QT_NO_UNSHARABLE_CONTAINERS)
         header->ref.atomic.store(bool(!(options & Unsharable)));
@@ -134,7 +143,14 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
         header->size = 0;
         header->alloc = capacity;
         header->capacityReserved = bool(options & CapacityReserved);
-        header->offset = data - quintptr(header);
+#ifndef __CHERI_PURE_CAPABILITY__
+        // XXXAR: this would not have needed changing with a vaddr-based compiler
+        header->offset = reinterpret_cast<const char*>(data) - reinterpret_cast<const char*>(header);
+#else
+        // TODO: if we store the pointer here we can't use ::realloc, so always
+        // store an offset except for fromRawData()
+        header->setOffset(reinterpret_cast<const char*>(data) - reinterpret_cast<const char*>(header));
+#endif
     }
 
     return header;

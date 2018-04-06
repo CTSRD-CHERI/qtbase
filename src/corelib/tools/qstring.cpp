@@ -98,7 +98,7 @@
 #define ULLONG_MAX quint64_C(18446744073709551615)
 #endif
 
-#define IS_RAW_DATA(d) ((d)->offset != sizeof(QStringData))
+#define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QStringData))
 
 QT_BEGIN_NAMESPACE
 
@@ -4802,7 +4802,7 @@ QByteArray QString::toLatin1_helper_inplace(QString &s)
     s.d = QString().d;
 
     // do the in-place conversion
-    uchar *dst = reinterpret_cast<uchar *>(ba_d->data());
+    uchar *dst = static_cast<uchar *>(ba_d->boundedData<sizeof(uchar)>());
     qt_to_latin1(dst, data, length);
     dst[length] = '\0';
 
@@ -8680,9 +8680,17 @@ QString &QString::setRawData(const QChar *unicode, int size)
     } else {
         if (unicode) {
             d->size = size;
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = reinterpret_cast<const char *>(unicode) - reinterpret_cast<char *>(d);
+#else
+            d->setPointer(unicode);
+#endif
         } else {
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = sizeof(QStringData);
+#else
+            d->setOffset(sizeof(QStringData));
+#endif
             d->size = 0;
         }
     }
