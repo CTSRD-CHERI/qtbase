@@ -44,7 +44,7 @@
 #include <string.h>
 
 #ifdef __CHERI_PURE_CAPABILITY__
-#define QARRAYDATA_DEBUG_OUTPUT 1
+#undef QARRAYDATA_DEBUG_OUTPUT
 #endif
 #ifdef QARRAYDATA_DEBUG_OUTPUT
 #include <cstdio>
@@ -108,7 +108,7 @@ struct Q_CORE_EXPORT QArrayData
         // Note: this also handles the case of QByteArray::sharedNull()
         // TODO: is this also required for objsize != 1 ?
         if (objsize == 1 && obj->alloc == 0 && obj->ref.isStatic()) {
-            cheri_debug("%s: Adding extra null byte to size since data is static\n", __func__);
+            qarraydata_dbg("%s: Adding extra null byte to size since data is static\n", __func__);
             bounds += objsize;
         }
         ret = __builtin_cheri_bounds_set(ret, bounds);
