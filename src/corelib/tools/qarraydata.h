@@ -101,6 +101,12 @@ struct Q_CORE_EXPORT QArrayData
         qarraydata_dbg("Remaining bytes in buffer: %ld (obj = %#p), alloc=%d, size=%d\n",  cheri_bytes_remaining(ret),
             static_cast<const void *>(obj), obj->alloc, obj->size);
         // ret = const_cast<void *>(static_cast<const void *>(static_cast<const char*>(obj) + offset));
+        if (size == 0) {
+            qarraydata_dbg("sharedNull = %#p, obj=%#p\n", static_cast<const void *>(QArrayData::sharedNull()), static_cast<const void *>(obj));
+            // QByteArray::nulTerminated expects sharedNull() to be useable as a single nul char:
+            if (obj == QArrayData::sharedNull())
+                size = 1; // TODO: do we need this for QString as well, i.e. size=2?
+        }
         ret = __builtin_cheri_bounds_set(ret, size);
         qarraydata_dbg("%s with size(%zd): %#p\n", __func__, size, ret);
         return ret;
