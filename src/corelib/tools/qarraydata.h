@@ -84,12 +84,11 @@ struct Q_CORE_EXPORT QArrayData
         // otherwise just return the offset:
         return _internal_cheri_offset;
     }
-    static void * cheri_get_arraydata(const QArrayData* obj, quintptr offset, size_t size)
+    static inline void *cheri_get_arraydata(const QArrayData* obj, quintptr offset, size_t objsize)
     {
-        // For CHERI we can't just add to this since that will be out-of
-        // bounds. HACK: For now let's just assume we have a full addrspace $pcc
+        // For CHERI we can't just always add the offset to this since that may be be out-of-bounds
         void * ret = reinterpret_cast<void *>(offset);
-        qarraydata_dbg("%s(%#p, %zd): %#p\n", __func__, static_cast<const void *>(obj), size, ret);
+        qarraydata_dbg("%s(%#p, %zd): %#p\n", __func__, static_cast<const void *>(obj), objsize, ret);
         if (__builtin_cheri_tag_get(ret))
             return ret; // valid pointer so can just return
 
@@ -98,17 +97,22 @@ struct Q_CORE_EXPORT QArrayData
         // Seems like the generated QMetaObject tables use larger offsets so just assert that the length is sensible
         Q_ASSERT(offset < __builtin_cheri_length_get(obj));
         ret = __builtin_cheri_offset_increment(obj, qint64(offset));
-        qarraydata_dbg("Remaining bytes in buffer: %ld (obj = %#p), alloc=%d, size=%d\n",  cheri_bytes_remaining(ret),
-            static_cast<const void *>(obj), obj->alloc, obj->size);
-        // ret = const_cast<void *>(static_cast<const void *>(static_cast<const char*>(obj) + offset));
-        if (size == 0) {
-            qarraydata_dbg("sharedNull = %#p, obj=%#p\n", static_cast<const void *>(QArrayData::sharedNull()), static_cast<const void *>(obj));
-            // QByteArray::nulTerminated expects sharedNull() to be useable as a single nul char:
-            if (obj == QArrayData::sharedNull())
-                size = 1; // TODO: do we need this for QString as well, i.e. size=2?
+        qarraydata_dbg("Remaining bytes in buffer: %ld (obj = %#p), obj->alloc=%d, obj->size=%d\n",
+            cheri_bytes_remaining(ret), static_cast<const void *>(obj), obj->alloc, obj->size);
+        // If we have an allocation set the bounds of data() to the size of the allocation so that modifying code
+        // like QString::append() works
+        // TODO: for the const overload this should probably always be just the size to avoid accidental modification?
+        size_t bounds = (obj->alloc ? obj->alloc : obj->size) * objsize;
+        // Global static constants have alloc == 0 and size == N - 1 but lots of code expects
+        // that they can be passed to printf() since they have a null terminator (this is true at least for QByteArray)
+        // Note: this also handles the case of QByteArray::sharedNull()
+        // TODO: is this also required for objsize != 1 ?
+        if (objsize == 1 && obj->alloc == 0 && obj->ref.isStatic()) {
+            cheri_debug("%s: Adding extra null byte to size since data is static\n", __func__);
+            bounds += objsize;
         }
-        ret = __builtin_cheri_bounds_set(ret, size);
-        qarraydata_dbg("%s with size(%zd): %#p\n", __func__, size, ret);
+        ret = __builtin_cheri_bounds_set(ret, bounds);
+        qarraydata_dbg("%s with size(%zd): %#p\n", __func__, bounds, ret);
         return ret;
     }
 #endif
@@ -121,7 +125,7 @@ struct Q_CORE_EXPORT QArrayData
         return reinterpret_cast<void *>(reinterpret_cast<char *>(this) + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
-        return cheri_get_arraydata(this, _internal_cheri_offset, (alloc ? alloc : size) * objsize);
+        return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
 #endif
     }
     template<size_t objsize>
@@ -133,7 +137,7 @@ struct Q_CORE_EXPORT QArrayData
         return reinterpret_cast<const void *>(reinterpret_cast<const char *>(this) + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
-        return cheri_get_arraydata(this, _internal_cheri_offset, (alloc ? alloc : size) * objsize);
+        return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
 #endif
     }
 
