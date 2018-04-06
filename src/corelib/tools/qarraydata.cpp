@@ -81,6 +81,7 @@ static inline size_t calculateBlockSize(size_t &capacity, size_t objectSize, siz
 static QArrayData *reallocateData(QArrayData *header, size_t allocSize, uint options)
 {
     header = static_cast<QArrayData *>(::realloc(header, allocSize));
+    qarraydata_dbg("%s: result length = %ld -- h=%#p\n", __func__, cheri_bytes_remaining(header), static_cast<void*>(header));
     if (header)
         header->capacityReserved = bool(options & QArrayData::CapacityReserved);
     return header;
@@ -145,12 +146,15 @@ QArrayData *QArrayData::reallocateUnaligned(QArrayData *data, size_t objectSize,
     Q_ASSERT(data);
     Q_ASSERT(data->isMutable());
     Q_ASSERT(!data->ref.isShared());
+    qarraydata_dbg("QArrayData::reallocateUnaligned(%#p, osize=%zd, capacity=%zd, options=%x)\n", data, objectSize, capacity, int(options));
 
     size_t headerSize = sizeof(QArrayData);
     size_t allocSize = calculateBlockSize(capacity, objectSize, headerSize, options);
     QArrayData *header = static_cast<QArrayData *>(reallocateData(data, allocSize, options));
-    if (header)
+    if (header) {
         header->alloc = capacity;
+        qarraydata_dbg("QArrayData::reallocateUnaligned() new alloc=%zd\n", (size_t)header->alloc);
+    }
     return header;
 }
 

@@ -43,6 +43,16 @@
 #include <QtCore/qrefcount.h>
 #include <string.h>
 
+#ifdef __CHERI_PURE_CAPABILITY__
+#define QARRAYDATA_DEBUG_OUTPUT 1
+#endif
+#ifdef QARRAYDATA_DEBUG_OUTPUT
+#include <cstdio>
+#define qarraydata_dbg(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define qarraydata_dbg(...) do {} while(false)
+#endif
+
 QT_BEGIN_NAMESPACE
 
 struct Q_CORE_EXPORT QArrayData

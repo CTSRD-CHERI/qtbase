@@ -1970,9 +1970,11 @@ void QString::reallocData(uint alloc, bool grow)
             Data::deallocate(d);
         d = x;
     } else {
+        qarraydata_dbg("%s: %d, d=%#p\n", __func__, alloc, d);
         Data *p = Data::reallocateUnaligned(d, alloc, allocOptions);
         Q_CHECK_PTR(p);
         d = p;
+        qarraydata_dbg("%s: p->alloc = %d, resulting p=%#p, %ld bytes in p, %ld bytes in data()\n", __func__, p->alloc, p, cheri_bytes_remaining(p), cheri_bytes_remaining(p->data()));
     }
 }
 
@@ -2256,10 +2258,17 @@ QString &QString::append(const QString &str)
         if (d == Data::sharedNull()) {
             operator=(str);
         } else {
-            if (d->ref.isShared() || uint(d->size + str.d->size) + 1u > d->alloc)
+            if (d->ref.isShared() || uint(d->size + str.d->size) + 1u > d->alloc) {
+                qarraydata_dbg("%s: d=%#p, reallocating to %d\n", Q_FUNC_INFO, static_cast<void*>(d), uint(d->size + str.d->size) + 1u);
                 reallocData(uint(d->size + str.d->size) + 1u, true);
+                qarraydata_dbg("%s: after realloc: d=%#p\n", Q_FUNC_INFO, static_cast<void*>(d));
+            }
+            qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d\n", Q_FUNC_INFO,
+                static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size);
             memcpy(d->data() + d->size, str.d->data(), str.d->size * sizeof(QChar));
             d->size += str.d->size;
+            qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d, remaining = %ld\n", Q_FUNC_INFO,
+                 static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size, cheri_bytes_remaining(d->data()));
             d->data()[d->size] = '\0';
         }
     }
@@ -2275,10 +2284,17 @@ QString &QString::append(const QString &str)
 QString &QString::append(const QChar *str, int len)
 {
     if (str && len > 0) {
-        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc)
+        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc) {
+            qarraydata_dbg("%s: d=%#p, reallocating to %d\n", Q_FUNC_INFO, static_cast<void*>(d), uint(d->size + len) + 1u);
             reallocData(uint(d->size + len) + 1u, true);
+            qarraydata_dbg("%s: after realloc: d=%#p\n", Q_FUNC_INFO, static_cast<void*>(d));
+        }
+        qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d\n", Q_FUNC_INFO,
+            static_cast<void*>(d),  static_cast<void*>(d->data()), d->alloc, d->size);
         memcpy(d->data() + d->size, str, len * sizeof(QChar));
         d->size += len;
+        qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d, remaining = %ld\n",
+             Q_FUNC_INFO, static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size, cheri_bytes_remaining(d->data()));
         d->data()[d->size] = '\0';
     }
     return *this;

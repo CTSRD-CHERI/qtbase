@@ -1829,11 +1829,17 @@ void QByteArray::expand(int i)
 QByteArray QByteArray::nulTerminated() const
 {
     // is this fromRawData?
-    if (!IS_RAW_DATA(d))
+    if (!IS_RAW_DATA(d)) {
+        // XXXAR: for CHERI we need hack in data() to treat sharedNull as having length 1
+        qarraydata_dbg("QByteArray::nulTerminated() IS_RAW_DATA: %#p -- data()= %#p\n", static_cast<const void*>(d), d->data());
         return *this;           // no, then we're sure we're zero terminated
+    }
 
+    qarraydata_dbg("QByteArray::nulTerminated() not raw data: %#p, data()= %#p\n", static_cast<const void*>(d), d->data());
     QByteArray copy(*this);
+    qarraydata_dbg("QByteArray::nulTerminated() not raw data copy: %#p, copy.data() = %#p\n", static_cast<const void*>(copy.d), copy.d->data());
     copy.detach();
+    qarraydata_dbg("QByteArray::nulTerminated() copy detached: %#p -- copy.data() = %#p\n", static_cast<const void*>(copy.d), copy.d->data());
     return copy;
 }
 
