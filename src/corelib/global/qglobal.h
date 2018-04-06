@@ -1234,6 +1234,16 @@ template <typename T, typename F> struct QConditional<false, T, F> { typedef F T
 
 QT_END_NAMESPACE
 
+#ifdef __CHERI__
+#define cheri_debug(...) fprintf(stderr, __VA_ARGS__)
+inline qptrdiff cheri_bytes_remaining(void* ptr)
+{
+    return __builtin_cheri_length_get(ptr) - __builtin_cheri_offset_get(ptr);
+}
+#else
+#define cheri_debug(...)
+#endif
+
 // We need to keep QTypeInfo, QSysInfo, QFlags, qDebug & family in qglobal.h for compatibility with Qt 4.
 // Be careful when changing the order of these files.
 #include <QtCore/qtypeinfo.h>
