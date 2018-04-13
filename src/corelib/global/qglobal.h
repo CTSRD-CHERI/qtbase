@@ -1162,7 +1162,7 @@ Q_CORE_EXPORT int qrand();
 
 template<unsigned lowBitsMask>
 inline qvaddr qGetLowPointerBits(quintptr ptr) {
-    Q_STATIC_ASSERT_X(lowBitsMask < 31, "Cannot use more than the low 5 pointer bits");
+    Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
 #ifdef __CHERI_PURE_CAPABILITY__
     // Work around https://github.com/CTSRD-CHERI/clang/issues/189
     // which caused QMutexLocker::unlock() to always be a no-op
@@ -1189,7 +1189,7 @@ inline qvaddr qGetLowPointerBits(quintptr ptr) {
 
 template<unsigned lowBitsMask>
 inline quintptr qClearLowPointerBits(quintptr ptr) {
-    Q_STATIC_ASSERT_X(lowBitsMask < 31, "Cannot use more than the low 5 pointer bits");
+    Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
     constexpr qvaddr clearingMask = ~qvaddr(lowBitsMask);
     Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
 #ifdef __CHERI_PURE_CAPABILITY__
@@ -1211,7 +1211,7 @@ inline quintptr qClearLowPointerBits(quintptr ptr) {
 // XXXAR: this function is not actually needed since bitwise or works
 // as expected but I added it for symmetry.
 inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
-    Q_ASSERT(bits < 31 && "Cannot use more than the low 5 pointer bits");
+    Q_ASSERT(bits <= 31 && "Cannot use more than the low 5 pointer bits");
     return ptr | bits;
 }
 
