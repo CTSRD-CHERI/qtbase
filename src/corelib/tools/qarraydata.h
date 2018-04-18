@@ -116,7 +116,7 @@ struct Q_CORE_EXPORT QArrayData
         return ret;
     }
 #endif
-    template<size_t objsize>
+    template<size_t objsize = 1>
     void *boundedData()
     {
 #ifndef __CHERI_PURE_CAPABILITY__
@@ -128,7 +128,7 @@ struct Q_CORE_EXPORT QArrayData
         return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
 #endif
     }
-    template<size_t objsize>
+    template<size_t objsize = 1>
     const void *boundedData() const
     {
 #ifndef __CHERI_PURE_CAPABILITY__
