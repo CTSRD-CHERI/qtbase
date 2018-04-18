@@ -128,7 +128,7 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
     if (header) {
         // XXXAR: this is a __builtin_align_up (but again we need bootstrap compat)
         // TODO: add qAlignUp()i
-#if __has_builtin(__builtin_align_up)
+#if QT_HAS_BUILTIN(__builtin_align_up)
         quintptr data = __builtin_align_up(quintptr(header) + sizeof(QArrayData), alignment);
 #else
         quintptr data = (quintptr(header) + sizeof(QArrayData) + alignment - 1)

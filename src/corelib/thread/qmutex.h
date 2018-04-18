@@ -198,8 +198,7 @@ public:
 #ifndef Q_CLANG_QDOC
     inline explicit QMutexLocker(QBasicMutex *m) QT_MUTEX_LOCK_NOEXCEPT
     {
-        Q_ASSERT_X(__builtin_is_aligned(m, 2),
-                   "QMutexLocker", "QMutex pointer is misaligned");
+        Q_ASSERT_X(qIsAligned(m, 2), "QMutexLocker", "QMutex pointer is misaligned");
         val = quintptr(m);
         if (Q_LIKELY(m)) {
             // call QMutex::lock() instead of QBasicMutex::lock()

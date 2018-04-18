@@ -120,8 +120,7 @@ private:
 inline QReadLocker::QReadLocker(QReadWriteLock *areadWriteLock)
     : q_val(reinterpret_cast<quintptr>(areadWriteLock))
 {
-    Q_ASSERT_X(__builtin_is_aligned(q_val, 2),
-               "QReadLocker", "QReadWriteLock pointer is misaligned");
+    Q_ASSERT_X(qIsAligned(q_val, 2), "QReadLocker", "QReadWriteLock pointer is misaligned");
     relock();
 }
 
@@ -165,8 +164,7 @@ private:
 inline QWriteLocker::QWriteLocker(QReadWriteLock *areadWriteLock)
     : q_val(reinterpret_cast<quintptr>(areadWriteLock))
 {
-    Q_ASSERT_X(__builtin_is_aligned(q_val, 2),
-               "QWriteLocker", "QReadWriteLock pointer is misaligned");
+    Q_ASSERT_X(qIsAligned(q_val, 2), "QWriteLocker", "QReadWriteLock pointer is misaligned");
     relock();
 }
 

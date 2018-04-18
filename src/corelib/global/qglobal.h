@@ -905,6 +905,17 @@ Q_CORE_EXPORT void *qMallocAligned(size_t size, size_t alignment) Q_ALLOC_SIZE(1
 Q_CORE_EXPORT void *qReallocAligned(void *ptr, size_t size, size_t oldsize, size_t alignment) Q_ALLOC_SIZE(2);
 Q_CORE_EXPORT void qFreeAligned(void *ptr);
 
+template<typename T>
+inline bool qIsAligned(T ptr, size_t alignment) {
+    Q_ASSERT_X((alignment & (alignment - 1)) == 0, "qIsAligned",
+               "alignment was not a power of two");
+#if QT_HAS_BUILTIN(__builtin_is_aligned)
+    return __builtin_is_aligned(ptr, alignment);
+#else
+    return (qvaddr(ptr) & (alignment - 1)) == 0;
+#endif
+}
+
 
 /*
    Avoid some particularly useless warnings from some stupid compilers.
