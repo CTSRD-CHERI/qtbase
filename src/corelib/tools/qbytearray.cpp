@@ -4345,19 +4345,24 @@ QByteArray &QByteArray::setRawData(const char *data, uint size)
             d->setPointer(data);
 #endif
         } else {
+            // If we get passed a null pointer we still ensure that data()
+            // returns a zero-length null terminated string
 #ifndef __CHERI_PURE_CAPABILITY__
             d->offset = sizeof(QByteArrayData);
 #else
             d->setOffset(sizeof(QByteArrayData));
 #endif
             d->size = 0;
-            // Temporarily set alloc to 1 to allow writing to the first byte of
-            // d->data(). On capability architectures like CHERI data() would
-            // return a zero-length pointer that traps on write access if we
-            // didn't set alloc
-            d->alloc = 1;
+            // If d->alloc is zero set it to one to allow writing to the first byte of
+            // d->data(). On capability architectures like CHERI data() will return
+            // a capability with length set to max(alloc, size) and if both of these are
+            // zero we will get a trap when attempting to write the '\0'.
+            // FIXME: Due to the way that malloc works we should generally have at least
+            // one free byte after the QByteArrayData object but we should probably
+            // actually check that there is enough allocated space.
+            if (d->alloc == 0)
+                d->alloc = 1;
             *d->data() = 0;
-            d->alloc = 0;
         }
     }
     return *this;
