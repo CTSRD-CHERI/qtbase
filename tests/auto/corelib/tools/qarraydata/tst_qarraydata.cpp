@@ -828,8 +828,8 @@ void tst_QArrayData::alignment()
 
         // These conditions should hold as long as header and array are
         // allocated together
-        QVERIFY(data->offset >= qptrdiff(sizeof(QArrayData)));
-        QVERIFY(data->offset <= qptrdiff(sizeof(QArrayData)
+        QVERIFY(data->dataOffset() >= qptrdiff(sizeof(QArrayData)));
+        QVERIFY(data->dataOffset() <= qptrdiff(sizeof(QArrayData)
                     + minAlignment - Q_ALIGNOF(QArrayData)));
 
         // Data is aligned
