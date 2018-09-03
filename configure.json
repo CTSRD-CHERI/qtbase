@@ -59,6 +59,7 @@
             "android-javac-target": "string",
             "android-javac-source": "string",
 
+            "additional-datadir": { "type": "addString", "name": "additional_datadirs" },
             "android-style-assets": "boolean",
             "appstore-compliant": "boolean",
             "avx": "boolean",

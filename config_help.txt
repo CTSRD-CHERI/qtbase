@@ -120,6 +120,9 @@ Build options:
                          through an app store by default, in particular Android,
                          iOS, tvOS, watchOS, and Universal Windows Platform. [auto]
 
+  -additional-datadir <dir> ... List of directories that QStandardPaths
+                         will search before the system locations (macOS only).
+
   -qtnamespace <name> .. Wrap all Qt library code in 'namespace <name> {...}'.
   -qtlibinfix <infix> .. Rename all libQt5*.so to libQt5*<infix>.so.
   -qtlibinfix-plugins .. Rename Qt plugins according to -qtlibinfix [no]

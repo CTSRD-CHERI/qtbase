@@ -33,6 +33,7 @@
 #include <qfileinfo.h>
 #include <qplatformdefs.h>
 #include <qregularexpression.h>
+#include <private/qglobal_p.h>
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
 #  include <qt_windows.h>
 #endif
@@ -62,6 +63,7 @@ private slots:
     void enableTestMode();
     void testLocateAll();
     void testDataLocation();
+    void testAdditionalDataDirs();
     void testAppConfigLocation();
     void testFindExecutable_data();
     void testFindExecutable();
@@ -333,6 +335,26 @@ void tst_qstandardpaths::testDataLocation()
     // reset for other tests
     QCoreApplication::setOrganizationName(QString());
     QCoreApplication::setApplicationName(QString());
+}
+
+void tst_qstandardpaths::testAdditionalDataDirs()
+{
+    // If Qt was configured with -additional-datadir, QStandardPaths should return those directories
+#if !defined(QT_STANDARDPATHS_ADDITIONAL_DATADIRS)
+    QSKIP("-additional-datadir not passed to configure");
+#elif !defined(Q_OS_MACOS)
+    QSKIP("-additional-datadir not supported on current platform");
+#else
+    const QString writable = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    const QStringList genericDirs =
+            QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
+    QStringList additionalDataDirs(QT_STANDARDPATHS_ADDITIONAL_DATADIRS);
+    QVERIFY2(!additionalDataDirs.empty(), "Define should not be set if the list is empty");
+    QVERIFY(genericDirs.size() > additionalDataDirs.size() + 1);
+    // The additional datadirs should be added just after the writable location
+    QCOMPARE(genericDirs.at(0), writable);
+    QCOMPARE(genericDirs.mid(1, additionalDataDirs.size()), additionalDataDirs);
+#endif
 }
 
 void tst_qstandardpaths::testAppConfigLocation()
