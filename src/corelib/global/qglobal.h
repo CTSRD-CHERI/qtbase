@@ -1189,7 +1189,9 @@ inline qvaddr qGetLowPointerBits(quintptr ptr) {
     quintptr result = ptr & lowBitsMask;
     // This assert is here to validate the assumption that bitwise and only
     // ever changes the offset field
+#if _MIPS_SZCAP == 256
     Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(ptr)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
+#endif
     // Bitwise operations on uintcap_t always operate on the offset field
     return __builtin_cheri_offset_get(reinterpret_cast<void*>(result));
     QT_WARNING_POP
