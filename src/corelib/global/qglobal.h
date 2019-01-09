@@ -1187,13 +1187,8 @@ inline qvaddr qGetLowPointerBits(quintptr ptr) {
     // the RHS is an untagged intcap_t with offset 3
     // See https://github.com/CTSRD-CHERI/clang/issues/189
     quintptr result = ptr & lowBitsMask;
-    // This assert is here to validate the assumption that bitwise and only
-    // ever changes the offset field
-#if _MIPS_SZCAP == 256
-    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(ptr)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
-#endif
-    // Bitwise operations on uintcap_t always operate on the offset field
-    return __builtin_cheri_offset_get(reinterpret_cast<void*>(result));
+    // Return the offset or the address depending on the compiler mode
+    return (uint64_t)result;
     QT_WARNING_POP
 #else
     return ptr & lowBitsMask;
