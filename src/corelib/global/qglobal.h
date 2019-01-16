@@ -1188,7 +1188,7 @@ inline qvaddr qGetLowPointerBits(quintptr ptr) {
     // See https://github.com/CTSRD-CHERI/clang/issues/189
     quintptr result = ptr & lowBitsMask;
     // Return the offset or the address depending on the compiler mode
-    return (uint64_t)result;
+    return static_cast<uint64_t>(result);
     QT_WARNING_POP
 #else
     return ptr & lowBitsMask;
