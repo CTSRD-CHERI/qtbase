@@ -111,7 +111,9 @@ struct Q_CORE_EXPORT QArrayData
             qarraydata_dbg("%s: Adding extra null byte to size since data is static\n", __func__);
             bounds += objsize;
         }
+#ifndef QT_CHERI_NO_SET_BOUNDS
         ret = __builtin_cheri_bounds_set(ret, bounds);
+#endif
         qarraydata_dbg("%s with size(%zd): %#p\n", __func__, bounds, ret);
         return ret;
     }
