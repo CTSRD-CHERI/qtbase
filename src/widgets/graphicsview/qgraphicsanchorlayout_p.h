@@ -264,7 +264,7 @@ inline QString AnchorVertex::toString() const
         const AnchorVertexPair *vp = static_cast<const AnchorVertexPair *>(this);
         return QString::fromLatin1("(%1, %2)").arg(vp->m_first->toString(), vp->m_second->toString());
     } else if (!m_item) {
-        return QString::fromLatin1("NULL_%1").arg(quintptr(this));
+        return QString::fromLatin1("NULL_%1").arg(qvaddr(this));
     }
     QString edge;
     switch (m_edge) {

@@ -310,7 +310,7 @@ void tst_QLocalSocket::listen()
     } else {
         QVERIFY(!server.errorString().isEmpty());
         QCOMPARE(server.serverError(), QAbstractSocket::HostNotFoundError);
-        QCOMPARE(server.socketDescriptor(), -1);
+        QCOMPARE(server.socketDescriptor(), static_cast<qintptr>(-1));
     }
     QCOMPARE(server.maxPendingConnections(), 30);
     bool timedOut = false;

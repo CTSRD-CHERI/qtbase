@@ -2,7 +2,6 @@ TEMPLATE=subdirs
 SUBDIRS=\
     qatomicint \
     qatomicinteger \
-    qatomicpointer \
     qresultstore \
     qfuture \
     qfuturesynchronizer \
@@ -17,6 +16,8 @@ SUBDIRS=\
     qthreadstorage \
     qwaitcondition \
     qwritelocker
+
+# XXXAR: TODO: add back once compiler has been fixed:   qatomicpointer
 
 qtHaveModule(concurrent) {
     SUBDIRS += \

@@ -160,6 +160,10 @@ static qlonglong qMetaTypeNumber(const QVariant::Private *d)
         return qRound64(d->data.f);
     case QVariant::Double:
         return qRound64(d->data.d);
+#ifdef __CHERI__
+    case QMetaType::IntCap:
+        return (qlonglong)d->data.intcap;
+#endif
 #ifndef QT_BOOTSTRAPPED
     case QMetaType::QJsonValue:
         return v_cast<QJsonValue>(d)->toDouble();
@@ -182,10 +186,22 @@ static qulonglong qMetaTypeUNumber(const QVariant::Private *d)
         return d->data.us;
     case QMetaType::ULong:
         return d->data.ul;
+#ifdef __CHERI__
+    case QMetaType::UIntCap:
+        return (qlonglong)d->data.uintcap;
+#endif
     }
     Q_ASSERT(false);
     return 0;
 }
+
+#ifdef __CHERI__
+#define CASE_CHERI_INTCAP case QMetaType::IntCap:
+#define CASE_CHERI_UINTCAP case QMetaType::UIntCap:
+#else
+#define CASE_CHERI_INTCAP
+#define CASE_CHERI_UINTCAP
+#endif
 
 static qlonglong qConvertToNumber(const QVariant::Private *d, bool *ok)
 {
@@ -214,13 +230,14 @@ static qlonglong qConvertToNumber(const QVariant::Private *d, bool *ok)
     case QMetaType::Long:
     case QMetaType::Float:
     case QMetaType::LongLong:
+    CASE_CHERI_INTCAP
         return qMetaTypeNumber(d);
     case QVariant::ULongLong:
     case QVariant::UInt:
     case QMetaType::UChar:
     case QMetaType::UShort:
     case QMetaType::ULong:
-
+    CASE_CHERI_UINTCAP
         return qlonglong(qMetaTypeUNumber(d));
     }
 
@@ -289,12 +306,14 @@ static qulonglong qConvertToUnsignedNumber(const QVariant::Private *d, bool *ok)
     case QMetaType::Long:
     case QMetaType::Float:
     case QMetaType::LongLong:
+    CASE_CHERI_INTCAP
         return qulonglong(qMetaTypeNumber(d));
     case QVariant::ULongLong:
     case QVariant::UInt:
     case QMetaType::UChar:
     case QMetaType::UShort:
     case QMetaType::ULong:
+    CASE_CHERI_UINTCAP
         return qMetaTypeUNumber(d);
     }
 
@@ -421,12 +440,14 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::Long:
         case QVariant::Int:
         case QVariant::LongLong:
+        CASE_CHERI_INTCAP
             *str = QString::number(qMetaTypeNumber(d));
             break;
         case QVariant::UInt:
         case QVariant::ULongLong:
         case QMetaType::UShort:
         case QMetaType::ULong:
+        CASE_CHERI_UINTCAP
             *str = QString::number(qMetaTypeUNumber(d));
             break;
         case QMetaType::Float:
@@ -497,6 +518,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::Short:
         case QMetaType::Long:
         case QMetaType::Float:
+        CASE_CHERI_INTCAP
             *c = QChar(ushort(qMetaTypeNumber(d)));
             break;
         case QVariant::UInt:
@@ -504,6 +526,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::UChar:
         case QMetaType::UShort:
         case QMetaType::ULong:
+        CASE_CHERI_UINTCAP
             *c = QChar(ushort(qMetaTypeUNumber(d)));
             break;
         default:
@@ -641,12 +664,14 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QVariant::LongLong:
         case QMetaType::Short:
         case QMetaType::Long:
+        CASE_CHERI_INTCAP
             *ba = QByteArray::number(qMetaTypeNumber(d));
             break;
         case QVariant::UInt:
         case QVariant::ULongLong:
         case QMetaType::UShort:
         case QMetaType::ULong:
+        CASE_CHERI_UINTCAP
             *ba = QByteArray::number(qMetaTypeUNumber(d));
             break;
         case QVariant::Bool:
@@ -706,6 +731,34 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         *static_cast<uchar *>(result) = qConvertToUnsignedNumber(d, ok);
         return *ok;
     }
+#ifdef __CHERI__
+    case QMetaType::IntCap: {
+      switch (d->type) {
+      case QMetaType::IntCap:
+        *static_cast<__intcap_t *>(result) = d->data.intcap;
+        return true;
+      case QMetaType::UIntCap:
+        *static_cast<__intcap_t *>(result) = d->data.uintcap;
+        return true;
+      default:
+          *static_cast<__intcap_t *>(result) = qConvertToNumber(d, ok);
+          return *ok;
+      }
+    }
+    case QMetaType::UIntCap: {
+      switch (d->type) {
+      case QMetaType::IntCap:
+        *static_cast<__uintcap_t *>(result) = d->data.intcap;
+        return true;
+      case QMetaType::UIntCap:
+        *static_cast<__uintcap_t *>(result) = d->data.uintcap;
+        return true;
+      default:
+          *static_cast<__uintcap_t *>(result) = qConvertToUnsignedNumber(d, ok);
+          return *ok;
+      }
+    }
+#endif
     case QVariant::Bool: {
         bool *b = static_cast<bool *>(result);
         switch(d->type) {
@@ -726,6 +779,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::Short:
         case QMetaType::Long:
         case QMetaType::Float:
+        CASE_CHERI_INTCAP
             *b = qMetaTypeNumber(d) != Q_INT64_C(0);
             break;
         case QVariant::UInt:
@@ -733,6 +787,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::UChar:
         case QMetaType::UShort:
         case QMetaType::ULong:
+        CASE_CHERI_UINTCAP
             *b = qMetaTypeUNumber(d) != Q_UINT64_C(0);
             break;
 #ifndef QT_BOOTSTRAPPED
@@ -769,6 +824,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::SChar:
         case QMetaType::Short:
         case QMetaType::Long:
+        CASE_CHERI_INTCAP
             *f = double(qMetaTypeNumber(d));
             break;
         case QVariant::UInt:
@@ -776,6 +832,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::UChar:
         case QMetaType::UShort:
         case QMetaType::ULong:
+        CASE_CHERI_UINTCAP
             *f = double(qMetaTypeUNumber(d));
             break;
 #ifndef QT_BOOTSTRAPPED
@@ -812,6 +869,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::SChar:
         case QMetaType::Short:
         case QMetaType::Long:
+        CASE_CHERI_INTCAP
             *f = float(qMetaTypeNumber(d));
             break;
         case QVariant::UInt:
@@ -819,6 +877,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         case QMetaType::UChar:
         case QMetaType::UShort:
         case QMetaType::ULong:
+        CASE_CHERI_UINTCAP
             *f = float(qMetaTypeUNumber(d));
             break;
 #ifndef QT_BOOTSTRAPPED
@@ -1855,6 +1914,15 @@ QVariant::QVariant(double val)
 QVariant::QVariant(float val)
     : d(QMetaType::Float)
 { d.data.f = val; }
+
+#ifdef __CHERI__
+QVariant::QVariant(__intcap_t val)
+    : d(QMetaType::IntCap)
+{ d.data.intcap = val; }
+QVariant::QVariant(__uintcap_t val)
+    : d(QMetaType::UIntCap)
+{ d.data.uintcap = val; }
+#endif
 
 QVariant::QVariant(const QByteArray &val)
     : d(ByteArray)

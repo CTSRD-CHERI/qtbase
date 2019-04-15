@@ -99,7 +99,12 @@ std::pair<OutputIt1, OutputIt2> separate_if(InputIt first, InputIt last, OutputI
 int get_signal_index()
 {
     static auto senderMetaObject = &QHostInfoResult::staticMetaObject;
+#ifndef __CHERI_PURE_CAPABILITY__
+    // XXXAR: compiler crash for static pointers to members
     static auto signal = &QHostInfoResult::resultsReady;
+#else
+    auto signal = &QHostInfoResult::resultsReady;
+#endif
     int signal_index = -1;
     void *args[] = { &signal_index, &signal };
     senderMetaObject->static_metacall(QMetaObject::IndexOfMethod, 0, args);

@@ -162,6 +162,10 @@ public:
 #ifdef Q_COMPILER_NULLPTR
     inline QDebug &operator<<(std::nullptr_t) { stream->ts << "(nullptr)"; return maybeSpace(); }
 #endif
+#if defined(__CHERI__)
+    inline QDebug &operator<<(__intcap_t t) { stream->ts << t; return maybeSpace(); }
+    inline QDebug &operator<<(__uintcap_t t) { stream->ts << t; return maybeSpace(); }
+#endif
     inline QDebug &operator<<(QTextStreamFunction f) {
         stream->ts << f;
         return *this;

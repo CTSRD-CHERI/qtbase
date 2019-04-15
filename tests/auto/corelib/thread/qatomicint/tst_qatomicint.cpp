@@ -182,10 +182,17 @@ void tst_QAtomicInt::warningFreeHelper()
 # endif
 
     // pointer-sized integers are always supported:
-    warningFreeHelperTemplate<int, QBasicAtomicInteger<qptrdiff> >();
+    warningFreeHelperTemplate<int, QBasicAtomicInteger<qintptr> >();
     warningFreeHelperTemplate<unsigned int, QBasicAtomicInteger<quintptr> >();
-    constexprFunctionsHelperTemplate<QBasicAtomicInteger<qptrdiff> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<qintptr> >();
     constexprFunctionsHelperTemplate<QBasicAtomicInteger<quintptr> >();
+
+#ifdef __CHERI__
+    warningFreeHelperTemplate<int, QBasicAtomicInteger<__intcap_t> >();
+    warningFreeHelperTemplate<unsigned int, QBasicAtomicInteger<__uintcap_t> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<__intcap_t> >();
+    constexprFunctionsHelperTemplate<QBasicAtomicInteger<__uintcap_t> >();
+#endif
 
     // long is always supported because it's either 32-bit or pointer-sized:
     warningFreeHelperTemplate<int, QBasicAtomicInteger<long int> >();

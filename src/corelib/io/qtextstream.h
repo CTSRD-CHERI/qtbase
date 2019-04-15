@@ -189,6 +189,10 @@ public:
     QTextStream &operator<<(const QByteArray &array);
     QTextStream &operator<<(const char *c);
     QTextStream &operator<<(const void *ptr);
+#if defined(__CHERI__)
+    QTextStream &operator<<(__intcap_t t);
+    QTextStream &operator<<(__uintcap_t t);
+#endif
 
 private:
     Q_DISABLE_COPY(QTextStream)
