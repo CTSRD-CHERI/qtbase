@@ -705,6 +705,7 @@ bool QFileInfo::exists(const QString &file)
 {
     QFileSystemEntry entry(file);
     QFileSystemMetaData data;
+    memset(&data, 0, sizeof(data)); // Avoid copying garbage from stack in QFileInfoPrivate::QFileInfoPrivate();
     QAbstractFileEngine *engine =
         QFileSystemEngine::resolveEntryAndCreateLegacyEngine(entry, data);
     // Expensive fallback to non-QFileSystemEngine implementation
