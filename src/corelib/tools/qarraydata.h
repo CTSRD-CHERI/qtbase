@@ -73,14 +73,14 @@ struct Q_CORE_EXPORT QArrayData
         Q_ASSERT(offset > 0 && offset < 100 && "Globals should use a pointer!");
         _internal_cheri_offset = offset;
     }
-    void setPointer(const void * data) {
+    void setPointer(const void *data) {
         Q_ASSERT(__builtin_cheri_tag_get(data) && "Setting untagged pointer?");
         _internal_cheri_offset = reinterpret_cast<quintptr>(data);
     }
     inline qptrdiff dataOffset() const {
-        void * ptr = reinterpret_cast<void *>(_internal_cheri_offset);
+        void *ptr = reinterpret_cast<void *>(_internal_cheri_offset);
         if (__builtin_cheri_tag_get(ptr))
-            return __builtin_cheri_address_get(ptr) - qvaddr(this);
+            return static_cast<const char*>(ptr) - reinterpret_cast<const char*>(this);
         // otherwise just return the offset:
         return _internal_cheri_offset;
     }
