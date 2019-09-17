@@ -1244,7 +1244,7 @@ QT_END_NAMESPACE
 
 #ifdef __CHERI__
 #define cheri_debug(...) fprintf(stderr, __VA_ARGS__)
-inline qptrdiff cheri_bytes_remaining(void* ptr)
+inline qptrdiff cheri_bytes_remaining(void* __capability ptr)
 {
     return __builtin_cheri_length_get(ptr) - __builtin_cheri_offset_get(ptr);
 }
