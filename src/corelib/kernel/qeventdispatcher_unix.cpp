@@ -89,6 +89,20 @@ static const char *socketType(QSocketNotifier::Type type)
     Q_UNREACHABLE();
 }
 
+static const char *coportType(QCoportNotifier::Type type)
+{
+    switch (type) {
+    case QCoportNotifier::Read:
+        return "Read";
+    case QCoportNotifier::Write:
+        return "Write";
+    case QCoportNotifier::Exception:
+        return "Exception";
+    }
+
+    Q_UNREACHABLE();
+}
+
 QThreadPipe::QThreadPipe()
 {
     fds[0] = -1;
@@ -487,13 +501,19 @@ bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
 
     d->pollfds.clear();
     d->pollfds.reserve(1 + (include_notifiers ? d->socketNotifiers.size() : 0));
+    d->pollcoports.clear()
+    d->pollcoports.reserve(1 + (include_notifiers ? d->coportNotifiers.size() : 0));
 
     if (include_notifiers)
         for (auto it = d->socketNotifiers.cbegin(); it != d->socketNotifiers.cend(); ++it)
             d->pollfds.append(qt_make_pollfd(it.key(), it.value().events()));
+        for (auto it = d->coportNotifiers.cbegin(); it != d->coportNotifiers.cend(); ++it)
+            d->pollcoports.append(make_pollcoport(it.key(), it.value().events())); 
 
     // This must be last, as it's popped off the end below
     d->pollfds.append(d->threadPipe.prepare());
+
+    d->pollcoports.append(d->threadCoport.prepare());
 
     int nevents = 0;
 
@@ -507,6 +527,19 @@ bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
         nevents += d->threadPipe.check(d->pollfds.takeLast());
         if (include_notifiers)
             nevents += d->activateSocketNotifiers();
+        break;
+    }
+
+    switch (copoll(d->pollcoports.data(), d->pollcoports.size(), tm)) {
+    case -1:
+        perror("copoll");
+        break;
+    case 0:
+        break;
+    default:
+        nevents += d->threadCoport.check(d->pollcoports.takeLast());
+        if (include_notifiers)
+            nevents += d->activateCoportNotifiers();
         break;
     }
 

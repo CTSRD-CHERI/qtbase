@@ -304,6 +304,14 @@ static inline int qt_safe_close(int fd)
 
 // - VxWorks & iOS/tvOS/watchOS don't have processes
 #if QT_CONFIG(process)
+static inline int qt_safe_coexecve(const char *filename, char *const argv[],
+                                 char *const envp[], pid_t pid)
+{
+    int ret;
+    EINTR_LOOP(ret, ::coexecve(pid, filename, argv, envp,));
+    return ret;
+}
+
 static inline int qt_safe_execve(const char *filename, char *const argv[],
                                  char *const envp[])
 {

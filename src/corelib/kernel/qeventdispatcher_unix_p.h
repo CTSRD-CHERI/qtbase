@@ -57,6 +57,7 @@
 #include "private/qcore_unix_p.h"
 #include "QtCore/qvarlengtharray.h"
 #include "private/qtimerinfo_unix_p.h"
+#include "coport.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -73,6 +74,20 @@ struct Q_CORE_EXPORT QSocketNotifierSetUNIX Q_DECL_FINAL
 };
 
 Q_DECLARE_TYPEINFO(QSocketNotifierSetUNIX, Q_PRIMITIVE_TYPE);
+
+
+struct Q_CORE_EXPORT QCoportNotifierSet Q_DECL_FINAL
+{
+    inline QCoportNotifierSet() Q_DECL_NOTHROW;
+
+    inline bool isEmpty() const Q_DECL_NOTHROW;
+    inline short events() const Q_DECL_NOTHROW;
+
+    QCoportNotifier *notifiers[3];
+};
+
+Q_DECLARE_TYPEINFO(QCoportNotifierSet, Q_PRIMITIVE_TYPE);
+
 
 struct QThreadPipe
 {
@@ -96,6 +111,31 @@ struct QThreadPipe
 #endif
 };
 
+
+struct QThreadCoport
+{
+    QThreadCoport();
+    ~QThreadCoport();
+
+    bool init();
+    pollcoport_t prepare() const;
+
+    void wakeUp();
+    int check(const pollcoport_t &pcpt);
+
+    // note for eventfd(7) support:
+    // if fds[1] is -1, then eventfd(7) is in use and is stored in fds[0]
+    // XXX-PBB:at present there is no equivalent of eventfd(7) for coports, but maybe there should be?
+    coport_t coports[2];
+    QAtomicInt wakeUps;
+
+#if defined(Q_OS_VXWORKS)
+    static const int len_name = 20;
+    char name[len_name];
+#endif
+};
+
+
 class Q_CORE_EXPORT QEventDispatcherUNIX : public QAbstractEventDispatcher
 {
     Q_OBJECT
@@ -110,6 +150,11 @@ public:
 
     void registerSocketNotifier(QSocketNotifier *notifier) Q_DECL_FINAL;
     void unregisterSocketNotifier(QSocketNotifier *notifier) Q_DECL_FINAL;
+
+    
+    void registerCoportNotifier(QCoportNotifier *notifier) Q_DECL_FINAL;
+    void unregisterCoportNotifier(QCoportNotifier *notifier) Q_DECL_FINAL;
+
 
     void registerTimer(int timerId, int interval, Qt::TimerType timerType, QObject *object) Q_DECL_FINAL;
     bool unregisterTimer(int timerId) Q_DECL_FINAL;
@@ -146,6 +191,11 @@ public:
     QHash<int, QSocketNotifierSetUNIX> socketNotifiers;
     QVector<QSocketNotifier *> pendingNotifiers;
 
+    QVector<pollcoport_t> pollcoports;
+    QHash<coport_t, QCoportNotifierSet> coportNotifiers;
+    QVector<QCoportNotifier *> pendingCoportNotifiers;
+
+
     QTimerInfoList timerList;
     QAtomicInt interrupt; // bool
 };
@@ -174,6 +224,36 @@ inline short QSocketNotifierSetUNIX::events() const Q_DECL_NOTHROW
 
     if (notifiers[2])
         result |= POLLPRI;
+
+    return result;
+}
+
+
+inline QCoportNotifierSet::QCoportNotifierSet() Q_DECL_NOTHROW
+{
+    notifiers[0] = NULL;
+    notifiers[1] = NULL;
+    notifiers[2] = NULL;
+}
+
+inline bool QCoportNotifierSet::isEmpty() const Q_DECL_NOTHROW
+{
+    return !notifiers[0] && !notifiers[1] && !notifiers[2];
+}
+
+inline short QCoportNotifierSet::events() const Q_DECL_NOTHROW
+{
+    short result = 0;
+
+    if (notifiers[0])
+        result |= COPOLL_IN;
+
+    if (notifiers[1])
+        result |= COPOLL_OUT;
+
+    if (notifiers[2])
+        result |= COPOLL_RERR;
+        result |= COPOLL_WERR;
 
     return result;
 }

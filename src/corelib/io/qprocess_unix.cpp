@@ -577,8 +577,13 @@ void QProcessPrivate::execChild(const char *workingDir, char **argv, char **envp
 #if defined (QPROCESS_DEBUG)
         fprintf(stderr, "QProcessPrivate::execChild() starting %s\n", argv[0]);
 #endif
+#if defined (COLOCATION_IPC) //TODO-PBB: RENAME
+        qt_safe_coexecve(argv[0], argv, envp);
+        strcpy(error.function, "coexecve");
+#else
         qt_safe_execve(argv[0], argv, envp);
         strcpy(error.function, "execve");
+#endif
     }
 
     // notify failure
@@ -932,6 +937,7 @@ bool QProcessPrivate::startDetached(qint64 *pid)
 
     pid_t childPid = fork();
     if (childPid == 0) {
+        pid_t orig_pid = getppid();
         struct sigaction noaction;
         memset(&noaction, 0, sizeof(noaction));
         noaction.sa_handler = SIG_IGN;
@@ -987,7 +993,11 @@ bool QProcessPrivate::startDetached(qint64 *pid)
             argv[0] = tmp.data();
 
             if (envp)
+#if defined (COLOCATION_IPC) //TODO-PBB: RENAME
+                qt_safe_coexecve(orig_pid,argv[0], argv, envp);
+#else
                 qt_safe_execve(argv[0], argv, envp);
+#endif
             else
                 qt_safe_execv(argv[0], argv);
 
