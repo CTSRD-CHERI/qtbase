@@ -38,10 +38,11 @@
 ****************************************************************************/
 //TODO-PBB: LICENSE?
 
-#ifndef QSOCKETNOTIFIER_H
-#define QSOCKETNOTIFIER_H
+#ifndef QCOPORTNOTIFIER_H
+#define QCOPORTNOTIFIER_H
 
 #include <QtCore/qobject.h>
+#include <coport.h>
 
 QT_BEGIN_NAMESPACE
 

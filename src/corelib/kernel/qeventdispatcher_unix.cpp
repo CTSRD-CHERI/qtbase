@@ -43,6 +43,8 @@
 #include "qcoreapplication.h"
 #include "qpair.h"
 #include "qsocketnotifier.h"
+#include "qcoportnotifier.h"
+
 #include "qthread.h"
 #include "qelapsedtimer.h"
 
@@ -54,6 +56,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <comsg.h>
+#include <cheri/cheric.h>
 
 #ifndef QT_NO_EVENTFD
 #  include <sys/eventfd.h>
@@ -89,7 +93,7 @@ static const char *socketType(QSocketNotifier::Type type)
     Q_UNREACHABLE();
 }
 
-static const char *coportType(QCoportNotifier::Type type)
+static const char *coportType(QCoportNotifier::Type type)   
 {
     switch (type) {
     case QCoportNotifier::Read:
@@ -102,6 +106,71 @@ static const char *coportType(QCoportNotifier::Type type)
 
     Q_UNREACHABLE();
 }
+
+
+QThreadCoport::QThreadCoport()
+{
+    coports[0] = nullptr;
+    coports[1] = nullptr;
+
+}
+
+QThreadCoport::~QThreadCoport()
+{
+    if (coports[0] != nullptr)
+        coclose(coports[0]);
+
+    if (coports[1] != nullptr)
+        coclose(coports[1]);
+
+}
+
+bool QThreadCoport::init()
+{
+    qsnprintf(name, sizeof(name), "qt_%08x", cheri_getaddress(QThread::currentThread()));
+    if (coopen(name,COCARRIER,&coports[0]) != 1) {
+        perror("QThreadCoport: Unable to create coport");
+        return false;
+    }
+    coports[1]=coports[0];
+    return true;
+}
+
+pollcoport_t QThreadCoport::prepare() const
+{
+    return make_pollcoport(coports[0], COPOLL_IN);
+}
+
+void QThreadCoport::wakeUp()
+{
+    if (wakeUps.testAndSetAcquire(0, 1)) {
+        char c = 0;
+        cosend(coports[1], &c, 1);
+    }
+}
+
+int QThreadCoport::check(const pollcoport_t &pcp)
+{
+    Q_ASSERT(pcp.coport == coports[0]);
+
+    char c[16];
+    const int readyread = pcp.revents & POLLIN;
+
+    if (readyread) {
+        // consume the data on the thread pipe so that
+        // poll doesn't immediately return next time
+        {
+            while (corecv(coports[0], (void **)&c, sizeof(c)) > 0) {}
+        }
+        if (!wakeUps.testAndSetRelease(1, 0)) {
+            // hopefully, this is dead code
+            qWarning("QThreadCoport: internal error, wakeUps.testAndSetRelease(1, 0) failed!");
+        }
+    }
+
+    return readyread;
+}
+
 
 QThreadPipe::QThreadPipe()
 {
@@ -501,14 +570,18 @@ bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
 
     d->pollfds.clear();
     d->pollfds.reserve(1 + (include_notifiers ? d->socketNotifiers.size() : 0));
-    d->pollcoports.clear()
+    d->pollcoports.clear();
     d->pollcoports.reserve(1 + (include_notifiers ? d->coportNotifiers.size() : 0));
 
     if (include_notifiers)
+    {
         for (auto it = d->socketNotifiers.cbegin(); it != d->socketNotifiers.cend(); ++it)
             d->pollfds.append(qt_make_pollfd(it.key(), it.value().events()));
         for (auto it = d->coportNotifiers.cbegin(); it != d->coportNotifiers.cend(); ++it)
+        {
             d->pollcoports.append(make_pollcoport(it.key(), it.value().events())); 
+        }
+    }
 
     // This must be last, as it's popped off the end below
     d->pollfds.append(d->threadPipe.prepare());
@@ -530,7 +603,7 @@ bool QEventDispatcherUNIX::processEvents(QEventLoop::ProcessEventsFlags flags)
         break;
     }
 
-    switch (copoll(d->pollcoports.data(), d->pollcoports.size(), tm)) {
+    switch (copoll(d->pollcoports.data(), d->pollcoports.size(), 0)) {
     case -1:
         perror("copoll");
         break;

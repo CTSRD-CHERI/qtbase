@@ -308,7 +308,7 @@ static inline int qt_safe_coexecve(const char *filename, char *const argv[],
                                  char *const envp[], pid_t pid)
 {
     int ret;
-    EINTR_LOOP(ret, ::coexecve(pid, filename, argv, envp,));
+    EINTR_LOOP(ret, ::coexecve(pid, filename, argv, envp));
     return ret;
 }
 
