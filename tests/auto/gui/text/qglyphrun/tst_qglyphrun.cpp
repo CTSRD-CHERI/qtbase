@@ -496,6 +496,9 @@ void tst_QGlyphRun::drawMultiScriptText2()
 
 void tst_QGlyphRun::detach()
 {
+
+#define ARG(...) __VA_ARGS__
+
     QGlyphRun glyphs;
 
     glyphs.setGlyphIndexes(QVector<quint32>() << 1 << 2 << 3);
@@ -509,6 +512,8 @@ void tst_QGlyphRun::detach()
 
     QCOMPARE(otherGlyphs.glyphIndexes(), QVector<quint32>() << 4 << 5 << 6);
     QCOMPARE(glyphs.glyphIndexes(), QVector<quint32>() << 1 << 2 << 3);
+
+#undef ARG
 }
 
 void tst_QGlyphRun::drawStruckOutText()
