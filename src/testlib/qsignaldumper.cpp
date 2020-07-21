@@ -166,8 +166,16 @@ static void qSignalDumperCallbackEndSignal(QObject *caller, int /*signal_index*/
 
 }
 
+void QSignalDumper::setEnabled(bool enabled)
+{
+    s_isEnabled = enabled;
+}
+
 void QSignalDumper::startDump()
 {
+    if (!s_isEnabled)
+        return;
+
     static QSignalSpyCallbackSet set = { QTest::qSignalDumperCallback,
         QTest::qSignalDumperCallbackSlot, QTest::qSignalDumperCallbackEndSignal, nullptr };
     qt_register_signal_spy_callbacks(&set);
@@ -189,5 +197,7 @@ void QSignalDumper::clearIgnoredClasses()
     if (QTest::ignoreClasses())
         QTest::ignoreClasses()->clear();
 }
+
+bool QSignalDumper::s_isEnabled = false;
 
 QT_END_NAMESPACE
