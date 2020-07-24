@@ -2755,7 +2755,7 @@ template <> Q_TESTLIB_EXPORT char *QTest::toString<__uintcap_t>(const __uintcap_
     char *msg = new char[128];
     // XXXAR: not sure how the compiler will react to passing a reference to a variadic function
     __uintcap_t tmp = t;
-    snprintf(msg, 128, "%llu (%#p)", (qvaddr)tmp, (void *)tmp);
+    snprintf(msg, 128, "%llu (%#p)", (qptraddr)tmp, (void *)tmp);
     return msg;
 }
 
@@ -2764,7 +2764,7 @@ template <> Q_TESTLIB_EXPORT char *QTest::toString<__intcap_t>(const __intcap_t 
     char *msg = new char[128];
     // XXXAR: not sure how the compiler will react to passing a reference to a variadic function
     __intcap_t tmp = t;
-    snprintf(msg, 128, "%lld (%#p)", (qvaddr)tmp, (void *)tmp);
+    snprintf(msg, 128, "%lld (%#p)", (qptraddr)tmp, (void *)tmp);
     return msg;
 }
 #endif

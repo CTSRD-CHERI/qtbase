@@ -520,25 +520,24 @@ template <>    struct QIntegerForSize<2> { typedef quint16 Unsigned; typedef qin
 template <>    struct QIntegerForSize<4> { typedef quint32 Unsigned; typedef qint32 Signed; };
 template <>    struct QIntegerForSize<8> { typedef quint64 Unsigned; typedef qint64 Signed; };
 #if defined(__CHERI_PURE_CAPABILITY__)
-template <>    struct QIntegerForSize<sizeof(void*)> { typedef __uintcap_t Unsigned; typedef __intcap_t Signed; };
-
+template <>    struct QIntegerForSize<sizeof(void*)> {
+  // typedef __uintcap_t Unsigned; typedef __intcap_t Signed;
+};
 #elif defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
 template <>    struct QIntegerForSize<16> { __extension__ typedef unsigned __int128 Unsigned; __extension__ typedef __int128 Signed; };
 #endif
 template <class T> struct QIntegerForSizeof: QIntegerForSize<sizeof(T)> { };
+// Prevent pointers
+template <class T> struct QIntegerForSizeof<T*>: QIntegerForSize<-sizeof(T)> { };
+
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
-typedef QIntegerForSizeof<void*>::Unsigned quintptr;
-typedef QIntegerForSizeof<void*>::Signed qintptr;
+typedef uintptr_t quintptr;
+typedef uintptr_t qintptr;
 // XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
-typedef ptrdiff_t qptrdiff;
+typedef std::ptrdiff_t qptrdiff;
+using qptraddr = QIntegerForSizeof<std::ptrdiff_t>::Unsigned;
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
-#ifdef __CHERI__
-// TODO: use __memory_address
-typedef qregisteruint qvaddr;
-#else
-typedef quintptr qvaddr;
-#endif
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
@@ -1326,7 +1325,7 @@ Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") int q
 
 
 template<unsigned lowBitsMask>
-inline qvaddr qGetLowPointerBits(quintptr ptr) {
+inline qptraddr qGetLowPointerBits(quintptr ptr) {
     Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
 #ifdef __CHERI_PURE_CAPABILITY__
     // Work around https://github.com/CTSRD-CHERI/clang/issues/189
@@ -1352,7 +1351,7 @@ inline qvaddr qGetLowPointerBits(quintptr ptr) {
 template<unsigned lowBitsMask>
 inline quintptr qClearLowPointerBits(quintptr ptr) {
     Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
-    constexpr qvaddr clearingMask = ~qvaddr(lowBitsMask);
+    constexpr qptraddr clearingMask = ~qptraddr(lowBitsMask);
     Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
 #ifdef __CHERI_PURE_CAPABILITY__
     // See https://github.com/CTSRD-CHERI/clang/issues/189
@@ -1372,7 +1371,7 @@ inline quintptr qClearLowPointerBits(quintptr ptr) {
 // might not be a compile-time constant
 // XXXAR: this function is not actually needed since bitwise or works
 // as expected but I added it for symmetry.
-inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
+inline quintptr qSetLowPointerBits(quintptr ptr, qptraddr bits) {
     Q_ASSERT(bits <= 31 && "Cannot use more than the low 5 pointer bits");
     return ptr | bits;
 }

@@ -144,7 +144,7 @@ inline bool isUncontendedLocked(const QReadWriteLockPrivate *d)
 QReadWriteLock::QReadWriteLock(RecursionMode recursionMode)
     : d_ptr(recursionMode == Recursive ? new QReadWriteLockPrivate(true) : nullptr)
 {
-    Q_ASSERT_X(!(qvaddr(d_ptr.loadRelaxed()) & StateMask), "QReadWriteLock::QReadWriteLock", "bad d_ptr alignment");
+    Q_ASSERT_X(!(qptraddr(d_ptr.loadRelaxed()) & StateMask), "QReadWriteLock::QReadWriteLock", "bad d_ptr alignment");
 }
 
 /*!
@@ -356,7 +356,7 @@ bool QReadWriteLock::tryLockForWrite(int timeout)
             if (d == dummyLockedForWrite)
                 val->writerCount = 1;
             else
-                val->readerCount = (qvaddr(d) >> 4) + 1;
+                val->readerCount = (qptraddr(d) >> 4) + 1;
             if (!d_ptr.testAndSetOrdered(d, val, d)) {
                 val->writerCount = val->readerCount = 0;
                 val->release();

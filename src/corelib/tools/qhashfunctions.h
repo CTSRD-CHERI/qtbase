@@ -149,7 +149,7 @@ Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline size_t qHash(char8_t key, size_t s
 #endif
 template <class T> inline size_t qHash(const T *key, size_t seed = 0) noexcept
 {
-    return qHash(reinterpret_cast<qvaddr>(key), seed);
+    return qHash(reinterpret_cast<qptraddr>(key), seed);
 }
 Q_DECL_CONST_FUNCTION constexpr inline size_t qHash(std::nullptr_t, size_t seed = 0) noexcept
 {

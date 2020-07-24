@@ -178,6 +178,7 @@ static_assert((std::is_same<quintptr, __uintcap_t>::value), "Bad quintptr");
 #endif
 static_assert(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
 static_assert(sizeof(qsizetype) == sizeof(qptrdiff), "size_t and a ptrdiff_t don't have the same size");
+static_assert(sizeof(qptrdiff) == sizeof(qptraddr)); // implied by the definition
 
 /*!
     \class QFlag
@@ -872,9 +873,9 @@ static_assert(sizeof(qsizetype) == sizeof(qptrdiff), "size_t and a ptrdiff_t don
     On a system with 32-bit pointers, quintptr is a typedef for quint32; on
     a system with 64-bit pointers, quintptr is a typedef for quint64.
 
-    Note that qptrdiff is signed. Use qvaddr for unsigned values.
+    Note that qptrdiff is signed. Use qptraddr for unsigned values.
 
-    \sa quintptr, qint32, qint64, qvaddr
+    \sa quintptr, qint32, qint64, qptraddr
 */
 
 /*!
