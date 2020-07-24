@@ -4,10 +4,10 @@
 ## tst_qatomicinteger_qptrdiff Test:
 #####################################################################
 
-qt_add_test(tst_qatomicinteger_qintptr
+qt_add_test(tst_qatomicinteger_qptrdiff
     SOURCES
         ../tst_qatomicinteger.cpp
     DEFINES
-        QATOMIC_TEST_TYPE=qintptr
-        tst_QAtomicIntegerXX=tst_QAtomicInteger_qintptr
+        QATOMIC_TEST_TYPE=qptrdiff
+        tst_QAtomicIntegerXX=tst_QAtomicInteger_qptrdiff
 )
