@@ -59,9 +59,6 @@
 
 #include <sys/mman.h>
 
-#define qAlignDown(val, align) val & ~(align - 1)
-#define qAlignUp(val, align) qAlignDown(val + (align - 1), align)
-
 static const size_t kBytesPerKiloByte = 1024;
 static const long kPageSize = sysconf(_SC_PAGESIZE);
 

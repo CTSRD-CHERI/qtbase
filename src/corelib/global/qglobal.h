@@ -1000,17 +1000,44 @@ Q_CORE_EXPORT void *qMallocAligned(size_t size, size_t alignment) Q_ALLOC_SIZE(1
 Q_CORE_EXPORT void *qReallocAligned(void *ptr, size_t size, size_t oldsize, size_t alignment) Q_ALLOC_SIZE(2);
 Q_CORE_EXPORT void qFreeAligned(void *ptr);
 
-template<typename T>
-inline bool qIsAligned(T ptr, size_t alignment) {
-    Q_ASSERT_X((alignment & (alignment - 1)) == 0, "qIsAligned",
-               "alignment was not a power of two");
 #if QT_HAS_BUILTIN(__builtin_is_aligned)
-    return __builtin_is_aligned(ptr, alignment);
+#define qIsAligned(val, alignment) __builtin_is_aligned(val, alignment)
 #else
-    return (qvaddr(ptr) & (alignment - 1)) == 0;
-#endif
+template <typename T> inline bool qIsAligned(T val, size_t align) {
+  Q_ASSERT_X((align & (align - 1)) == 0, "qIsAligned",
+             "alignment was not a power of two");
+  return (val & (align - 1)) == 0;
 }
-
+template <typename T> inline bool qIsAligned(T *val, size_t align) {
+  return qIsAligned(reinterpret_cast<quintptr>(val), align);
+}
+#endif
+#if QT_HAS_BUILTIN(__builtin_align_down)
+#define qAlignDown(val, alignment) __builtin_align_down(val, alignment)
+#else
+template <typename T> inline T qAlignDown(T val, size_t align) {
+  Q_ASSERT_X((align & (align - 1)) == 0, "qAlignDown",
+             "alignment was not a power of two");
+  return val & ~(align - 1);
+}
+template <typename T> inline T *qAlignDown(T *val, size_t align) {
+  return reinterpret_cast<T *>(
+      qAlignDown(reinterpret_cast<quintptr>(val), align));
+}
+#endif
+#if QT_HAS_BUILTIN(__builtin_align_up)
+#define qAlignUp(val, alignment) __builtin_align_up(val, alignment)
+#else
+template <typename T> inline T qAlignUp(T val, size_t align) {
+  Q_ASSERT_X((align & (align - 1)) == 0, "qAlignDown",
+             "alignment was not a power of two");
+  return qAlignDown(val + (align - 1), align);
+}
+template <typename T> inline T *qAlignUp(T *val, size_t align) {
+  return reinterpret_cast<T *>(
+      qAlignUp(reinterpret_cast<quintptr>(val), align));
+}
+#endif
 
 /*
    Avoid some particularly useless warnings from some stupid compilers.
