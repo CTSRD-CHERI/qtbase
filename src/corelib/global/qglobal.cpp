@@ -172,12 +172,12 @@ static_assert(std::numeric_limits<float>::radix == 2,
 // not required by the definition of size_t, but we depend on this
 #ifndef __CHERI_PURE_CAPABILITY__
 static_assert(sizeof(size_t) == sizeof(void *), "size_t and a pointer don't have the same size");
-static_assert((std::is_same<qsizetype, qptrdiff>::value));
 #else
 static_assert((std::is_same<qintptr, __intcap_t>::value), "Bad qintptr");
 static_assert((std::is_same<quintptr, __uintcap_t>::value), "Bad quintptr");
 #endif
 static_assert(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
+static_assert(sizeof(qsizetype) == sizeof(qptrdiff), "size_t and a ptrdiff_t don't have the same size");
 
 /*!
     \class QFlag
