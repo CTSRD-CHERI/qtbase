@@ -145,20 +145,20 @@ inline ObjectIterator<Element, ElementsIterator> operator+(
         ObjectIterator<Element, ElementsIterator> a,
         typename ObjectIterator<Element, ElementsIterator>::difference_type n)
 {
-    return {a.elementsIterator() + 2 * n};
+    return {a.elementsIterator() + qsizetype(2) * n};
 }
 template<typename Element, typename ElementsIterator>
 inline ObjectIterator<Element, ElementsIterator> operator+(
         int n, ObjectIterator<Element, ElementsIterator> a)
 {
-    return {a.elementsIterator() + 2 * n};
+    return {a.elementsIterator() + qsizetype(2) * n};
 }
 template<typename Element, typename ElementsIterator>
 inline ObjectIterator<Element, ElementsIterator> operator-(
         ObjectIterator<Element, ElementsIterator> a,
         typename ObjectIterator<Element, ElementsIterator>::difference_type n)
 {
-    return {a.elementsIterator() - 2 * n};
+    return {a.elementsIterator() - qsizetype(2) * n};
 }
 template<typename Element, typename ElementsIterator>
 inline int operator-(
