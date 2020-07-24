@@ -110,8 +110,7 @@ void *qReallocAligned(void *oldptr, size_t newsize, size_t oldsize, size_t align
     if (!real)
         return nullptr;
 
-    quintptr faked = __builtin_align_up(reinterpret_cast<quintptr>(real), alignment);
-    void **faked_ptr = reinterpret_cast<void **>(faked);
+    void **faked_ptr = qAlignUp(static_cast<void **>(real), alignment);
 
     if (oldptr) {
         qptrdiff oldoffset = static_cast<char *>(oldptr) - static_cast<char *>(actualptr);

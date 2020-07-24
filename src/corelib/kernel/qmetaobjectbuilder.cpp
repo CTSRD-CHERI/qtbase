@@ -1121,7 +1121,7 @@ static void writeString(char *out, int i, const QByteArray &str,
 // moc (see generator.cpp).
 void QMetaStringTable::writeBlob(char *out) const
 {
-    Q_ASSERT(!(reinterpret_cast<qvaddr>(out) & (preferredAlignment()-1)));
+    Q_ASSERT(qIsAligned(out, preferredAlignment()));
 
     int offsetOfStringdataMember = int(m_entries.size() * 2 * sizeof(uint));
     int stringdataOffset = 0;
