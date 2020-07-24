@@ -386,8 +386,14 @@
   } black_TBand;
 
 
+#ifdef __CHERI_PURE_CAPABILITY__
+//XXXKG: assumes that _MIPS_SZCAP/8 is a multiple of sizeof(Long)
+#define AlignProfileSize \
+  ( __builtin_align_up( sizeof ( TProfile ), sizeof (__uintcap_t) ) / sizeof ( Long ) )
+#else
 #define AlignProfileSize \
   ( ( sizeof ( TProfile ) + sizeof ( Alignment ) - 1 ) / sizeof ( Long ) )
+#endif
 
 
 #undef RAS_ARG
@@ -749,6 +755,12 @@
       }
 
       oldProfile   = ras.cProfile;
+#ifdef __CHERI_PURE_CAPABILITY__
+      //XXXKG: re-align ras.top, as it may have become unaligned (e.g. due to
+      //       calls to Line_Up)
+      ras.top = __builtin_align_up(ras.top, sizeof (__uintcap_t));
+#endif
+
       ras.cProfile = (PProfile)ras.top;
 
       ras.top += AlignProfileSize;
@@ -858,7 +870,12 @@
 
 
         if ( n > 1 )
+#ifdef __CHERI_PURE_CAPABILITY__
+          //XXXKG: align link so that it correctly points to the next Profile
+          p->link = (PProfile)__builtin_align_up( p->offset + p->height, sizeof (__uintcap_t) );
+#else
           p->link = (PProfile)( p->offset + p->height );
+#endif
         else
           p->link = NULL;
 
@@ -872,7 +889,12 @@
           bottom     = (Int)( p->start - p->height + 1 );
           top        = (Int)p->start;
           p->start   = bottom;
+#ifdef __CHERI_PURE_CAPABILITY__
+          //XXXKG: align offset so that it correctly points to the Profile's data
+          p->offset = __builtin_align_up( p->offset + p->height - 1, sizeof (__uintcap_t) );
+#else
           p->offset += p->height - 1;
+#endif
         }
 
         if ( Insert_Y_Turn( RAS_VARS bottom )  ||

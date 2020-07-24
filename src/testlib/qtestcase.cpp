@@ -2749,6 +2749,27 @@ TO_STRING_FLOAT(qfloat16, %.3g)
 TO_STRING_FLOAT(float, %g)
 TO_STRING_FLOAT(double, %.12g)
 
+#ifdef __CHERI__
+template <> Q_TESTLIB_EXPORT char *QTest::toString<__uintcap_t>(const __uintcap_t &t)
+{
+    char *msg = new char[128];
+    // XXXAR: not sure how the compiler will react to passing a reference to a variadic function
+    __uintcap_t tmp = t;
+    snprintf(msg, 128, "%llu (%#p)", (qvaddr)tmp, (void *)tmp);
+    return msg;
+}
+
+template <> Q_TESTLIB_EXPORT char *QTest::toString<__intcap_t>(const __intcap_t &t)
+{
+    char *msg = new char[128];
+    // XXXAR: not sure how the compiler will react to passing a reference to a variadic function
+    __intcap_t tmp = t;
+    snprintf(msg, 128, "%lld (%#p)", (qvaddr)tmp, (void *)tmp);
+    return msg;
+}
+#endif
+
+
 template <> Q_TESTLIB_EXPORT char *QTest::toString<char>(const char &t)
 {
     unsigned char c = static_cast<unsigned char>(t);

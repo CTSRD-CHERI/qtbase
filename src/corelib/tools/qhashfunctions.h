@@ -121,6 +121,10 @@ Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline size_t qHash(quint64 key, size_t s
     return QHashPrivate::hash(size_t(key), seed);
 }
 Q_DECL_CONST_FUNCTION constexpr inline size_t qHash(qint64 key, size_t seed = 0) noexcept { return qHash(quint64(key), seed); }
+#ifdef __CHERI__
+Q_DECL_CONST_FUNCTION constexpr inline size_t qHash(__intcap_t key, size_t seed = 0) Q_DECL_NOTHROW { return qHash(qint64(key), seed); }
+Q_DECL_CONST_FUNCTION constexpr inline size_t qHash(__uintcap_t key, size_t seed = 0) Q_DECL_NOTHROW { return qHash(quint64(key), seed); }
+#endif
 Q_DECL_CONST_FUNCTION inline size_t qHash(float key, size_t seed = 0) noexcept
 {
     // ensure -0 gets mapped to 0
@@ -145,7 +149,7 @@ Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline size_t qHash(char8_t key, size_t s
 #endif
 template <class T> inline size_t qHash(const T *key, size_t seed = 0) noexcept
 {
-    return qHash(reinterpret_cast<quintptr>(key), seed);
+    return qHash(reinterpret_cast<qvaddr>(key), seed);
 }
 Q_DECL_CONST_FUNCTION constexpr inline size_t qHash(std::nullptr_t, size_t seed = 0) noexcept
 {

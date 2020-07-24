@@ -170,9 +170,14 @@ static_assert(std::numeric_limits<float>::radix == 2,
                   "Qt assumes binary IEEE 754 floating point");
 
 // not required by the definition of size_t, but we depend on this
+#ifndef __CHERI_PURE_CAPABILITY__
 static_assert(sizeof(size_t) == sizeof(void *), "size_t and a pointer don't have the same size");
-static_assert(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
 static_assert((std::is_same<qsizetype, qptrdiff>::value));
+#else
+static_assert((std::is_same<qintptr, __intcap_t>::value), "Bad qintptr");
+static_assert((std::is_same<quintptr, __uintcap_t>::value), "Bad quintptr");
+#endif
+static_assert(sizeof(size_t) == sizeof(qsizetype)); // implied by the definition
 
 /*!
     \class QFlag
@@ -848,7 +853,7 @@ static_assert((std::is_same<qsizetype, qptrdiff>::value));
     on a system with 64-bit pointers, quintptr is a typedef for
     quint64.
 
-    Note that quintptr is unsigned. Use qptrdiff for signed values.
+    Note that quintptr is unsigned. Use qintptr for signed values.
 
     \sa qptrdiff, quint32, quint64
 */
@@ -860,13 +865,16 @@ static_assert((std::is_same<qsizetype, qptrdiff>::value));
     Integral type for representing pointer differences.
 
     Typedef for either qint32 or qint64. This type is guaranteed to be
-    the same size as a pointer on all platforms supported by Qt. On a
-    system with 32-bit pointers, quintptr is a typedef for quint32; on
+    the same size as a pointer on all platforms supported by Qt except for those
+    targeting a CHERI CPU. On a CHERI CPU qptrdiff will be the same size as the
+    size of a virtual memory address except that it is signed
+
+    On a system with 32-bit pointers, quintptr is a typedef for quint32; on
     a system with 64-bit pointers, quintptr is a typedef for quint64.
 
-    Note that qptrdiff is signed. Use quintptr for unsigned values.
+    Note that qptrdiff is signed. Use qvaddr for unsigned values.
 
-    \sa quintptr, qint32, qint64
+    \sa quintptr, qint32, qint64, qvaddr
 */
 
 /*!
@@ -3130,7 +3138,9 @@ Q_NORETURN void qTerminate() noexcept
 */
 void qt_assert(const char *assertion, const char *file, int line) noexcept
 {
-    QMessageLogger(file, line, nullptr).fatal("ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
+    fprintf(stderr, "ASSERT: \"%s\" in file %s, line %d\n", assertion, file, line);
+    abort();
+    // QMessageLogger(file, line, nullptr).fatal("ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
 }
 
 /*
@@ -3138,7 +3148,9 @@ void qt_assert(const char *assertion, const char *file, int line) noexcept
 */
 void qt_assert_x(const char *where, const char *what, const char *file, int line) noexcept
 {
-    QMessageLogger(file, line, nullptr).fatal("ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
+    fprintf(stderr, "ASSERT failure in %s: \"%s\", file %s, line %d\n", where, what, file, line);
+    abort();
+    // QMessageLogger(file, line, nullptr).fatal("ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
 }
 
 

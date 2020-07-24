@@ -1183,8 +1183,10 @@ bool operator==(const QRandomGenerator &rng1, const QRandomGenerator &rng2)
 void QRandomGenerator::_fillRange(void *buffer, void *bufferEnd)
 {
     // Verify that the pointers are properly aligned for 32-bit
-    Q_ASSERT(quintptr(buffer) % sizeof(quint32) == 0);
-    Q_ASSERT(quintptr(bufferEnd) % sizeof(quint32) == 0);
+    // XXXAR: this should be __builtin_is_aligned(buffer, sizeof(quint32))
+    // but that won't work for non-cheri bootstrap
+    Q_ASSERT(qvaddr(buffer) % sizeof(quint32) == 0);
+    Q_ASSERT(qvaddr(bufferEnd) % sizeof(quint32) == 0);
     quint32 *begin = static_cast<quint32 *>(buffer);
     quint32 *end = static_cast<quint32 *>(bufferEnd);
 

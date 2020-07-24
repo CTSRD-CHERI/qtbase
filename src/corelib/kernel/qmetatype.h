@@ -96,8 +96,18 @@ inline Q_DECL_CONSTEXPR int qMetaTypeId();
     F(Nullptr, 51, std::nullptr_t) \
     F(QCborSimpleType, 52, QCborSimpleType) \
 
+#ifdef __CHERI__
+// XXXAR: which numbers are safe to use?
+#define QT_FOR_EACH_STATIC_PRIMITIVE_CAPABILITY_TYPE(F) \
+    F(IntCap, 58, __intcap_t) \
+    F(UIntCap, 59, __uintcap_t)
+#else
+#define QT_FOR_EACH_STATIC_PRIMITIVE_CAPABILITY_TYPE(F)
+#endif
+
 #define QT_FOR_EACH_STATIC_PRIMITIVE_POINTER(F)\
     F(VoidStar, 31, void*) \
+    QT_FOR_EACH_STATIC_PRIMITIVE_CAPABILITY_TYPE(F) \
 
 #if QT_CONFIG(easingcurve)
 #define QT_FOR_EACH_STATIC_EASINGCURVE(F)\
@@ -396,7 +406,11 @@ public:
         QT_FOR_EACH_STATIC_TYPE(QT_DEFINE_METATYPE_ID)
 
         FirstCoreType = Bool,
+#ifdef __CHERI__
+        LastCoreType = UIntCap,
+#else
         LastCoreType = Char32,
+#endif
         FirstGuiType = QFont,
         LastGuiType = QColorSpace,
         FirstWidgetsType = QSizePolicy,

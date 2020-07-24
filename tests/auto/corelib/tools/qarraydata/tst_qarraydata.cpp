@@ -570,8 +570,7 @@ void tst_QArrayData::alignment()
 
         // These conditions should hold as long as header and array are
         // allocated together
-        qptrdiff offset = reinterpret_cast<char *>(dataPointer) -
-                reinterpret_cast<char *>(data);
+        qptrdiff offset = data->dataOffset();
         QVERIFY(offset >= qptrdiff(sizeof(QArrayData)));
         QVERIFY(offset <= qptrdiff(sizeof(QArrayData)
                     + minAlignment - alignof(QArrayData)));

@@ -1120,7 +1120,7 @@ void tst_QHash::keyIterator()
             QVERIFY(it == hash.end());
     }
 
-    QCOMPARE(std::count(hash.keyBegin(), hash.keyEnd(), 99), 1);
+    QCOMPARE(std::count(hash.keyBegin(), hash.keyEnd(), 99), qptrdiff(1));
 
     // DefaultConstructible test
     typedef QHash<int, int>::key_iterator keyIterator;
@@ -1564,7 +1564,7 @@ void tst_QHash::equal_range()
         QVERIFY(p2.first != p2.second);
         QVERIFY(p2.first == m1.begin());
         QVERIFY(p2.second == m1.end());
-        QCOMPARE(std::distance(p2.first, p2.second), 2);
+        QCOMPARE(std::distance(p2.first, p2.second), qptrdiff(2));
     }
 
     m1.insert(0, 0);
@@ -1578,7 +1578,7 @@ void tst_QHash::equal_range()
         const auto p2 = m1.equal_range(1);
         QVERIFY(p2.first != p2.second);
         QCOMPARE(p2.first.key(), 1);
-        QCOMPARE(std::distance(p2.first, p2.second), 2);
+        QCOMPARE(std::distance(p2.first, p2.second), qptrdiff(2));
         QVERIFY(p2.first == m1.begin() || p2.second == m1.end());
     }
 
@@ -1604,7 +1604,7 @@ void tst_QHash::equal_range()
     {
         auto p2 = cm1.equal_range(1);
         QVERIFY(p2.first != p2.second);
-        QCOMPARE(std::distance(p2.first, p2.second), 2);
+        QCOMPARE(std::distance(p2.first, p2.second), qptrdiff(2));
         QVERIFY(p2.first == cm1.cbegin() || p2.second == cm1.cend());
     }
 

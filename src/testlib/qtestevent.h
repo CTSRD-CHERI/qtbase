@@ -116,6 +116,12 @@ public:
     {
         QTest::keyClicks(w, _keys, _modifiers, _delay);
     }
+#else
+    inline void silenceWarnings() {
+        Q_UNUSED(_keys)
+        Q_UNUSED(_modifiers)
+        Q_UNUSED(_delay)
+    }
 #endif
 
 private:
@@ -137,6 +143,14 @@ public:
     {
         QTest::mouseEvent(_action, w, _button, _modifiers, _pos, _delay);
     }
+#else
+    inline void silenceWarnings() {
+        Q_UNUSED(_action)
+        Q_UNUSED(_button)
+        Q_UNUSED(_modifiers)
+        Q_UNUSED(_pos)
+        Q_UNUSED(_delay)
+    }
 #endif
 
 private:
@@ -157,6 +171,10 @@ public:
 
 #ifdef QT_WIDGETS_LIB
     inline void simulate(QWidget * /*w*/) override { QTest::qWait(_delay); }
+#else
+    inline void silenceWarnings() {
+        Q_UNUSED(_delay)
+    }
 #endif
 
 private:

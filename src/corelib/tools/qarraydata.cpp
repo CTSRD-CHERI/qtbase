@@ -194,8 +194,12 @@ void *QArrayData::allocate(QArrayData **dptr, qsizetype objectSize, qsizetype al
     quintptr data = 0;
     if (header) {
         // find where offset should point to so that data() is aligned to alignment bytes
+#if QT_HAS_BUILTIN(__builtin_align_up)
+        data = __builtin_align_up(quintptr(header) + sizeof(QArrayData), alignment);
+#else
         data = (quintptr(header) + sizeof(QArrayData) + alignment - 1)
                 & ~(alignment - 1);
+#endif
         header->alloc = qsizetype(capacity);
     }
 
@@ -209,9 +213,10 @@ QArrayData::reallocateUnaligned(QArrayData *data, void *dataPointer,
 {
     Q_ASSERT(!data || !data->isShared());
 
-    qsizetype headerSize = sizeof(QArrayData);
+  qsizetype headerSize = sizeof(QArrayData);
     qsizetype allocSize = calculateBlockSize(capacity, objectSize, headerSize, options);
     qptrdiff offset = dataPointer ? reinterpret_cast<char *>(dataPointer) - reinterpret_cast<char *>(data) : headerSize;
+    // FIXME: broken with CHERI
     QArrayData *header = static_cast<QArrayData *>(::realloc(data, size_t(allocSize)));
     if (header) {
         header->flags = options;

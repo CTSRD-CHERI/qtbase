@@ -92,8 +92,8 @@ public:
     inline void unlock()
     {
         if (q_val) {
-            if ((q_val & quintptr(1u)) == quintptr(1u)) {
-                q_val &= ~quintptr(1u);
+            if (qGetLowPointerBits<1u>(q_val) == 1u) {
+                q_val = qClearLowPointerBits<1u>(q_val);
                 readWriteLock()->unlock();
             }
         }
@@ -102,7 +102,7 @@ public:
     inline void relock()
     {
         if (q_val) {
-            if ((q_val & quintptr(1u)) == quintptr(0u)) {
+            if (qGetLowPointerBits<1u>(q_val) == quintptr(0u)) {
                 readWriteLock()->lockForRead();
                 q_val |= quintptr(1u);
             }
@@ -110,7 +110,7 @@ public:
     }
 
     inline QReadWriteLock *readWriteLock() const
-    { return reinterpret_cast<QReadWriteLock *>(q_val & ~quintptr(1u)); }
+    { return reinterpret_cast<QReadWriteLock *>(qClearLowPointerBits<1u>(q_val)); }
 
 private:
     Q_DISABLE_COPY(QReadLocker)
@@ -120,8 +120,7 @@ private:
 inline QReadLocker::QReadLocker(QReadWriteLock *areadWriteLock)
     : q_val(reinterpret_cast<quintptr>(areadWriteLock))
 {
-    Q_ASSERT_X((q_val & quintptr(1u)) == quintptr(0),
-               "QReadLocker", "QReadWriteLock pointer is misaligned");
+    Q_ASSERT_X(qIsAligned(q_val, 2), "QReadLocker", "QReadWriteLock pointer is misaligned");
     relock();
 }
 
@@ -136,8 +135,8 @@ public:
     inline void unlock()
     {
         if (q_val) {
-            if ((q_val & quintptr(1u)) == quintptr(1u)) {
-                q_val &= ~quintptr(1u);
+            if (qGetLowPointerBits<1u>(q_val) == 1u) {
+                q_val = qClearLowPointerBits<1u>(q_val);
                 readWriteLock()->unlock();
             }
         }
@@ -146,7 +145,7 @@ public:
     inline void relock()
     {
         if (q_val) {
-            if ((q_val & quintptr(1u)) == quintptr(0u)) {
+            if (qGetLowPointerBits<1u>(q_val) == 0u) {
                 readWriteLock()->lockForWrite();
                 q_val |= quintptr(1u);
             }
@@ -154,7 +153,7 @@ public:
     }
 
     inline QReadWriteLock *readWriteLock() const
-    { return reinterpret_cast<QReadWriteLock *>(q_val & ~quintptr(1u)); }
+    { return reinterpret_cast<QReadWriteLock *>(qClearLowPointerBits<1u>(q_val)); }
 
 
 private:
@@ -165,8 +164,7 @@ private:
 inline QWriteLocker::QWriteLocker(QReadWriteLock *areadWriteLock)
     : q_val(reinterpret_cast<quintptr>(areadWriteLock))
 {
-    Q_ASSERT_X((q_val & quintptr(1u)) == quintptr(0),
-               "QWriteLocker", "QReadWriteLock pointer is misaligned");
+    Q_ASSERT_X(qIsAligned(q_val, 2), "QWriteLocker", "QReadWriteLock pointer is misaligned");
     relock();
 }
 
