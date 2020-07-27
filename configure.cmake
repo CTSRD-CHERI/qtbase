@@ -738,6 +738,29 @@ qt_feature("neon"
 )
 qt_feature_definition("neon" "QT_COMPILER_SUPPORTS_NEON" VALUE "1")
 qt_feature_config("neon" QMAKE_PRIVATE_CONFIG)
+
+qt_feature_config("cheri" QMAKE_PUBLIC_QT_CONFIG)
+qt_feature("cheri" PUBLIC
+           LABEL "CHERI"
+           CONDITION TEST_arch_${TEST_architecture_arch}_subarch_cheri
+           )
+# qt_feature_definition("cheri" "QT_COMPILER_SUPPORTS_CHERI" VALUE "1")
+qt_feature("cheri_hybrid" PUBLIC
+           LABEL "CHERI-hybrid"
+           CONDITION TEST_arch_${TEST_architecture_arch}_subarch_cheri_hybrid
+           )
+# qt_feature_definition("cheri_hybrid" "QT_COMPILER_SUPPORTS_CHERI_HYBRID" VALUE "1")
+qt_feature_config("cheri_hybrid" QMAKE_PUBLIC_QT_CONFIG)
+
+qt_feature("cheri_purecap" PUBLIC
+           LABEL "CHERI-purecap"
+           CONDITION TEST_arch_${TEST_architecture_arch}_subarch_cheri_purecap
+           )
+# qt_feature_definition("cheri_purecap" "QT_COMPILER_SUPPORTS_CHERI_PURECAP" VALUE "1")
+qt_feature_config("cheri_purecap" QMAKE_PUBLIC_QT_CONFIG)
+message(STATUS "QT_FEATURE_cheri_purecap=${QT_FEATURE_cheri_purecap} TEST_arch_${TEST_architecture_arch}_subarch_cheri_purecap=${TEST_arch_${TEST_architecture_arch}_subarch_cheri_purecap}")
+message(STATUS "QT_FEATURE_cheri=${QT_FEATURE_cheri} TEST_arch_${TEST_architecture_arch}_subarch_cheri=${TEST_arch_${TEST_architecture_arch}_subarch_cheri}")
+
 qt_feature("posix_fallocate" PRIVATE
     LABEL "POSIX fallocate()"
     CONDITION TEST_posix_fallocate
@@ -938,6 +961,21 @@ qt_configure_add_summary_entry(
     ARGS "mips_dspr2"
     CONDITION ( TEST_architecture_arch MATCHES "^mips" )
 )
+
+# CHERI
+qt_configure_add_summary_entry(
+        ARGS "cheri"
+        MESSAGE "CHERI"
+)
+qt_configure_add_summary_entry(
+        ARGS "cheri_hybrid"
+        MESSAGE "CHERI (hybrid)"
+)
+qt_configure_add_summary_entry(
+        ARGS "cheri_purecap"
+        MESSAGE "CHERI (purecap)"
+)
+
 qt_configure_end_summary_section() # end of "Target compiler supports" section
 qt_configure_add_summary_section(NAME "Sanitizers")
 qt_configure_add_summary_entry(ARGS "sanitize_address")

@@ -304,6 +304,16 @@ const char msg2[] = "==Qt=magic=Qt== Sub-architecture:"
 " dspr2"
 # endif
 
+// -- CHERI --
+#ifdef __CHERI__
+" cheri"
+#ifdef __CHERI_PURE_CAPABILITY__
+" cheri_purecap"
+#else
+" cheri_hybrid"
+#endif
+#endif
+
 // -- POWER, PowerPC --
 #ifdef __ALTIVEC__
 " altivec"
