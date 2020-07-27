@@ -352,7 +352,7 @@ def map_condition(condition):
                 substitution = "(TEST_architecture_arch STREQUAL arm64)"
             elif match.group(2) == "mips":
                 # FIXME: Does this make sense?
-                substitution = "(TEST_architecture_arch STREQUAL mips)"
+                substitution = "(TEST_architecture_arch MATCHES \"^mips\")"
 
         if substitution is None:
             print(f'    XXXX Unknown condition "{match.group(0)}"')

@@ -722,13 +722,13 @@ qt_feature_definition("x86SimdAlways" "QT_COMPILER_SUPPORTS_SIMD_ALWAYS" VALUE "
 qt_feature_config("x86SimdAlways" QMAKE_PRIVATE_CONFIG)
 qt_feature("mips_dsp"
     LABEL "DSP"
-    CONDITION ( TEST_architecture_arch STREQUAL mips ) AND TEST_arch_${TEST_architecture_arch}_subarch_dsp
+    CONDITION ( TEST_architecture_arch MATCHES "^mips" ) AND TEST_arch_${TEST_architecture_arch}_subarch_dsp
 )
 qt_feature_definition("mips_dsp" "QT_COMPILER_SUPPORTS_MIPS_DSP" VALUE "1")
 qt_feature_config("mips_dsp" QMAKE_PRIVATE_CONFIG)
 qt_feature("mips_dspr2"
     LABEL "DSPr2"
-    CONDITION ( TEST_architecture_arch STREQUAL mips ) AND TEST_arch_${TEST_architecture_arch}_subarch_dspr2
+    CONDITION ( TEST_architecture_arch MATCHES "^mips" ) AND TEST_arch_${TEST_architecture_arch}_subarch_dspr2
 )
 qt_feature_definition("mips_dspr2" "QT_COMPILER_SUPPORTS_MIPS_DSPR2" VALUE "1")
 qt_feature_config("mips_dspr2" QMAKE_PRIVATE_CONFIG)
@@ -932,11 +932,11 @@ qt_configure_add_summary_entry(
 )
 qt_configure_add_summary_entry(
     ARGS "mips_dsp"
-    CONDITION ( TEST_architecture_arch STREQUAL mips )
+    CONDITION ( TEST_architecture_arch MATCHES "^mips" )
 )
 qt_configure_add_summary_entry(
     ARGS "mips_dspr2"
-    CONDITION ( TEST_architecture_arch STREQUAL mips )
+    CONDITION ( TEST_architecture_arch MATCHES "^mips" )
 )
 qt_configure_end_summary_section() # end of "Target compiler supports" section
 qt_configure_add_summary_section(NAME "Sanitizers")
