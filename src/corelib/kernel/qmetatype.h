@@ -442,7 +442,7 @@ public:
         QVariantMap = 8, QVariantList = 9, QVariantHash = 28,
         QCborSimpleType = 52, QCborValue = 53, QCborArray = 54, QCborMap = 55,
         Char16 = 56, Char32 = 57,
-
+        IntCap = 58, UIntCap = 59,
         // Gui types
         QFont = 64, QPixmap = 65, QBrush = 66, QColor = 67, QPalette = 68,
         QIcon = 69, QImage = 70, QPolygon = 71, QRegion = 72, QBitmap = 73,
