@@ -57,6 +57,12 @@ qt_extend_target(BundledPcre2 CONDITION QNX OR UIKIT
         PCRE2_DISABLE_JIT
 )
 
+# Not ported to CHERI purecap yet
+qt_extend_target(BundledPcre2 CONDITION QT_FEATURE_cheri_purecap
+    DEFINES
+        PCRE2_DISABLE_JIT
+)
+
 qt_extend_target(BundledPcre2 CONDITION (TEST_architecture_arch STREQUAL "arm") AND WIN32
     DEFINES
         PCRE2_DISABLE_JIT
