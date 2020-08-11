@@ -2394,6 +2394,10 @@ QT_BEGIN_INCLUDE_NAMESPACE
 #define environ qt_empty_environ
 #elif !defined(Q_OS_WIN)
   extern char **environ;
+  // Make ld.lld --no-undefined happy by providing a weak environ symbol for
+  // systems where environ is not provided by the C library but by the C startup
+  // files instead (e.g. FreeBSD).
+  __attribute__((weak)) char **environ = nullptr;
 #endif
 QT_END_INCLUDE_NAMESPACE
 
