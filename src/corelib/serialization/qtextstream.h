@@ -159,6 +159,10 @@ public:
     QTextStream &operator>>(unsigned long &i);
     QTextStream &operator>>(qlonglong &i);
     QTextStream &operator>>(qulonglong &i);
+#if defined(__CHERI__)
+    QTextStream &operator>>(__intcap_t &t);
+    QTextStream &operator>>(__uintcap_t &t);
+#endif
     QTextStream &operator>>(float &f);
     QTextStream &operator>>(double &f);
     QTextStream &operator>>(QString &s);
@@ -175,6 +179,10 @@ public:
     QTextStream &operator<<(unsigned long i);
     QTextStream &operator<<(qlonglong i);
     QTextStream &operator<<(qulonglong i);
+#if defined(__CHERI__)
+    QTextStream &operator<<(__intcap_t t);
+    QTextStream &operator<<(__uintcap_t t);
+#endif
     QTextStream &operator<<(float f);
     QTextStream &operator<<(double f);
     QTextStream &operator<<(const QString &s);

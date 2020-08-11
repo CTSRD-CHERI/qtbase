@@ -2129,6 +2129,28 @@ QTextStream &QTextStream::operator>>(qulonglong &i)
     IMPLEMENT_STREAM_RIGHT_INT_OPERATOR(qulonglong);
 }
 
+#ifdef __CHERI__
+/*!
+    \overload
+
+    Stores the integer in the __intcap_t \a i.
+*/
+QTextStream &QTextStream::operator>>(__intcap_t &i)
+{
+    IMPLEMENT_STREAM_RIGHT_INT_OPERATOR(__intcap_t);
+}
+
+/*!
+    \overload
+
+    Stores the integer in the __uintcap_t \a i.
+*/
+QTextStream &QTextStream::operator>>(__uintcap_t &i)
+{
+    IMPLEMENT_STREAM_RIGHT_INT_OPERATOR(__uintcap_t);
+}
+#endif
+
 /*!
     Reads a real number from the stream and stores it in \a f, then
     returns a reference to the QTextStream. The number is cast to
@@ -2428,6 +2450,33 @@ QTextStream &QTextStream::operator<<(qulonglong i)
     d->putNumber(i, false);
     return *this;
 }
+
+#ifdef __CHERI__
+/*!
+    \overload
+
+    Writes the __intcap_t \a i to the stream.
+*/
+QTextStream &QTextStream::operator<<(__intcap_t i)
+{
+    Q_D(QTextStream);
+    CHECK_VALID_STREAM(*this);
+    d->putNumber(i, false);
+    return *this;
+}
+/*!
+    \overload
+
+    Writes the __uintcap_t \a i to the stream.
+*/
+QTextStream &QTextStream::operator<<(__uintcap_t i)
+{
+    Q_D(QTextStream);
+    CHECK_VALID_STREAM(*this);
+    d->putNumber(i, false);
+    return *this;
+}
+#endif
 
 /*!
     Writes the real number \a f to the stream, then returns a
