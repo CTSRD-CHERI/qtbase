@@ -533,7 +533,7 @@ template <class T> struct QIntegerForSizeof<T*>: QIntegerForSize<-sizeof(T)> { }
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
 typedef uintptr_t quintptr;
-typedef uintptr_t qintptr;
+typedef intptr_t qintptr;
 // XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
 typedef std::ptrdiff_t qptrdiff;
 using qptraddr = QIntegerForSizeof<std::ptrdiff_t>::Unsigned;
