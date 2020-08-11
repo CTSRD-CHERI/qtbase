@@ -126,28 +126,28 @@ template <class T>
 inline void v_construct_helper(QVariant::Private *x, const T &t, std::true_type)
 {
     new (&x->data) T(t);
-    x->is_shared = false;
+    x->set_shared(false);
 }
 
 template <class T>
 inline void v_construct_helper(QVariant::Private *x, const T &t, std::false_type)
 {
     x->data.shared = new QVariantPrivateSharedEx<T>(t);
-    x->is_shared = true;
+    x->set_shared(true);
 }
 
 template <class T>
 inline void v_construct_helper(QVariant::Private *x, std::true_type)
 {
     new (&x->data) T();
-    x->is_shared = false;
+    x->set_shared(false);
 }
 
 template <class T>
 inline void v_construct_helper(QVariant::Private *x, std::false_type)
 {
     x->data.shared = new QVariantPrivateSharedEx<T>;
-    x->is_shared = true;
+    x->set_shared(true);
 }
 
 template <class T>
@@ -186,10 +186,7 @@ template <typename T>
 struct PrimitiveIsNull
 {
 public:
-    static bool isNull(const QVariant::Private *d)
-    {
-        return d->is_null;
-    }
+    static bool isNull(const QVariant::Private *d) { return d->is_null(); }
 };
 
 template <typename T>
@@ -198,7 +195,7 @@ struct PrimitiveIsNull<T*>
 public:
     static bool isNull(const QVariant::Private *d)
     {
-        return d->is_null || d->data.ptr == nullptr;
+        return d->is_null() || d->data.ptr == nullptr;
     }
 };
 
@@ -334,13 +331,17 @@ public:
         return CallIsNull<T>::isNull(m_d);
     }
     // we need that as sizof(void) is undefined and it is needed in HasIsNullMethod
-    bool delegate(const void *) { Q_ASSERT(false); return m_d->is_null; }
-    bool delegate(const QMetaTypeSwitcher::UnknownType *) { return m_d->is_null; }
+    bool delegate(const void *)
+    {
+        Q_ASSERT(false);
+        return m_d->is_null();
+    }
+    bool delegate(const QMetaTypeSwitcher::UnknownType *) { return m_d->is_null(); }
     bool delegate(const QMetaTypeSwitcher::NotBuiltinType *)
     {
         // QVariantIsNull is used only for built-in types
         Q_ASSERT(false);
-        return m_d->is_null;
+        return m_d->is_null();
     }
 protected:
     const QVariant::Private *m_d;

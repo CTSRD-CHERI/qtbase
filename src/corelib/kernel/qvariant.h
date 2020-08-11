@@ -49,6 +49,7 @@
 #include <QtCore/qstring.h>
 #include <QtCore/qstringlist.h>
 #include <QtCore/qobject.h>
+#include <QtCore/qtaggedpointer.h>
 #ifndef QT_BOOTSTRAPPED
 #include <QtCore/qbytearraylist.h>
 #endif
@@ -416,21 +417,20 @@ class Q_CORE_EXPORT QVariant
     };
     struct Private
     {
-        Private() noexcept : packedType(0), is_shared(false), is_null(true) {}
-        explicit Private(const QMetaType &type) noexcept : is_shared(false), is_null(false)
+        enum class Flags { IsNull = 1, IsShared = 2 };
+        Private() noexcept : packedType(nullptr, uint8_t(Flags::IsNull)) { }
+        explicit Private(const QMetaType &type) noexcept
         {
             if (type.d_ptr)
                 type.d_ptr->ref.ref();
-            quintptr mt = quintptr(type.d_ptr);
-            Q_ASSERT((mt & 0x3) == 0);
-            packedType = mt >> 2;
+            Q_ASSERT((qptraddr(type.d_ptr) & 0x3) == 0);
+            packedType = type.d_ptr;
         }
         explicit Private(int type) noexcept : Private(QMetaType(type)) {}
         Private(const Private &other) : Private(other.type())
         {
             data = other.data;
-            is_shared = other.is_shared;
-            is_null = other.is_null;
+            packedType.setTag(other.packedType.tag());
         }
         Private &operator=(const Private &other)
         {
@@ -468,13 +468,18 @@ class Q_CORE_EXPORT QVariant
 #endif
             PrivateShared *shared;
         } data;
-        quintptr packedType : sizeof(QMetaType) * 8 - 2;
-        quintptr is_shared : 1;
-        quintptr is_null : 1;
-        inline QMetaType type() const
+        QTaggedPointer<QtPrivate::QMetaTypeInterface> packedType;
+        bool is_shared() const { return packedType.tag() & uint8_t(Flags::IsShared); }
+        bool is_null() const { return packedType.tag() & uint8_t(Flags::IsNull); }
+        void set_shared(bool value)
         {
-            return QMetaType(reinterpret_cast<QtPrivate::QMetaTypeInterface *>(packedType << 2));
+            packedType.setTag((packedType.tag() & ~1) | (value ? uint8_t(Flags::IsShared) : 0));
         }
+        void set_null(bool value)
+        {
+            packedType.setTag((packedType.tag() & ~2) | (value ? uint8_t(Flags::IsNull) : 0));
+        }
+        inline QMetaType type() const { return QMetaType(packedType.data()); }
     };
  public:
     typedef bool (*f_null)(const Private *);
@@ -569,8 +574,9 @@ Q_CORE_EXPORT QDataStream& operator<< (QDataStream& s, const QVariant::Type p);
 #endif
 
 inline bool QVariant::isDetached() const
-{ return !d.is_shared || d.data.shared->ref.loadRelaxed() == 1; }
-
+{
+    return !d.is_shared() || d.data.shared->ref.loadRelaxed() == 1;
+}
 
 #ifdef Q_QDOC
     inline bool operator==(const QVariant &v1, const QVariant &v2);

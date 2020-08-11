@@ -249,13 +249,14 @@ static qlonglong qConvertToNumber(const QVariant::Private *d, bool *ok)
         || d->type().id() == QMetaType::QCborSimpleType) {
         switch (typeInfo.sizeOf()) {
         case 1:
-            return d->is_shared ? *reinterpret_cast<signed char *>(d->data.shared->ptr) : d->data.sc;
+            return d->is_shared() ? *reinterpret_cast<signed char *>(d->data.shared->ptr)
+                                  : d->data.sc;
         case 2:
-            return d->is_shared ? *reinterpret_cast<qint16 *>(d->data.shared->ptr) : d->data.s;
+            return d->is_shared() ? *reinterpret_cast<qint16 *>(d->data.shared->ptr) : d->data.s;
         case 4:
-            return d->is_shared ? *reinterpret_cast<qint32 *>(d->data.shared->ptr) : d->data.i;
+            return d->is_shared() ? *reinterpret_cast<qint32 *>(d->data.shared->ptr) : d->data.i;
         case 8:
-            return d->is_shared ? *reinterpret_cast<qint64 *>(d->data.shared->ptr) : d->data.ll;
+            return d->is_shared() ? *reinterpret_cast<qint64 *>(d->data.shared->ptr) : d->data.ll;
         }
     }
 
@@ -337,13 +338,13 @@ static qulonglong qConvertToUnsignedNumber(const QVariant::Private *d, bool *ok)
     if (typeInfo.flags() & QMetaType::IsEnumeration) {
         switch (typeInfo.sizeOf()) {
         case 1:
-            return d->is_shared ? *reinterpret_cast<uchar *>(d->data.shared->ptr) : d->data.uc;
+            return d->is_shared() ? *reinterpret_cast<uchar *>(d->data.shared->ptr) : d->data.uc;
         case 2:
-            return d->is_shared ? *reinterpret_cast<quint16 *>(d->data.shared->ptr) : d->data.us;
+            return d->is_shared() ? *reinterpret_cast<quint16 *>(d->data.shared->ptr) : d->data.us;
         case 4:
-            return d->is_shared ? *reinterpret_cast<quint32 *>(d->data.shared->ptr) : d->data.u;
+            return d->is_shared() ? *reinterpret_cast<quint32 *>(d->data.shared->ptr) : d->data.u;
         case 8:
-            return d->is_shared ? *reinterpret_cast<qint64 *>(d->data.shared->ptr) : d->data.ull;
+            return d->is_shared() ? *reinterpret_cast<qint64 *>(d->data.shared->ptr) : d->data.ull;
         }
     }
 
@@ -365,7 +366,7 @@ inline bool qt_convertToBool(const QVariant::Private *const d)
 
 static const void *constData(const QVariant::Private &d)
 {
-    return d.is_shared ? d.data.shared->ptr : reinterpret_cast<const void *>(&d.data.c);
+    return d.is_shared() ? d.data.shared->ptr : reinterpret_cast<const void *>(&d.data.c);
 }
 
 #ifndef QT_NO_QOBJECT
@@ -776,30 +777,30 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
     }
 #ifdef __CHERI__
     case QMetaType::IntCap: {
-      switch (d->type) {
-      case QMetaType::IntCap:
-        *static_cast<__intcap_t *>(result) = d->data.intcap;
-        return true;
-      case QMetaType::UIntCap:
-        *static_cast<__intcap_t *>(result) = d->data.uintcap;
-        return true;
-      default:
-        *static_cast<__intcap_t *>(result) = qConvertToNumber(d, ok);
-        return *ok;
-      }
+        switch (d->type().id()) {
+        case QMetaType::IntCap:
+            *static_cast<__intcap_t *>(result) = d->data.intcap;
+            return true;
+        case QMetaType::UIntCap:
+            *static_cast<__intcap_t *>(result) = d->data.uintcap;
+            return true;
+        default:
+            *static_cast<__intcap_t *>(result) = qConvertToNumber(d, ok);
+            return *ok;
+        }
     }
     case QMetaType::UIntCap: {
-      switch (d->type) {
-      case QMetaType::IntCap:
-        *static_cast<__uintcap_t *>(result) = d->data.intcap;
-        return true;
-      case QMetaType::UIntCap:
-        *static_cast<__uintcap_t *>(result) = d->data.uintcap;
-        return true;
-      default:
-        *static_cast<__uintcap_t *>(result) = qConvertToUnsignedNumber(d, ok);
-        return *ok;
-      }
+        switch (d->type().id()) {
+        case QMetaType::IntCap:
+            *static_cast<__uintcap_t *>(result) = d->data.intcap;
+            return true;
+        case QMetaType::UIntCap:
+            *static_cast<__uintcap_t *>(result) = d->data.uintcap;
+            return true;
+        default:
+            *static_cast<__uintcap_t *>(result) = qConvertToUnsignedNumber(d, ok);
+            return *ok;
+        }
     }
 #endif
     case QMetaType::Bool: {
@@ -1458,7 +1459,11 @@ const QVariant::Handler qt_kernel_variant_handler = {
 #endif
 };
 
-static bool dummyIsNull(const QVariant::Private *d) { Q_ASSERT_X(false, "QVariant::isNull", "Trying to call isNull on an unknown type"); return d->is_null; }
+static bool dummyIsNull(const QVariant::Private *d)
+{
+    Q_ASSERT_X(false, "QVariant::isNull", "Trying to call isNull on an unknown type");
+    return d->is_null();
+}
 static bool dummyCompare(const QVariant::Private *, const QVariant::Private *) { Q_ASSERT_X(false, "QVariant", "Trying to compare an unknown types"); return false; }
 static bool dummyConvert(const QVariant::Private *, int, void *, bool *) { Q_ASSERT_X(false, "QVariant", "Trying to convert an unknown type"); return false; }
 #if !defined(QT_NO_DEBUG_STREAM)
@@ -1489,7 +1494,7 @@ static void customConstruct(QVariant::Private *d, const void *copy)
     if (size <= sizeof(QVariant::Private::Data)
             && (type.flags() & (QMetaType::MovableType | QMetaType::IsEnumeration))) {
         type.construct(&d->data, copy);
-        d->is_shared = false;
+        d->set_shared(false);
     } else {
         // Private::Data contains long long, and long double is the biggest standard type.
         const size_t maxAlignment =
@@ -1499,15 +1504,15 @@ static void customConstruct(QVariant::Private *d, const void *copy)
         void *data = operator new(offset + size);
         void *ptr = static_cast<char *>(data) + offset;
         type.construct(ptr, copy);
-        d->is_shared = true;
+        d->set_shared(true);
         d->data.shared = new (data) QVariant::PrivateShared(ptr);
     }
-    d->is_null = !copy;
+    d->set_null(!copy);
 }
 
 static void customClear(QVariant::Private *d)
 {
-    if (!d->is_shared) {
+    if (!d->is_shared()) {
         d->type().destruct(&d->data);
     } else {
         d->type().destruct(d->data.shared->ptr);
@@ -1518,10 +1523,10 @@ static void customClear(QVariant::Private *d)
 
 static bool customIsNull(const QVariant::Private *d)
 {
-    if (d->is_null)
+    if (d->is_null())
         return true;
     if (d->type().flags() & QMetaType::IsPointer) {
-        const void *d_ptr = d->is_shared ? d->data.shared->ptr : &(d->data);
+        const void *d_ptr = d->is_shared() ? d->data.shared->ptr : &(d->data);
         return *static_cast<void *const *>(d_ptr) == nullptr;
     }
     return false;
@@ -1529,10 +1534,10 @@ static bool customIsNull(const QVariant::Private *d)
 
 static bool customCompare(const QVariant::Private *a, const QVariant::Private *b)
 {
-    const void *a_ptr = a->is_shared ? a->data.shared->ptr : &(a->data);
-    const void *b_ptr = b->is_shared ? b->data.shared->ptr : &(b->data);
+    const void *a_ptr = a->is_shared() ? a->data.shared->ptr : &(a->data);
+    const void *b_ptr = b->is_shared() ? b->data.shared->ptr : &(b->data);
 
-    if (a->is_null && b->is_null)
+    if (a->is_null() && b->is_null())
         return true;
 
     return !memcmp(a_ptr, b_ptr, a->type().sizeOf());
@@ -1827,7 +1832,7 @@ void QVariant::create(int type, const void *copy)
 
 QVariant::~QVariant()
 {
-    if ((d.is_shared && !d.data.shared->ref.deref()) || (!d.is_shared))
+    if ((d.is_shared() && !d.data.shared->ref.deref()) || (!d.is_shared()))
         customClear(&d);
 }
 
@@ -1841,11 +1846,11 @@ QVariant::~QVariant()
 QVariant::QVariant(const QVariant &p)
     : d(p.d)
 {
-    if (d.is_shared) {
+    if (d.is_shared()) {
         d.data.shared->ref.ref();
     } else if (d.type().isValid()) {
         customConstruct(&d, p.constData());
-        d.is_null = p.d.is_null;
+        d.set_null(p.d.is_null());
     }
 }
 
@@ -1855,7 +1860,7 @@ QVariant::QVariant(const QVariant &p)
 */
 QVariant::QVariant(QDataStream &s)
 {
-    d.is_null = true;
+    d.set_null(true);
     s >> *this;
 }
 #endif //QT_NO_DATASTREAM
@@ -2130,7 +2135,7 @@ QVariant::QVariant(int typeId, const void *copy, uint flags)
     } else {
         create(typeId, copy);
     }
-    d.is_null = false;
+    d.set_null(false);
 }
 
 /*!
@@ -2140,7 +2145,7 @@ QVariant::QVariant(int typeId, const void *copy, uint flags)
 QVariant::QVariant(QMetaType type, const void *copy) : d(type)
 {
     customConstruct(&d, copy);
-    d.is_null = false;
+    d.set_null(false);
 }
 
 QVariant::QVariant(int val)
@@ -2347,13 +2352,13 @@ QVariant& QVariant::operator=(const QVariant &variant)
         return *this;
 
     clear();
-    if (variant.d.is_shared) {
+    if (variant.d.is_shared()) {
         variant.d.data.shared->ref.ref();
         d = variant.d;
     } else {
         d = variant.d;
         customConstruct(&d, reinterpret_cast<const void *>(&variant.d.data));
-        d.is_null = variant.d.is_null;
+        d.set_null(variant.d.is_null());
     }
 
     return *this;
@@ -2375,7 +2380,7 @@ QVariant& QVariant::operator=(const QVariant &variant)
 
 void QVariant::detach()
 {
-    if (!d.is_shared || d.data.shared->ref.loadRelaxed() == 1)
+    if (!d.is_shared() || d.data.shared->ref.loadRelaxed() == 1)
         return;
 
     Private dd(d.type());
@@ -2409,7 +2414,7 @@ const char *QVariant::typeName() const
 */
 void QVariant::clear()
 {
-    if ((d.is_shared && !d.data.shared->ref.deref()) || (!d.is_shared))
+    if ((d.is_shared() && !d.data.shared->ref.deref()) || (!d.is_shared()))
         customClear(&d);
     d = {};
 }
@@ -2536,7 +2541,7 @@ void QVariant::load(QDataStream &s)
         }
     }
     create(typeId, nullptr);
-    d.is_null = is_null;
+    d.set_null(is_null);
 
     if (!isValid()) {
         if (s.version() < QDataStream::Qt_5_0) {
@@ -2544,7 +2549,7 @@ void QVariant::load(QDataStream &s)
             QString x;
             s >> x;
         }
-        d.is_null = true;
+        d.set_null(true);
         return;
     }
 
@@ -2614,7 +2619,7 @@ void QVariant::save(QDataStream &s) const
     }
     s << typeId;
     if (s.version() >= QDataStream::Qt_4_2)
-        s << qint8(d.is_null);
+        s << qint8(d.is_null());
     if (typeName)
         s << QMetaType::typeName(userType());
 
@@ -3763,7 +3768,7 @@ bool QVariant::convert(int targetTypeId)
 
     create(targetTypeId, nullptr);
     // Fail if the value is not initialized or was forced null by a previous failed convert.
-    if (oldValue.d.is_null && oldValue.d.type().id() != QMetaType::Nullptr)
+    if (oldValue.d.is_null() && oldValue.d.type().id() != QMetaType::Nullptr)
         return false;
 
     if ((QMetaType::typeFlags(oldValue.userType()) & QMetaType::PointerToQObject) && (QMetaType::typeFlags(targetTypeId) & QMetaType::PointerToQObject)) {
@@ -3775,7 +3780,7 @@ bool QVariant::convert(int targetTypeId)
     int converterType = std::max(oldValue.userType(), targetTypeId);
     if (!handlerManager[converterType]->convert(&oldValue.d, targetTypeId, data(), &isOk))
         isOk = false;
-    d.is_null = !isOk;
+    d.set_null(!isOk);
     return isOk;
 }
 
@@ -4014,7 +4019,7 @@ bool QVariant::cmp(const QVariant &v) const
 
 const void *QVariant::constData() const
 {
-    return d.is_shared ? d.data.shared->ptr : reinterpret_cast<const void *>(&d.data);
+    return d.is_shared() ? d.data.shared->ptr : reinterpret_cast<const void *>(&d.data);
 }
 
 /*!
@@ -4988,7 +4993,7 @@ QAssociativeIterable::const_iterator QAssociativeIterable::const_iterator::opera
 QVariant::Private::~Private()
 {
     QtMetaTypePrivate::derefAndDestroy(
-            reinterpret_cast<QtPrivate::QMetaTypeInterface *>(packedType << 2));
+            reinterpret_cast<QtPrivate::QMetaTypeInterface *>(packedType.data()));
 }
 
 QT_END_NAMESPACE
