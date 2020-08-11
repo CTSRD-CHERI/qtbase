@@ -73,13 +73,14 @@ QT_BEGIN_NAMESPACE
 
 // We assume that pointers and size_t have the same size. If that assumption should fail
 // on a platform the code selecting the different methods below needs to be fixed.
-static_assert(sizeof(size_t) == QT_POINTER_SIZE, "size_t and pointers have different size.");
+static_assert(sizeof(size_t) == QT_ADDRESS_SIZE,
+              "size_t and pointer addresses have different size.");
 
 /*
  * Hashing for memory segments is based on the public domain MurmurHash2 by
  * Austin Appleby. See http://murmurhash.googlepages.com/
  */
-#if QT_POINTER_SIZE == 4
+#if QT_ADDRESS_SIZE == 4
 
 static inline uint murmurhash(const void *key, uint len, uint seed) noexcept
 {
@@ -187,7 +188,7 @@ static inline uint64_t murmurhash(const void *key, uint64_t len, uint64_t seed) 
 
 #endif
 
-#if QT_POINTER_SIZE == 8
+#if QT_ADDRESS_SIZE == 8
 // This is an inlined version of the SipHash implementation that is
 // trying to avoid some memcpy's from uint64 to uint8[] and back.
 //
