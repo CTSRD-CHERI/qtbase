@@ -76,8 +76,8 @@ public:
     using Type = T;
     using TagType = Tag;
 
-    static constexpr quintptr tagMask() { return QtPrivate::TagInfo<T>::alignment - 1; }
-    static constexpr quintptr pointerMask() { return ~tagMask(); }
+    static constexpr qptraddr tagMask() { return QtPrivate::TagInfo<T>::alignment - 1; }
+    static constexpr qptraddr pointerMask() { return ~tagMask(); }
 
     constexpr QTaggedPointer() noexcept : d(0) {}
     constexpr QTaggedPointer(std::nullptr_t) noexcept : QTaggedPointer() {}
@@ -87,8 +87,8 @@ public:
     {
         static_assert(sizeof(Type*) == sizeof(QTaggedPointer));
 
-        Q_ASSERT_X((quintptr(pointer) & tagMask()) == 0,
-            "QTaggedPointer<T, Tag>", "Pointer is not aligned");
+        Q_ASSERT_X((qptraddr(pointer) & tagMask()) == 0, "QTaggedPointer<T, Tag>",
+                   "Pointer is not aligned");
 
         setTag(tag);
     }
@@ -111,7 +111,7 @@ public:
 
     QTaggedPointer &operator=(T *other) noexcept
     {
-        d = reinterpret_cast<quintptr>(other) | (d & tagMask());
+        d = reinterpret_cast<quintptr>(other) | (qptraddr(d) & tagMask());
         return *this;
     }
 
@@ -130,7 +130,7 @@ public:
 
     Tag tag() const noexcept
     {
-        return TagType(typename QtPrivate::TagInfo<T>::TagType(d & tagMask()));
+        return TagType(typename QtPrivate::TagInfo<T>::TagType(qptraddr(d) & tagMask()));
     }
 
     T* data() const noexcept
