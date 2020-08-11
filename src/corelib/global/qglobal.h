@@ -989,7 +989,7 @@ Q_CORE_EXPORT void *qReallocAligned(void *ptr, size_t size, size_t oldsize, size
 Q_CORE_EXPORT void qFreeAligned(void *ptr);
 
 #if QT_HAS_BUILTIN(__builtin_is_aligned)
-#define qIsAligned(val, alignment) __builtin_is_aligned(val, alignment);
+#define qIsAligned(val, alignment) __builtin_is_aligned(val, alignment)
 #else
 template <typename T> inline bool qIsAligned(T val, size_t align) {
   Q_ASSERT_X((align & (align - 1)) == 0, "qIsAligned",
@@ -1001,7 +1001,7 @@ template <typename T> inline bool qIsAligned(T *val, size_t align) {
 }
 #endif
 #if QT_HAS_BUILTIN(__builtin_align_down)
-#define qAlignDown(val, alignment) __builtin_align_down(val, alignment);
+#define qAlignDown(val, alignment) __builtin_align_down(val, alignment)
 #else
 template <typename T> inline T qAlignDown(T val, size_t align) {
   Q_ASSERT_X((align & (align - 1)) == 0, "qAlignDown",
@@ -1014,7 +1014,7 @@ template <typename T> inline T *qAlignDown(T *val, size_t align) {
 }
 #endif
 #if QT_HAS_BUILTIN(__builtin_align_up)
-#define qAlignUp(val, alignment) __builtin_align_up(val, alignment);
+#define qAlignUp(val, alignment) __builtin_align_up(val, alignment)
 #else
 template <typename T> inline T qAlignUp(T val, size_t align) {
   Q_ASSERT_X((align & (align - 1)) == 0, "qAlignDown",
