@@ -263,7 +263,8 @@ inline void QPropertyBasePointer::setFirstObserver(QPropertyObserver *observer)
         binding->firstObserver.ptr = observer;
         return;
     }
-    ptr->d_ptr = reinterpret_cast<quintptr>(observer) | (ptr->d_ptr & QtPrivate::QPropertyBase::FlagMask);
+    ptr->d_ptr = reinterpret_cast<quintptr>(observer)
+            | (qptraddr(ptr->d_ptr) & QtPrivate::QPropertyBase::FlagMask);
 }
 
 inline QPropertyObserverPointer QPropertyBasePointer::firstObserver() const

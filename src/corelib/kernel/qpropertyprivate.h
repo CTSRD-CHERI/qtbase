@@ -114,9 +114,10 @@ public:
 
     bool extraBit() const { return d_ptr & ExtraBit; }
 
-    static const quintptr ExtraBit = 0x1;   // Used for QProperty<bool> specialization
-    static const quintptr BindingBit = 0x2; // Is d_ptr pointing to a binding (1) or list of notifiers (0)?
-    static const quintptr FlagMask = BindingBit | ExtraBit;
+    static const qptraddr ExtraBit = 0x1; // Used for QProperty<bool> specialization
+    static const qptraddr BindingBit =
+            0x2; // Is d_ptr pointing to a binding (1) or list of notifiers (0)?
+    static const qptraddr FlagMask = BindingBit | ExtraBit;
 };
 
 template <typename T>
@@ -208,7 +209,8 @@ public:
 
     void setPointer(T *ptr)
     {
-        *d = (reinterpret_cast<quintptr>(ptr) & QTaggedPointer<T, Tag>::pointerMask()) | (*d & QTaggedPointer<T, Tag>::tagMask());
+        *d = (reinterpret_cast<quintptr>(ptr) & QTaggedPointer<T, Tag>::pointerMask())
+                | (qptraddr(*d) & QTaggedPointer<T, Tag>::tagMask());
     }
 
     T *get() const

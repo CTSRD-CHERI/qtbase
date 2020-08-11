@@ -276,7 +276,7 @@ QUntypedPropertyBinding QPropertyBase::setBinding(const QUntypedPropertyBinding 
 
     if (newBinding) {
         newBinding.data()->ref.ref();
-        d_ptr = (d_ptr & FlagMask) | reinterpret_cast<quintptr>(newBinding.data());
+        d_ptr = (qptraddr(d_ptr) & FlagMask) | reinterpret_cast<quintptr>(newBinding.data());
         d_ptr |= BindingBit;
         newBinding->setDirty(true);
         newBinding->setProperty(propertyDataPtr);
