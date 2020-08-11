@@ -1753,8 +1753,9 @@ QT_BEGIN_NAMESPACE
 static_assert(sizeof(QAtomicInteger<unsigned>));
 static_assert(sizeof(QAtomicInteger<long>));
 static_assert(sizeof(QAtomicInteger<unsigned long>));
-static_assert(sizeof(QAtomicInteger<quintptr>));
+static_assert(sizeof(QAtomicInteger<qptraddr>));
 static_assert(sizeof(QAtomicInteger<qptrdiff>));
+// TODO: uintptr_t
 #ifdef Q_COMPILER_UNICODE_STRINGS
 static_assert(sizeof(QAtomicInteger<char32_t>));
 #endif
