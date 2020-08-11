@@ -1247,6 +1247,11 @@ if(WIN32)
     qt_record_extra_qt_package_dependency(Core WinMain "${PROJECT_VERSION}")
 endif()
 
+if(FREEBSD)
+    # backtrace() and backtrace_symbols() are in libexecinfo (which depends on libelf)
+    target_link_libraries(Core_qobject PRIVATE -lexecinfo -lelf)
+endif()
+
 # Record darwin minimum deployment target.
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
     set_property(TARGET Core PROPERTY
