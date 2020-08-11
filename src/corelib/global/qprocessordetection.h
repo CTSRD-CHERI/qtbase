@@ -376,8 +376,14 @@
    Otherwise, we assume to be 32-bit and then check in qglobal.cpp that it is right.
 */
 
-#if defined __SIZEOF_POINTER__
+#if defined(__PTRADDR_WIDTH__)
+// TODO: should add __SIZEOF_PTRADDR__?
+#  define QT_ADDRESS_SIZE           (__PTRADDR_WIDTH__ / 8)
+// __SIZEOF_POINTER__ must also be defined if __PTRADDR_WIDTH__ exists.
 #  define QT_POINTER_SIZE           __SIZEOF_POINTER__
+#elif defined(__SIZEOF_POINTER__)
+#  define QT_POINTER_SIZE           __SIZEOF_POINTER__
+#  define QT_ADDRESS_SIZE           __SIZEOF_POINTER__
 #elif defined(__LP64__) || defined(_LP64)
 #  define QT_POINTER_SIZE           8
 #elif defined(Q_PROCESSOR_WORDSIZE)
@@ -396,9 +402,9 @@
 */
 #ifndef Q_PROCESSOR_WORDSIZE
 #  if defined __SIZEOF_SIZE_T__
-#    define Q_PROCESSOR_WORDSIZE    __SIZEOF_SIZE_T__
+#    define Q_PROCESSOR_WORDSIZE        __SIZEOF_SIZE_T__
 #  else
-#    define Q_PROCESSOR_WORDSIZE    QT_POINTER_SIZE
+#    define Q_PROCESSOR_WORDSIZE        QT_POINTER_SIZE
 #  endif
 #endif
 
