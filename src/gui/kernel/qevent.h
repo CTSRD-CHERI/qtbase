@@ -154,6 +154,7 @@ public:
     State state() const { return m_state; }
     int id() const { return m_pointId; }
     QPointingDeviceUniqueId uniqueId() const { return m_uniqueId; }
+    ulong pressTimestamp() const { return m_pressTimestamp; }
     qreal timeHeld() const { return (m_timestamp - m_pressTimestamp) / qreal(1000); }
     qreal pressure() const { return m_pressure; }
     qreal rotation() const { return m_rotation; }
@@ -177,7 +178,7 @@ protected:
     QVector2D m_velocity;
     QPointer<QObject> m_exclusiveGrabber;
     QList<QPointer <QObject> > m_passiveGrabbers;
-    ulong m_timestamp = 0;
+    ulong m_timestamp = 0; // redundant with m_parent->timestamp(), but keeps timeHeld() working in a saved copy
     ulong m_pressTimestamp = 0;
     QPointingDeviceUniqueId m_uniqueId;
     int m_pointId = -1;
@@ -199,6 +200,9 @@ public:
     virtual ~QPointerEvent();
     virtual int pointCount() const = 0;
     virtual const QEventPoint &point(int i) const = 0;
+    virtual bool isPressEvent() const { return false; }
+    virtual bool isUpdateEvent() const { return false; }
+    virtual bool isReleaseEvent() const { return false; }
 
     explicit QPointerEvent(Type type, const QPointingDevice *dev, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
     const QPointingDevice *pointingDevice() const;
@@ -223,6 +227,10 @@ public:
     inline QPointF position() const { return m_point.position(); }
     inline QPointF scenePosition() const { return m_point.scenePosition(); }
     inline QPointF globalPosition() const { return m_point.globalPosition(); }
+
+    bool isPressEvent() const override;
+    bool isUpdateEvent() const override;
+    bool isReleaseEvent() const override;
 
 protected:
     QEventPoint m_point;
@@ -328,6 +336,8 @@ public:
     QT_DEPRECATED_VERSION_X_6_0("Use position()")
     inline QPointF posF() const { return position(); }
 #endif // QT_DEPRECATED_SINCE(6, 0)
+
+    bool isUpdateEvent() const override  { return true; }
 
     // TODO deprecate when we figure out an actual replacement (point history?)
     inline QPoint oldPos() const { return m_oldPos.toPoint(); }
@@ -671,6 +681,19 @@ public:
 
     QInputMethodEvent(const QInputMethodEvent &other);
 
+    inline friend bool operator==(const QInputMethodEvent::Attribute &lhs,
+                                  const QInputMethodEvent::Attribute &rhs)
+    {
+        return lhs.type == rhs.type && lhs.start == rhs.start
+                && lhs.length == rhs.length && lhs.value == rhs.value;
+    }
+
+    inline friend bool operator!=(const QInputMethodEvent::Attribute &lhs,
+                                  const QInputMethodEvent::Attribute &rhs)
+    {
+        return !(lhs == rhs);
+    }
+
 private:
     QString m_preedit;
     QList<Attribute> m_attributes;
@@ -940,6 +963,9 @@ public:
     inline QObject *target() const { return m_target; }
     inline QEventPoint::States touchPointStates() const { return m_touchPointStates; }
     const QList<QEventPoint> &touchPoints() const { return m_touchPoints; }
+    bool isPressEvent() const override;
+    bool isUpdateEvent() const override;
+    bool isReleaseEvent() const override;
 
 protected:
     QObject *m_target = nullptr;

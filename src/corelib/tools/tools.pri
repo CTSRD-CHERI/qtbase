@@ -58,7 +58,6 @@ SOURCES += \
         tools/qline.cpp \
         tools/qlist.cpp \
         tools/qpoint.cpp \
-        tools/qmap.cpp \
         tools/qmargins.cpp \
         tools/qmessageauthenticationcode.cpp \
         tools/qcontiguouscache.cpp \
@@ -97,6 +96,10 @@ qtConfig(system-doubleconversion) {
     QMAKE_USE_PRIVATE += doubleconversion
 } else: qtConfig(doubleconversion) {
     include($$PWD/../../3rdparty/double-conversion/double-conversion.pri)
+}
+
+qtConfig(system-libb2) {
+    QMAKE_USE_PRIVATE += libb2
 }
 
 qtConfig(easingcurve) {

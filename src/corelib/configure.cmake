@@ -6,6 +6,10 @@
 set(INPUT_doubleconversion "undefined" CACHE STRING "")
 set_property(CACHE INPUT_doubleconversion PROPERTY STRINGS undefined no qt system)
 
+# input libb2
+set(INPUT_libb2 "undefined" CACHE STRING "")
+set_property(CACHE INPUT_libb2 PROPERTY STRINGS undefined no qt system)
+
 
 
 #### Libraries
@@ -18,10 +22,11 @@ if(QT_FEATURE_dlopen)
 endif()
 qt_find_package(Libsystemd PROVIDED_TARGETS PkgConfig::Libsystemd MODULE_NAME core QMAKE_LIB journald)
 qt_find_package(WrapAtomic PROVIDED_TARGETS WrapAtomic::WrapAtomic MODULE_NAME core QMAKE_LIB libatomic)
+qt_find_package(Libb2 PROVIDED_TARGETS PkgConfig::Libb2 MODULE_NAME core QMAKE_LIB libb2)
 qt_find_package(WrapRt PROVIDED_TARGETS WrapRt::WrapRt MODULE_NAME core QMAKE_LIB librt)
 qt_find_package(LTTngUST PROVIDED_TARGETS LTTng::UST MODULE_NAME core QMAKE_LIB lttng-ust)
 qt_add_qmake_lib_dependency(lttng-ust libdl)
-qt_find_package(WrapSystemPCRE2 PROVIDED_TARGETS WrapSystemPCRE2::WrapSystemPCRE2 MODULE_NAME core QMAKE_LIB pcre2)
+qt_find_package(WrapSystemPCRE2 10.20 PROVIDED_TARGETS WrapSystemPCRE2::WrapSystemPCRE2 MODULE_NAME core QMAKE_LIB pcre2)
 set_package_properties(WrapPCRE2 PROPERTIES TYPE REQUIRED)
 if((QNX) OR QT_FIND_ALL_PACKAGES_ALWAYS)
     qt_find_package(PPS PROVIDED_TARGETS PPS::PPS MODULE_NAME core QMAKE_LIB pps)
@@ -607,6 +612,13 @@ qt_feature("journald" PRIVATE
     AUTODETECT OFF
     CONDITION Libsystemd_FOUND
 )
+# Used by QCryptographicHash for the BLAKE2 hashing algorithms
+qt_feature("system-libb2" PRIVATE
+    LABEL "Using system libb2"
+    CONDITION Libb2_FOUND
+    ENABLE INPUT_libb2 STREQUAL 'system'
+    DISABLE INPUT_libb2 STREQUAL 'no' OR INPUT_libb2 STREQUAL 'qt'
+)
 # Currently only used by QTemporaryFile; linkat() exists on Android, but hardlink creation fails due to security rules
 qt_feature("linkat" PRIVATE
     LABEL "linkat()"
@@ -946,16 +958,12 @@ qt_feature("cborstreamwriter" PUBLIC
     LABEL "CBOR stream writing"
     PURPOSE "Provides support for writing the CBOR binary format."
 )
-qt_feature("binaryjson" PUBLIC
-    SECTION "Utilities"
-    LABEL "Binary JSON (deprecated)"
-    PURPOSE "Provides support for the deprecated binary JSON format."
-)
 qt_configure_add_summary_section(NAME "Qt Core")
 qt_configure_add_summary_entry(ARGS "doubleconversion")
 qt_configure_add_summary_entry(ARGS "system-doubleconversion")
 qt_configure_add_summary_entry(ARGS "glib")
 qt_configure_add_summary_entry(ARGS "icu")
+qt_configure_add_summary_entry(ARGS "system-libb2")
 qt_configure_add_summary_entry(ARGS "mimetype-database")
 qt_configure_add_summary_entry(
     TYPE "firstAvailableFeature"

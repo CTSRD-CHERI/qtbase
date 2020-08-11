@@ -50,17 +50,21 @@ using namespace emscripten;
 
 QT_BEGIN_NAMESPACE
 
+const char * QWasmScreen::m_canvasResizeObserverCallbackContextPropertyName = "data-qtCanvasResizeObserverCallbackContext";
+
 QWasmScreen::QWasmScreen(const emscripten::val &canvas)
     : m_canvas(canvas)
 {
     m_compositor = new QWasmCompositor(this);
     m_eventTranslator = new QWasmEventTranslator(this);
+    installCanvasResizeObserver();
     updateQScreenAndCanvasRenderSize();
     m_canvas.call<void>("focus");
 }
 
 QWasmScreen::~QWasmScreen()
 {
+    m_canvas.set(m_canvasResizeObserverCallbackContextPropertyName, emscripten::val(intptr_t(0)));
     destroy();
 }
 
@@ -127,12 +131,23 @@ QDpi QWasmScreen::logicalDpi() const
 
 qreal QWasmScreen::devicePixelRatio() const
 {
-    // FIXME: The effective device pixel ratio may be different from the
-    // HTML window dpr if the OpenGL driver/GPU allocates a less than
-    // full resolution surface. Use emscripten_webgl_get_drawing_buffer_size()
-    // and compute the dpr instead.
-    double htmlWindowDpr = emscripten::val::global("window")["devicePixelRatio"].as<double>();
-    return qreal(htmlWindowDpr);
+    // window.devicePixelRatio gives us the scale factor between CSS and device pixels.
+    // This property reflects hardware configuration, and also browser zoom on desktop.
+    //
+    // window.visualViewport.scale gives us the zoom factor on mobile. If the html page is
+    // configured with "<meta name="viewport" content="width=device-width">" then this scale
+    // factor will be 1. Omitting the viewport configuration typically results on a zoomed-out
+    // viewport, with a scale factor <1. User pinch-zoom will change the scale factor; an event
+    // handler is installed in the QWasmIntegration constructor. Changing zoom level on desktop
+    // does not appear to change visualViewport.scale.
+    //
+    // The effective devicePixelRatio is the product of these two scale factors, upper-bounded
+    // by window.devicePixelRatio in order to avoid e.g. allocating a 10x widget backing store.
+    double dpr = emscripten::val::global("window")["devicePixelRatio"].as<double>();
+    emscripten::val visualViewport = emscripten::val::global("window")["visualViewport"];
+    double scale = visualViewport.isUndefined() ? 1.0 : visualViewport["scale"].as<double>();
+    double effectiveDevicePixelRatio = std::min(dpr * scale, dpr);
+    return qreal(effectiveDevicePixelRatio);
 }
 
 QString QWasmScreen::name() const
@@ -203,6 +218,44 @@ void QWasmScreen::updateQScreenAndCanvasRenderSize()
 
     setGeometry(QRect(position, cssSize.toSize()));
     m_compositor->redrawWindowContent();
+}
+
+void QWasmScreen::canvasResizeObserverCallback(emscripten::val entries, emscripten::val)
+{
+    int count = entries["length"].as<int>();
+    if (count == 0)
+        return;
+    emscripten::val entry = entries[0];
+    QWasmScreen *screen =
+        reinterpret_cast<QWasmScreen *>(entry["target"][m_canvasResizeObserverCallbackContextPropertyName].as<intptr_t>());
+    if (!screen) {
+        qWarning() << "QWasmScreen::canvasResizeObserverCallback: missing screen pointer";
+        return;
+    }
+
+    // We could access contentBoxSize|contentRect|devicePixelContentBoxSize on the entry here, but
+    // these are not universally supported across all browsers. Get the sizes from the canvas instead.
+    screen->updateQScreenAndCanvasRenderSize();
+}
+
+EMSCRIPTEN_BINDINGS(qtCanvasResizeObserverCallback) {
+    emscripten::function("qtCanvasResizeObserverCallback", &QWasmScreen::canvasResizeObserverCallback);
+}
+
+void QWasmScreen::installCanvasResizeObserver()
+{
+    emscripten::val ResizeObserver = emscripten::val::global("ResizeObserver");
+    if (ResizeObserver == emscripten::val::undefined())
+        return; // ResizeObserver API is not available
+    emscripten::val resizeObserver = ResizeObserver.new_(emscripten::val::module_property("qtCanvasResizeObserverCallback"));
+    if (resizeObserver == emscripten::val::undefined())
+        return; // Something went horribly wrong
+
+    // We need to get back to this instance from the (static) resize callback;
+    // set a "data-" property on the canvas element.
+    m_canvas.set(m_canvasResizeObserverCallbackContextPropertyName, emscripten::val(intptr_t(this)));
+
+    resizeObserver.call<void>("observe", m_canvas);
 }
 
 QT_END_NAMESPACE

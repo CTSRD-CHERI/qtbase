@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
@@ -308,6 +308,8 @@ QDateTime &QFileInfoPrivate::getFileTime(QAbstractFileEngine::FileTime request) 
     refreshes the file information: refresh(). If you want to switch
     off a QFileInfo's caching and force it to access the file system
     every time you request information from it call setCaching(false).
+    If you want to make sure that all information is read from the
+    file system, use stat().
 
     \sa QDir, QFile
 */
@@ -1196,7 +1198,6 @@ bool QFileInfo::isRoot() const
 }
 
 /*!
-    \fn QString QFileInfo::symLinkTarget() const
     \since 4.2
 
     Returns the absolute path to the file or directory a symbolic link
@@ -1209,19 +1210,6 @@ bool QFileInfo::isRoot() const
 
     \sa exists(), isSymLink(), isDir(), isFile()
 */
-
-#if QT_DEPRECATED_SINCE(5, 13)
-/*!
-    \obsolete
-
-    Use symLinkTarget() instead.
-*/
-QString QFileInfo::readLink() const
-{
-    return symLinkTarget();
-}
-#endif
-
 QString QFileInfo::symLinkTarget() const
 {
     Q_D(const QFileInfo);
@@ -1392,33 +1380,8 @@ qint64 QFileInfo::size() const
         });
 }
 
-#if QT_DEPRECATED_SINCE(5, 10)
 /*!
-    \deprecated
-
-    Returns the date and time when the file was created, the time its metadata
-    was last changed or the time of last modification, whichever one of the
-    three is available (in that order).
-
-    This function is deprecated. Instead, use the birthTime() function to get
-    the time the file was created, metadataChangeTime() to get the time its
-    metadata was last changed, or lastModified() to get the time it was last modified.
-
-    If the file is a symlink, the time of the target file is returned
-    (not the symlink).
-
-    \sa birthTime(), metadataChangeTime(), lastModified(), lastRead()
-*/
-QDateTime QFileInfo::created() const
-{
-    QDateTime d = fileTime(QFile::FileBirthTime);
-    if (d.isValid())
-        return d;
-    return fileTime(QFile::FileMetadataChangeTime);
-}
-#endif
-
-/*!
+    \fn QDateTime QFileInfo::birthTime() const
     \since 5.10
     Returns the date and time when the file was created / born.
 
@@ -1430,12 +1393,9 @@ QDateTime QFileInfo::created() const
 
     \sa lastModified(), lastRead(), metadataChangeTime()
 */
-QDateTime QFileInfo::birthTime() const
-{
-    return fileTime(QFile::FileBirthTime);
-}
 
 /*!
+    \fn QDateTime QFileInfo::metadataChangeTime() const
     \since 5.10
     Returns the date and time when the file metadata was changed. A metadata
     change occurs when the file is created, but it also occurs whenever the
@@ -1447,12 +1407,10 @@ QDateTime QFileInfo::birthTime() const
 
     \sa lastModified(), lastRead()
 */
-QDateTime QFileInfo::metadataChangeTime() const
-{
-    return fileTime(QFile::FileMetadataChangeTime);
-}
 
 /*!
+    \fn QDateTime QFileInfo::lastModified() const
+
     Returns the date and local time when the file was last modified.
 
     If the file is a symlink, the time of the target file is returned
@@ -1460,12 +1418,10 @@ QDateTime QFileInfo::metadataChangeTime() const
 
     \sa birthTime(), lastRead(), metadataChangeTime(), fileTime()
 */
-QDateTime QFileInfo::lastModified() const
-{
-    return fileTime(QFile::FileModificationTime);
-}
 
 /*!
+    \fn QDateTime QFileInfo::lastRead() const
+
     Returns the date and local time when the file was last read (accessed).
 
     On platforms where this information is not available, returns the
@@ -1476,10 +1432,6 @@ QDateTime QFileInfo::lastModified() const
 
     \sa birthTime(), lastModified(), metadataChangeTime(), fileTime()
 */
-QDateTime QFileInfo::lastRead() const
-{
-    return fileTime(QFile::FileAccessTime);
-}
 
 /*!
     \since 5.10
@@ -1558,6 +1510,21 @@ void QFileInfo::setCaching(bool enable)
 {
     Q_D(QFileInfo);
     d->cache_enabled = enable;
+}
+
+/*!
+    Reads all attributes from the file system.
+
+    This is useful when information about the file system is collected in a
+    worker thread, and then passed to the UI in the form of caching QFileInfo
+    instances.
+
+    \sa setCaching(), refresh()
+*/
+void QFileInfo::stat()
+{
+    Q_D(QFileInfo);
+    QFileSystemEngine::fillMetaData(d->fileEntry, d->metaData, QFileSystemMetaData::AllMetaDataFlags);
 }
 
 /*!

@@ -50,7 +50,6 @@ import xml.etree.ElementTree as ET
 
 from argparse import ArgumentParser
 from textwrap import dedent
-from textwrap import indent as textwrap_indent
 from functools import lru_cache
 from shutil import copyfile
 from collections import defaultdict
@@ -325,6 +324,7 @@ def set_up_cmake_api_calls():
     api[1]["qt_add_module"] = "add_qt_module"
     api[1]["qt_add_plugin"] = "add_qt_plugin"
     api[1]["qt_add_tool"] = "add_qt_tool"
+    api[2]["qt_internal_add_app"] = "qt_internal_add_app"
     api[1]["qt_add_test"] = "add_qt_test"
     api[1]["qt_add_test_helper"] = "add_qt_test_helper"
     api[1]["qt_add_manual_test"] = "add_qt_manual_test"
@@ -341,6 +341,7 @@ def set_up_cmake_api_calls():
     api[2]["qt_add_module"] = "qt_add_module"
     api[2]["qt_add_plugin"] = "qt_internal_add_plugin"
     api[2]["qt_add_tool"] = "qt_add_tool"
+    api[2]["qt_internal_add_app"] = "qt_internal_add_app"
     api[2]["qt_add_test"] = "qt_add_test"
     api[2]["qt_add_test_helper"] = "qt_add_test_helper"
     api[2]["qt_add_manual_test"] = "qt_add_manual_test"
@@ -507,13 +508,13 @@ def write_add_qt_resource_call(
         # If a base dir is given, we have to write the source file property
         # assignments that disable the quick compiler per file.
         if base_dir and skip_qtquick_compiler:
-            source_file_properties[full_source].append('QT_SKIP_QUICKCOMPILER 1')
+            source_file_properties[full_source].append("QT_SKIP_QUICKCOMPILER 1")
 
     for full_source in source_file_properties:
         per_file_props = source_file_properties[full_source]
         if per_file_props:
             prop_spaces = "                                "
-            per_file_props_joined = f'\n{prop_spaces}'.join(per_file_props)
+            per_file_props_joined = f"\n{prop_spaces}".join(per_file_props)
             output += dedent(
                 f"""\
                             set_source_files_properties("{full_source}"
@@ -546,7 +547,7 @@ def write_add_qt_resource_call(
             " PROPERTIES QT_SKIP_QUICKCOMPILER 1)\n\n"
         )
 
-    prefix_expanded = scope.expandString(prefix)
+    prefix_expanded = scope.expandString(str(prefix))
     if prefix_expanded:
         prefix = prefix_expanded
     params = ""
@@ -956,6 +957,7 @@ class Scope(object):
         self._parent_include_line_no = parent_include_line_no
         self._is_public_module = False
         self._has_private_module = False
+        self._is_internal_qt_app = False
 
     def __repr__(self):
         return (
@@ -994,6 +996,16 @@ class Scope(object):
     @property
     def has_private_module(self) -> bool:
         return self._has_private_module
+
+    @property
+    def is_internal_qt_app(self) -> bool:
+        is_app = self._is_internal_qt_app
+        current_scope = self
+        while not is_app and current_scope.parent:
+            current_scope = current_scope.parent
+            is_app = current_scope.is_internal_qt_app
+
+        return is_app
 
     def can_merge_condition(self):
         if self._condition == "else":
@@ -1318,8 +1330,10 @@ class Scope(object):
         # Looking at you qmltyperegistrar.pro.
         eval_ops_transformer = None
         if key.endswith("SOURCES") or key.endswith("HEADERS"):
+
             def file_transformer(scope, files):
                 return scope._map_files(files)
+
             eval_ops_transformer = file_transformer
         return self._evalOps(key, eval_ops_transformer, [], inherit=inherit)
 
@@ -1328,7 +1342,7 @@ class Scope(object):
         if len(v) == 0:
             return default
         if len(v) > 1:
-            return ' '.join(v)
+            return " ".join(v)
         return v[0]
 
     def _map_files(
@@ -1463,7 +1477,7 @@ def unwrap_if(input_string):
     # Compute the grammar only once.
     if not hasattr(unwrap_if, "if_grammar"):
 
-        def handle_expr_with_parentheses(s, l, t):
+        def handle_expr_with_parentheses(s, l_unused, t):
             # The following expression unwraps the condition via the
             # additional info set by originalTextFor, thus returning the
             # condition without parentheses.
@@ -1631,6 +1645,7 @@ def map_condition(condition: str) -> str:
                     and not feature_name.startswith("system_doubleconversion")
                     and not feature_name.startswith("system_sqlite")
                     and not feature_name.startswith("system_hunspell")
+                    and not feature_name.startswith("system_libb2")
                 ):
                     part = "ON"
                 elif feature == "dlopen":
@@ -2086,7 +2101,7 @@ def write_3rd_party_include_paths(
     for i in includes:
         # CMake generator expressions don't seem to like relative paths.
         # Make them absolute relative to the source dir.
-        if not os.path.isabs(i) and not i.startswith("$"):
+        if is_path_relative_ish(i):
             i = f"${{CMAKE_CURRENT_SOURCE_DIR}}/{i}"
         i = f"$<BUILD_INTERFACE:{i}>"
         processed_includes.append(i)
@@ -2141,8 +2156,12 @@ def write_library_section(
                 if dep not in public_module_public_deps:
                     public_module_public_deps.append(dep)
 
-        private_module_interface_deps.extend([map_qt_library(q) for q in scope.expand("QT_FOR_PRIVATE")])
-        private_module_interface_deps.extend(_map_libraries_to_cmake(scope.expand("QMAKE_USE_FOR_PRIVATE"), known_libraries))
+        private_module_interface_deps.extend(
+            [map_qt_library(q) for q in scope.expand("QT_FOR_PRIVATE")]
+        )
+        private_module_interface_deps.extend(
+            _map_libraries_to_cmake(scope.expand("QMAKE_USE_FOR_PRIVATE"), known_libraries)
+        )
 
         write_list(cm_fh, public_module_private_deps, "LIBRARIES", indent + 1)
         write_list(cm_fh, public_module_public_deps, "PUBLIC_LIBRARIES", indent + 1)
@@ -2323,8 +2342,14 @@ def expand_resource_glob(cm_fh: IO[str], expression: str) -> str:
     return expanded_var
 
 
-def write_resources(cm_fh: IO[str], target: str, scope: Scope, indent: int = 0, is_example=False,
-                    target_ref: str = None):
+def write_resources(
+    cm_fh: IO[str],
+    target: str,
+    scope: Scope,
+    indent: int = 0,
+    is_example=False,
+    target_ref: str = None,
+):
     if target_ref is None:
         target_ref = target
     # vpath = scope.expand('VPATH')
@@ -2465,9 +2490,58 @@ def write_repc_files(cm_fh: IO[str], target: str, scope: Scope, indent: int = 0)
         cm_fh.write(")\n")
 
 
-def write_generic_cmake_command(cm_fh: IO[str], command_name: str, arguments: List[str]):
+def write_generic_cmake_command(
+    cm_fh: IO[str], command_name: str, arguments: List[str], indent: int = 0
+):
+    ind = spaces(indent)
     arguments_str = " ".join(arguments)
-    cm_fh.write(f"{command_name}({arguments_str})\n")
+    cm_fh.write(f"{ind}{command_name}({arguments_str})\n")
+
+
+def write_set_target_properties(
+    cm_fh: IO[str], targets: List[str], properties: List[str], indent: int = 0
+):
+    ind = spaces(indent)
+    command_name = "set_target_properties"
+    arguments_ind = spaces(indent + 1)
+
+    prop_pairs = [(properties[i] + " " + properties[i + 1]) for i in range(0, len(properties), 2)]
+    properties_str = f"\n{arguments_ind}" + f"\n{arguments_ind}".join(prop_pairs)
+
+    if len(targets) == 1:
+        targets_str = targets[0] + " "
+    else:
+        targets_str = (
+            f"\n{arguments_ind}" + f"\n{arguments_ind}".join(targets) + f"\n{arguments_ind}"
+        )
+
+    cm_fh.write(f"{ind}{command_name}({targets_str}PROPERTIES{properties_str}\n{ind})\n")
+
+
+def write_set_source_files_properties(
+    cm_fh: IO[str], files: List[str], properties: List[str], indent: int = 0
+):
+    ind = spaces(indent)
+    command_name = "set_source_files_properties"
+    arguments_ind = spaces(indent + 1)
+
+    prop_pairs = [(properties[i] + " " + properties[i + 1]) for i in range(0, len(properties), 2)]
+    properties_str = f"\n{arguments_ind}" + f"\n{arguments_ind}".join(prop_pairs)
+
+    if len(files) == 1:
+        targets_str = files[0] + " "
+    else:
+        targets_str = f"\n{arguments_ind}" + f"\n{arguments_ind}".join(files) + f"\n{arguments_ind}"
+
+    cm_fh.write(f"{ind}{command_name}({targets_str}PROPERTIES{properties_str}\n{ind})\n")
+
+
+def write_target_sources(
+    cm_fh: IO[str], target: str, sources: List[str], visibility: str = "PRIVATE", indent: int = 0
+):
+    command_name = "target_sources"
+    header = f"{command_name}({target} {visibility}\n"
+    write_list(cm_fh, sources, "", indent, footer=f")", header=header)
 
 
 def expand_project_requirements(scope: Scope, skip_message: bool = False) -> str:
@@ -2490,7 +2564,9 @@ def expand_project_requirements(scope: Scope, skip_message: bool = False) -> str
     return requirements
 
 
-def write_extend_target(cm_fh: IO[str], target: str, scope: Scope, indent: int = 0, target_ref: str = None):
+def write_extend_target(
+    cm_fh: IO[str], target: str, scope: Scope, indent: int = 0, target_ref: str = None
+):
     if target_ref is None:
         target_ref = target
     ind = spaces(indent)
@@ -2665,13 +2741,7 @@ def write_wayland_part(cm_fh: IO[str], target: str, scope: Scope, indent: int = 
     if len(client_sources) == 0 and len(server_sources) == 0:
         return
 
-    condition = "ON"
-    if scope.total_condition:
-        condition = map_to_cmake_condition(scope.total_condition)
-
-    if condition != "ON":
-        cm_fh.write(f"\n{spaces(indent)}if({condition})\n")
-        indent += 1
+    condition, indent = write_scope_condition_begin(cm_fh, scope, indent=indent)
 
     if len(client_sources) != 0:
         cm_fh.write(f"\n{spaces(indent)}qt6_generate_wayland_protocol_client_sources({target}\n")
@@ -2687,9 +2757,134 @@ def write_wayland_part(cm_fh: IO[str], target: str, scope: Scope, indent: int = 
         )
         cm_fh.write(f"{spaces(indent)})\n")
 
+    write_scope_condition_end(cm_fh, condition, indent=indent)
+
+
+def write_scope_condition_begin(cm_fh: IO[str], scope: Scope, indent: int = 0) -> Tuple[str, int]:
+    condition = "ON"
+    if scope.total_condition:
+        condition = map_to_cmake_condition(scope.total_condition)
+
+    if condition != "ON":
+        cm_fh.write(f"\n{spaces(indent)}if({condition})\n")
+        indent += 1
+
+    return condition, indent
+
+
+def write_scope_condition_end(cm_fh: IO[str], condition: str, indent: int = 0) -> int:
     if condition != "ON":
         indent -= 1
-        cm_fh.write(f"\n{spaces(indent)}endif()\n")
+        cm_fh.write(f"{spaces(indent)}endif()\n")
+    return indent
+
+
+def is_path_relative_ish(path: str) -> bool:
+    if not os.path.isabs(path) and not path.startswith("$"):
+        return True
+    return False
+
+
+def absolutify_path(path: str, base_dir: str = "${CMAKE_CURRENT_SOURCE_DIR}") -> str:
+    if not path:
+        return path
+    if is_path_relative_ish(path):
+        path = posixpath.join(base_dir, path)
+    return path
+
+
+def write_version_part(cm_fh: IO[str], target: str, scope: Scope, indent: int = 0):
+    if scope.is_internal_qt_app:
+        version_value = scope.get_string("VERSION")
+        if version_value:
+            version_value = re.sub(r"\$\${QT_VERSION\}", "${PROJECT_VERSION}", version_value)
+        target_description = scope.expandString("QMAKE_TARGET_DESCRIPTION")
+
+        if version_value or target_description:
+            condition, indent = write_scope_condition_begin(cm_fh, scope, indent=indent)
+
+            properties = []
+            if version_value:
+                properties.extend(["QT_TARGET_VERSION", f'"{version_value}"'])
+            if target_description:
+                properties.extend(["QT_TARGET_DESCRIPTION", f'"{target_description}"'])
+
+            if properties:
+                write_set_target_properties(cm_fh, [target], properties, indent=indent)
+
+            write_scope_condition_end(cm_fh, condition, indent=indent)
+
+
+def write_darwin_part(
+    cm_fh: IO[str], target: str, scope: Scope, main_scope_target_name: str = "", indent: int = 0
+):
+    if scope.is_internal_qt_app:
+        # Embed custom provided Info.plist file.
+        info_plist = scope.expandString("QMAKE_INFO_PLIST")
+        info_plist = absolutify_path(info_plist)
+
+        icon_path = scope.expandString("ICON")
+        icon_basename = ""
+
+        new_output_name = None
+        current_scope_output_name = scope.TARGET
+        if current_scope_output_name != main_scope_target_name:
+            new_output_name = current_scope_output_name
+
+        if icon_path:
+            icon_basename = os.path.basename(icon_path)
+
+        if info_plist or icon_path or new_output_name:
+            condition, indent = write_scope_condition_begin(cm_fh, scope, indent=indent)
+
+            properties = []
+            if info_plist:
+                properties.extend(["MACOSX_BUNDLE_INFO_PLIST", f'"{info_plist}"'])
+                properties.extend(["MACOSX_BUNDLE", "TRUE"])
+            if icon_path:
+                properties.extend(["MACOSX_BUNDLE_ICON_FILE", f'"{icon_basename}"'])
+
+            if new_output_name:
+                properties.extend(["OUTPUT_NAME", f'"{new_output_name}"'])
+
+            if properties:
+                write_set_target_properties(cm_fh, [target], properties, indent=indent)
+                if icon_path:
+                    source_properties = ["MACOSX_PACKAGE_LOCATION", "Resources"]
+                    write_set_source_files_properties(
+                        cm_fh, [icon_path], source_properties, indent=indent
+                    )
+                    write_target_sources(cm_fh, target, [icon_path], indent=indent)
+
+            write_scope_condition_end(cm_fh, condition, indent=indent)
+
+
+def write_windows_part(cm_fh: IO[str], target: str, scope: Scope, indent: int = 0):
+    if scope.is_internal_qt_app:
+        # Handle CONFIG += console assignments.
+        is_console = "console" in scope.get("CONFIG")
+        rc_file = scope.expandString("RC_FILE")
+        rc_file = absolutify_path(rc_file)
+        rc_icons = scope.expandString("RC_ICONS")
+        rc_icons = absolutify_path(rc_icons)
+
+        if is_console or rc_file or rc_icons:
+            condition, indent = write_scope_condition_begin(cm_fh, scope, indent=indent)
+
+            properties = []
+            if is_console:
+                properties.extend(["WIN32_EXECUTABLE", "FALSE"])
+
+            if rc_file:
+                properties.extend(["QT_TARGET_WINDOWS_RC_FILE", f'"{rc_file}"'])
+
+            if rc_icons:
+                properties.extend(["QT_TARGET_RC_ICONS", f'"{rc_icons}"'])
+
+            if properties:
+                write_set_target_properties(cm_fh, [target], properties, indent=indent)
+
+            write_scope_condition_end(cm_fh, condition, indent=indent)
 
 
 def handle_source_subtractions(scopes: List[Scope]):
@@ -2945,6 +3140,12 @@ def write_main_part(
 
     write_wayland_part(cm_fh, name, scopes[0], indent)
 
+    write_windows_part(cm_fh, name, scopes[0], indent)
+
+    write_darwin_part(cm_fh, name, scopes[0], main_scope_target_name=name, indent=indent)
+
+    write_version_part(cm_fh, name, scopes[0], indent)
+
     if "warn_off" in scope.get("CONFIG"):
         write_generic_cmake_command(cm_fh, "qt_disable_warnings", [name])
 
@@ -2965,6 +3166,9 @@ def write_main_part(
         c.reset_visited_keys()
         write_android_part(cm_fh, name, c, indent=indent)
         write_wayland_part(cm_fh, name, c, indent=indent)
+        write_windows_part(cm_fh, name, c, indent=indent)
+        write_darwin_part(cm_fh, name, c, main_scope_target_name=name, indent=indent)
+        write_version_part(cm_fh, name, c, indent=indent)
         write_extend_target(cm_fh, name, c, target_ref=target_ref, indent=indent)
         write_simd_part(cm_fh, name, c, indent=indent)
 
@@ -3065,19 +3269,21 @@ def write_generic_library(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> s
 
     return target_name
 
-def forward_target_info(scope: Scope, extra: [str]):
+
+def forward_target_info(scope: Scope, extra: List[str], skip: Optional[Dict[str, bool]] = None):
     s = scope.get_string("QMAKE_TARGET_PRODUCT")
     if s:
-        extra.append(f"TARGET_PRODUCT \"{s}\"")
+        extra.append(f'TARGET_PRODUCT "{s}"')
     s = scope.get_string("QMAKE_TARGET_DESCRIPTION")
-    if s:
-        extra.append(f"TARGET_DESCRIPTION \"{s}\"")
+    if s and (not skip or "QMAKE_TARGET_DESCRIPTION" not in skip):
+        extra.append(f'TARGET_DESCRIPTION "{s}"')
     s = scope.get_string("QMAKE_TARGET_COMPANY")
     if s:
-        extra.append(f"TARGET_COMPANY \"{s}\"")
+        extra.append(f'TARGET_COMPANY "{s}"')
     s = scope.get_string("QMAKE_TARGET_COPYRIGHT")
     if s:
-        extra.append(f"TARGET_COPYRIGHT \"{s}\"")
+        extra.append(f'TARGET_COPYRIGHT "{s}"')
+
 
 def write_module(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> str:
     module_name = scope.TARGET
@@ -3143,7 +3349,7 @@ def write_module(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> str:
     return target_name
 
 
-def write_tool(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> str:
+def write_tool(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> Tuple[str, str]:
     tool_name = scope.TARGET
 
     if "force_bootstrap" in scope.get("CONFIG"):
@@ -3169,6 +3375,30 @@ def write_tool(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> str:
     )
 
     return tool_name, "${target_name}"
+
+
+def write_qt_app(cm_fh: IO[str], scope: Scope, *, indent: int = 0) -> str:
+    app_name = scope.TARGET
+
+    extra: List[str] = []
+
+    target_info_skip = {}
+    target_info_skip["QMAKE_TARGET_DESCRIPTION"] = True
+    forward_target_info(scope, extra, target_info_skip)
+
+    write_main_part(
+        cm_fh,
+        app_name,
+        "App",
+        get_cmake_api_call("qt_internal_add_app"),
+        scope,
+        indent=indent,
+        known_libraries={"Qt::Core"},
+        extra_lines=extra,
+        extra_keys=["CONFIG"],
+    )
+
+    return app_name
 
 
 def write_test(cm_fh: IO[str], scope: Scope, gui: bool = False, *, indent: int = 0) -> str:
@@ -3209,6 +3439,7 @@ def write_test(cm_fh: IO[str], scope: Scope, gui: bool = False, *, indent: int =
     )
 
     return test_name
+
 
 def write_binary(cm_fh: IO[str], scope: Scope, gui: bool = False, *, indent: int = 0) -> str:
     binary_name = scope.TARGET
@@ -3262,8 +3493,8 @@ def write_find_package_section(
     packages = []  # type: List[LibraryMapping]
     all_libs = public_libs + private_libs
 
-    for l in all_libs:
-        info = find_library_info_for_target(l)
+    for one_lib in all_libs:
+        info = find_library_info_for_target(one_lib)
         if info and info not in packages:
             packages.append(info)
 
@@ -3320,7 +3551,9 @@ def write_example(
     example_install_dir = scope.expandString("target.path")
     if not example_install_dir:
         example_install_dir = "${INSTALL_EXAMPLESDIR}"
-    example_install_dir = example_install_dir.replace("$$[QT_INSTALL_EXAMPLES]", "${INSTALL_EXAMPLESDIR}")
+    example_install_dir = example_install_dir.replace(
+        "$$[QT_INSTALL_EXAMPLES]", "${INSTALL_EXAMPLESDIR}"
+    )
 
     cm_fh.write(
         "cmake_minimum_required(VERSION 3.14)\n"
@@ -3330,7 +3563,7 @@ def write_example(
         "set(CMAKE_AUTORCC ON)\n"
         "set(CMAKE_AUTOUIC ON)\n\n"
         "if(NOT DEFINED INSTALL_EXAMPLESDIR)\n"
-        "  set(INSTALL_EXAMPLESDIR \"examples\")\n"
+        '  set(INSTALL_EXAMPLESDIR "examples")\n'
         "endif()\n\n"
         f'set(INSTALL_EXAMPLEDIR "{example_install_dir}")\n\n'
     )
@@ -3809,6 +4042,10 @@ def handle_app_or_lib(
     elif "qt_tool" in scope.get("_LOADED"):
         assert not is_example
         target, target_ref = write_tool(cm_fh, scope, indent=indent)
+    elif "qt_app" in scope.get("_LOADED"):
+        assert not is_example
+        scope._is_internal_qt_app = True
+        target = write_qt_app(cm_fh, scope, indent=indent)
     else:
         if "testcase" in config or "testlib" in config or "qmltestcase" in config:
             assert not is_example
@@ -3915,9 +4152,9 @@ def handle_top_level_repo_project(scope: Scope, cm_fh: IO[str]):
 def create_top_level_cmake_conf():
     conf_file_name = ".cmake.conf"
     try:
-        with open(conf_file_name, 'x') as file:
-            file.write("set(QT_REPO_MODULE_VERSION \"6.0.0\")\n")
-    except FileExistsError as _:
+        with open(conf_file_name, "x") as file:
+            file.write('set(QT_REPO_MODULE_VERSION "6.0.0")\n')
+    except FileExistsError:
         pass
 
 

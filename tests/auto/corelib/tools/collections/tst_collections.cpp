@@ -455,7 +455,10 @@ void tst_Collections::list()
         {
             QList<int> list;
             list.append(1);
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_CLANG("-Wself-assign-overloaded")
             list = list;
+QT_WARNING_POP
             QVERIFY(list.size() == 1);
         }
     }
@@ -1143,6 +1146,8 @@ void tst_Collections::hash()
         QVERIFY(hash.size() == 2);
         QVERIFY(!hash.isEmpty());
 
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_CLANG("-Wself-assign-overloaded")
         {
             Hash hash2 = hash;
             hash2 = hash;
@@ -1155,6 +1160,7 @@ void tst_Collections::hash()
             QVERIFY(hash2.isEmpty());
         }
         QVERIFY(hash.size() == 2);
+QT_WARNING_POP
 
         {
             Hash hash2 = hash;
@@ -1366,6 +1372,8 @@ void tst_Collections::map()
         QVERIFY(map.size() == 2);
         QVERIFY(!map.isEmpty());
 
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_CLANG("-Wself-assign-overloaded")
         {
             Map map2 = map;
             map2 = map;
@@ -1378,6 +1386,7 @@ void tst_Collections::map()
             QVERIFY(map2.isEmpty());
         }
         QVERIFY(map.size() == 2);
+QT_WARNING_POP
 
         {
             Map map2 = map;
@@ -2600,6 +2609,7 @@ class LessThanComparable
 {
 public:
     bool operator<(const LessThanComparable &) const { return true; }
+    bool operator==(const LessThanComparable &) const { return true; }
 };
 
 class EqualsComparable
@@ -2728,14 +2738,12 @@ void instantiatePairAssociative()
 {
     instantiateMutableIterationContainer<ContainerType, KeyType>();
 
-    typename ContainerType::iterator it;
-    typename ContainerType::const_iterator constIt;
     const KeyType key = KeyType();
     const ValueType value = ValueType();
     ContainerType container;
     const ContainerType constContainer(container);
 
-    it = container.insert(key, value);
+    auto it = container.insert(key, value);
     container.erase(it);
     container.find(key);
     container.constFind(key);
@@ -2930,20 +2938,6 @@ void tst_Collections::forwardDeclared()
     }
 }
 
-class alignas(4) Aligned4
-{
-    char i;
-public:
-    Aligned4(int i = 0) : i(i) {}
-
-    enum { PreferredAlignment = 4 };
-
-    inline bool operator==(const Aligned4 &other) const { return i == other.i; }
-    inline bool operator<(const Aligned4 &other) const { return i < other.i; }
-    friend inline size_t qHash(const Aligned4 &a) { return qHash(a.i); }
-};
-static_assert(alignof(Aligned4) % 4 == 0);
-
 #if defined(Q_PROCESSOR_ARM)
 #  if defined(Q_COMPILER_ALIGNAS) && defined(__BIGGEST_ALIGNMENT__)
      // On ARM __BIGGEST_ALIGNMENT__ must be multiplied by 8 to
@@ -2956,18 +2950,29 @@ static_assert(alignof(Aligned4) % 4 == 0);
 #  define BIGGEST_ALIGNMENT_TO_TEST 128
 #endif
 
-class alignas(BIGGEST_ALIGNMENT_TO_TEST) AlignedBiggest
+template <size_t Alignment>
+class alignas(Alignment) AlignedClass
 {
     char i;
+
 public:
-    AlignedBiggest(int i = 0) : i(i) {}
+    AlignedClass(int i = 0) : i(i) {}
 
-    enum { PreferredAlignment = BIGGEST_ALIGNMENT_TO_TEST };
+    enum { PreferredAlignment = Alignment };
 
-    inline bool operator==(const AlignedBiggest &other) const { return i == other.i; }
-    inline bool operator<(const AlignedBiggest &other) const { return i < other.i; }
-    friend inline int qHash(const AlignedBiggest &a) { return qHash(a.i); }
+    inline bool operator==(const AlignedClass &other) const { return i == other.i; }
+    inline bool operator<(const AlignedClass &other) const { return i < other.i; }
+    friend inline int qHash(const AlignedClass &a) { return qHash(a.i); }
 };
+
+using Aligned4 = AlignedClass<4>;
+static_assert(alignof(Aligned4) % 4 == 0);
+
+using AlignedStdMax = AlignedClass<alignof(std::max_align_t)>;
+static_assert(alignof(AlignedStdMax) % alignof(std::max_align_t) == 0);
+
+using AlignedBiggest = AlignedClass<BIGGEST_ALIGNMENT_TO_TEST>;
+static_assert(BIGGEST_ALIGNMENT_TO_TEST > alignof(std::max_align_t), "Not overly aligned");
 static_assert(alignof(AlignedBiggest) % BIGGEST_ALIGNMENT_TO_TEST == 0);
 
 template<typename C>
@@ -3025,18 +3030,29 @@ void testAssociativeContainerAlignment()
 
 void tst_Collections::alignment()
 {
-    testVectorAlignment<QList<Aligned4>>();
-    testVectorAlignment<QList<AlignedBiggest>>();
-    testContiguousCacheAlignment<QContiguousCache<Aligned4>>();
-    testContiguousCacheAlignment<QContiguousCache<AlignedBiggest>>();
-    testAssociativeContainerAlignment<QMap<Aligned4, Aligned4>>();
-    testAssociativeContainerAlignment<QMap<Aligned4, AlignedBiggest>>();
-    testAssociativeContainerAlignment<QMap<AlignedBiggest, Aligned4>>();
-    testAssociativeContainerAlignment<QMap<AlignedBiggest, AlignedBiggest>>();
-    testAssociativeContainerAlignment<QHash<Aligned4, Aligned4>>();
-    testAssociativeContainerAlignment<QHash<Aligned4, AlignedBiggest>>();
-    testAssociativeContainerAlignment<QHash<AlignedBiggest, Aligned4>>();
-    testAssociativeContainerAlignment<QHash<AlignedBiggest, AlignedBiggest>>();
+    testVectorAlignment<QList<Aligned4> >();
+    testVectorAlignment<QList<AlignedStdMax> >();
+    testVectorAlignment<QList<AlignedBiggest> >();
+
+    testContiguousCacheAlignment<QContiguousCache<Aligned4> >();
+    testContiguousCacheAlignment<QContiguousCache<AlignedStdMax> >();
+    testContiguousCacheAlignment<QContiguousCache<AlignedBiggest> >();
+
+    // there's no guarentee that std::map supports over-aligned types
+    testAssociativeContainerAlignment<QMap<Aligned4, Aligned4> >();
+    testAssociativeContainerAlignment<QMap<Aligned4, AlignedStdMax> >();
+    testAssociativeContainerAlignment<QMap<AlignedStdMax, Aligned4> >();
+    testAssociativeContainerAlignment<QMap<AlignedStdMax, AlignedStdMax> >();
+
+    testAssociativeContainerAlignment<QHash<Aligned4, Aligned4> >();
+    testAssociativeContainerAlignment<QHash<Aligned4, AlignedStdMax> >();
+    testAssociativeContainerAlignment<QHash<Aligned4, AlignedBiggest> >();
+    testAssociativeContainerAlignment<QHash<AlignedStdMax, Aligned4> >();
+    testAssociativeContainerAlignment<QHash<AlignedStdMax, AlignedStdMax> >();
+    testAssociativeContainerAlignment<QHash<AlignedStdMax, AlignedBiggest> >();
+    testAssociativeContainerAlignment<QHash<AlignedBiggest, Aligned4> >();
+    testAssociativeContainerAlignment<QHash<AlignedBiggest, AlignedStdMax> >();
+    testAssociativeContainerAlignment<QHash<AlignedBiggest, AlignedBiggest> >();
 }
 
 #ifndef QT_NO_TEMPLATE_TEMPLATE_PARAMETERS

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
@@ -44,13 +44,13 @@
 #include <QtCore/qlist.h>
 #include <QtCore/qshareddata.h>
 #include <QtCore/qmetatype.h>
+#include <QtCore/qdatetime.h>
 
 QT_BEGIN_NAMESPACE
 
 
 class QDir;
 class QDirIteratorPrivate;
-class QDateTime;
 class QFileInfoPrivate;
 
 class Q_CORE_EXPORT QFileInfo
@@ -151,10 +151,6 @@ public:
     bool isRoot() const;
     bool isBundle() const;
 
-#if QT_DEPRECATED_SINCE(5, 13)
-    QT_DEPRECATED_X("Use QFileInfo::symLinkTarget() instead")
-    QString readLink() const;
-#endif
     QString symLinkTarget() const;
 #if QT_CONFIG(cxx17_filesystem)
     std::filesystem::path filesystemSymLinkTarget() const
@@ -171,19 +167,15 @@ public:
 
     qint64 size() const;
 
-    // ### Qt6: inline these functions
-#if QT_DEPRECATED_SINCE(5, 10)
-    QT_DEPRECATED_X("Use either birthTime() or metadataChangeTime()")
-    QDateTime created() const;
-#endif
-    QDateTime birthTime() const;
-    QDateTime metadataChangeTime() const;
-    QDateTime lastModified() const;
-    QDateTime lastRead() const;
+    QDateTime birthTime() const { return fileTime(QFile::FileBirthTime); }
+    QDateTime metadataChangeTime() const { return fileTime(QFile::FileMetadataChangeTime); }
+    QDateTime lastModified() const { return fileTime(QFile::FileModificationTime); }
+    QDateTime lastRead() const { return fileTime(QFile::FileAccessTime); }
     QDateTime fileTime(QFile::FileTime time) const;
 
     bool caching() const;
     void setCaching(bool on);
+    void stat();
 
 protected:
     QSharedDataPointer<QFileInfoPrivate> d_ptr;

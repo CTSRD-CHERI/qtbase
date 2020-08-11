@@ -529,7 +529,7 @@ public:
         : QWidget(wizard)
         , wizardPrivate(wizardPrivate) {}
 protected:
-    void paintEvent(QPaintEvent *);
+    void paintEvent(QPaintEvent *) override;
 #else
     QWizardAntiFlickerWidget(QWizard *wizard, QWizardPrivate *)
         : QWidget(wizard)
@@ -2207,7 +2207,7 @@ int QWizard::addPage(QWizardPage *page)
     Q_D(QWizard);
     int theid = 0;
     if (!d->pageMap.isEmpty())
-        theid = (d->pageMap.constEnd() - 1).key() + 1;
+        theid = d->pageMap.lastKey() + 1;
     setPage(theid, page);
     return theid;
 }

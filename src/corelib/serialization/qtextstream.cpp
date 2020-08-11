@@ -2649,12 +2649,6 @@ QTextStream &QTextStream::operator<<(const void *ptr)
 namespace Qt {
 
 /*!
-    \fn QTextStream &bin(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::bin() instead.
-*/
-
-/*!
     Calls QTextStream::setIntegerBase(2) on \a stream and returns \a
     stream.
 
@@ -2667,12 +2661,6 @@ QTextStream &bin(QTextStream &stream)
     stream.setIntegerBase(2);
     return stream;
 }
-
-/*!
-    \fn QTextStream &oct(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::oct() instead.
-*/
 
 /*!
     Calls QTextStream::setIntegerBase(8) on \a stream and returns \a
@@ -2689,12 +2677,6 @@ QTextStream &oct(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &dec(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::dec() instead.
-*/
-
-/*!
     Calls QTextStream::setIntegerBase(10) on \a stream and returns \a
     stream.
 
@@ -2707,12 +2689,6 @@ QTextStream &dec(QTextStream &stream)
     stream.setIntegerBase(10);
     return stream;
 }
-
-/*!
-    \fn QTextStream &hex(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::hex() instead.
-*/
 
 /*!
     Calls QTextStream::setIntegerBase(16) on \a stream and returns \a
@@ -2730,12 +2706,6 @@ QTextStream &hex(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &showbase(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::showbase() instead.
-*/
-
-/*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() |
     QTextStream::ShowBase) on \a stream and returns \a stream.
 
@@ -2748,12 +2718,6 @@ QTextStream &showbase(QTextStream &stream)
     stream.setNumberFlags(stream.numberFlags() | QTextStream::ShowBase);
     return stream;
 }
-
-/*!
-    \fn QTextStream &forcesign(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::forcesign() instead.
-*/
 
 /*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() |
@@ -2770,12 +2734,6 @@ QTextStream &forcesign(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &forcepoint(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::forcepoint() instead.
-*/
-
-/*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() |
     QTextStream::ForcePoint) on \a stream and returns \a stream.
 
@@ -2788,12 +2746,6 @@ QTextStream &forcepoint(QTextStream &stream)
     stream.setNumberFlags(stream.numberFlags() | QTextStream::ForcePoint);
     return stream;
 }
-
-/*!
-    \fn QTextStream &noshowbase(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::noshowbase() instead.
-*/
 
 /*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() &
@@ -2810,12 +2762,6 @@ QTextStream &noshowbase(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &noforcesign(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::noforcesign() instead.
-*/
-
-/*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() &
     ~QTextStream::ForceSign) on \a stream and returns \a stream.
 
@@ -2828,12 +2774,6 @@ QTextStream &noforcesign(QTextStream &stream)
     stream.setNumberFlags(stream.numberFlags() &= ~QTextStream::ForceSign);
     return stream;
 }
-
-/*!
-    \fn QTextStream &noforcepoint(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::noforcepoint() instead.
-*/
 
 /*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() &
@@ -2850,12 +2790,6 @@ QTextStream &noforcepoint(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &uppercasebase(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::uppercasebase() instead.
-*/
-
-/*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() |
     QTextStream::UppercaseBase) on \a stream and returns \a stream.
 
@@ -2868,12 +2802,6 @@ QTextStream &uppercasebase(QTextStream &stream)
     stream.setNumberFlags(stream.numberFlags() | QTextStream::UppercaseBase);
     return stream;
 }
-
-/*!
-    \fn QTextStream &uppercasedigits(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::uppercasedigits() instead.
-*/
 
 /*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() |
@@ -2890,12 +2818,6 @@ QTextStream &uppercasedigits(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &lowercasebase(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::lowercasebase() instead.
-*/
-
-/*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() &
     ~QTextStream::UppercaseBase) on \a stream and returns \a stream.
 
@@ -2908,12 +2830,6 @@ QTextStream &lowercasebase(QTextStream &stream)
     stream.setNumberFlags(stream.numberFlags() & ~QTextStream::UppercaseBase);
     return stream;
 }
-
-/*!
-    \fn QTextStream &lowercasedigits(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::lowercasedigits() instead.
-*/
 
 /*!
     Calls QTextStream::setNumberFlags(QTextStream::numberFlags() &
@@ -2930,12 +2846,6 @@ QTextStream &lowercasedigits(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &fixed(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::fixed() instead.
-*/
-
-/*!
     Calls QTextStream::setRealNumberNotation(QTextStream::FixedNotation)
     on \a stream and returns \a stream.
 
@@ -2948,12 +2858,6 @@ QTextStream &fixed(QTextStream &stream)
     stream.setRealNumberNotation(QTextStream::FixedNotation);
     return stream;
 }
-
-/*!
-    \fn QTextStream &scientific(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::scientific() instead.
-*/
 
 /*!
     Calls QTextStream::setRealNumberNotation(QTextStream::ScientificNotation)
@@ -2970,12 +2874,6 @@ QTextStream &scientific(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &left(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::left() instead.
-*/
-
-/*!
     Calls QTextStream::setFieldAlignment(QTextStream::AlignLeft)
     on \a stream and returns \a stream.
 
@@ -2988,12 +2886,6 @@ QTextStream &left(QTextStream &stream)
     stream.setFieldAlignment(QTextStream::AlignLeft);
     return stream;
 }
-
-/*!
-    \fn QTextStream &right(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::right() instead.
-*/
 
 /*!
     Calls QTextStream::setFieldAlignment(QTextStream::AlignRight)
@@ -3010,12 +2902,6 @@ QTextStream &right(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &center(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::center() instead.
-*/
-
-/*!
     Calls QTextStream::setFieldAlignment(QTextStream::AlignCenter)
     on \a stream and returns \a stream.
 
@@ -3028,12 +2914,6 @@ QTextStream &center(QTextStream &stream)
     stream.setFieldAlignment(QTextStream::AlignCenter);
     return stream;
 }
-
-/*!
-    \fn QTextStream &endl(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::endl() instead.
-*/
 
 /*!
     Writes '\\n' to the \a stream and flushes the stream.
@@ -3055,12 +2935,6 @@ QTextStream &endl(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &flush(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::flush() instead.
-*/
-
-/*!
     Calls QTextStream::flush() on \a stream and returns \a stream.
 
     \since 5.14
@@ -3074,12 +2948,6 @@ QTextStream &flush(QTextStream &stream)
 }
 
 /*!
-    \fn QTextStream &reset(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::reset() instead.
-*/
-
-/*!
     Calls QTextStream::reset() on \a stream and returns \a stream.
 
     \since 5.14
@@ -3091,12 +2959,6 @@ QTextStream &reset(QTextStream &stream)
     stream.reset();
     return stream;
 }
-
-/*!
-    \fn QTextStream &ws(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::ws() instead.
-*/
 
 /*!
     Calls \l {QTextStream::}{skipWhiteSpace()} on \a stream and returns \a stream.
@@ -3136,12 +2998,6 @@ QTextStream &ws(QTextStream &stream)
 
 
 namespace Qt {
-/*!
-    \fn QTextStream &bom(QTextStream &stream)
-    \relates QTextStream
-    \obsolete Use Qt::bom() instead.
-*/
-
 /*!
     Toggles insertion of the Byte Order Mark on \a stream when QTextStream is
     used with a UTF encoding.
@@ -3333,41 +3189,6 @@ QTextStream &ws(QTextStream &s) { return Qt::ws(s); }
 
 QTextStream &bom(QTextStream &s) { return Qt::bom(s); }
 } // namespace QTextStreamFunctions
-#endif
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0) && !defined(Q_QDOC)
-// Binary compatible definitions for Qt<5.14
-Q_CORE_EXPORT QTextStream &bin(QTextStream &s) { return Qt::bin(s); }
-Q_CORE_EXPORT QTextStream &oct(QTextStream &s) { return Qt::oct(s); }
-Q_CORE_EXPORT QTextStream &dec(QTextStream &s) { return Qt::dec(s); }
-Q_CORE_EXPORT QTextStream &hex(QTextStream &s) { return Qt::hex(s); }
-
-Q_CORE_EXPORT QTextStream &showbase(QTextStream &s) { return Qt::showbase(s); }
-Q_CORE_EXPORT QTextStream &forcesign(QTextStream &s) { return Qt::forcesign(s); }
-Q_CORE_EXPORT QTextStream &forcepoint(QTextStream &s) { return Qt::forcepoint(s); }
-Q_CORE_EXPORT QTextStream &noshowbase(QTextStream &s) { return Qt::noshowbase(s); }
-Q_CORE_EXPORT QTextStream &noforcesign(QTextStream &s) { return Qt::noforcesign(s); }
-Q_CORE_EXPORT QTextStream &noforcepoint(QTextStream &s) { return Qt::noforcepoint(s); }
-
-Q_CORE_EXPORT QTextStream &uppercasebase(QTextStream &s) { return Qt::uppercasebase(s); }
-Q_CORE_EXPORT QTextStream &uppercasedigits(QTextStream &s) { return Qt::uppercasedigits(s); }
-Q_CORE_EXPORT QTextStream &lowercasebase(QTextStream &s) { return Qt::lowercasebase(s); }
-Q_CORE_EXPORT QTextStream &lowercasedigits(QTextStream &s) { return Qt::lowercasedigits(s); }
-
-Q_CORE_EXPORT QTextStream &fixed(QTextStream &s) { return Qt::fixed(s); }
-Q_CORE_EXPORT QTextStream &scientific(QTextStream &s) { return Qt::scientific(s); }
-
-Q_CORE_EXPORT QTextStream &left(QTextStream &s) { return Qt::left(s); }
-Q_CORE_EXPORT QTextStream &right(QTextStream &s) { return Qt::right(s); }
-Q_CORE_EXPORT QTextStream &center(QTextStream &s) { return Qt::center(s); }
-
-Q_CORE_EXPORT QTextStream &endl(QTextStream &s) { return Qt::endl(s); }
-Q_CORE_EXPORT QTextStream &flush(QTextStream &s) { return Qt::flush(s); }
-Q_CORE_EXPORT QTextStream &reset(QTextStream &s) { return Qt::reset(s); }
-
-Q_CORE_EXPORT QTextStream &ws(QTextStream &s) { return Qt::ws(s); }
-
-Q_CORE_EXPORT QTextStream &bom(QTextStream &s) { return Qt::bom(s); }
 #endif
 
 QT_END_NAMESPACE

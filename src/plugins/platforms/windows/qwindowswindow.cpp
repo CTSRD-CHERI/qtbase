@@ -821,7 +821,7 @@ QWindowsWindowData
     }
 
     if (QWindowsContext::isDarkMode()
-        && (QWindowsIntegration::instance()->options() & QWindowsIntegration::DarkModeWindowFrames) != 0
+        && QWindowsIntegration::instance()->darkModeHandling().testFlag(QWindowsApplication::DarkModeWindowFrames)
         && shouldApplyDarkFrame(w)) {
         QWindowsWindow::setDarkBorderToWindow(result.hwnd, true);
     }
@@ -1191,6 +1191,16 @@ bool QWindowsBaseWindow::hasBorderInFullScreen() const
 {
     Q_UNIMPLEMENTED();
     return false;
+}
+
+QMargins QWindowsBaseWindow::customMargins() const
+{
+    return {};
+}
+
+void QWindowsBaseWindow::setCustomMargins(const QMargins &)
+{
+    Q_UNIMPLEMENTED();
 }
 
 /*!

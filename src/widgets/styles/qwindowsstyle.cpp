@@ -85,7 +85,7 @@
 #include <qpa/qplatformscreen.h>
 #include <private/qguiapplication_p.h>
 #include <private/qhighdpiscaling_p.h>
-#include <qpa/qplatformnativeinterface.h>
+#include <qpa/qplatformintegration.h>
 #include <private/qwidget_p.h>
 
 #include <private/qstylehelper_p.h>
@@ -133,13 +133,12 @@ bool QWindowsStylePrivate::isDarkMode()
 {
     bool result = false;
 #ifdef Q_OS_WIN
+    using QWindowsApplication = QPlatformInterface::Private::QWindowsApplication;
     // Windows only: Return whether dark mode style support is desired and
     // dark mode is in effect.
-    if (auto ni = QGuiApplication::platformNativeInterface()) {
-        const QVariant darkModeStyleP = ni->property("darkModeStyle");
-        result = darkModeStyleP.type() == QVariant::Bool
-                 && darkModeStyleP.value<bool>()
-                 && ni->property("darkMode").value<bool>();
+    if (auto windowsApp = dynamic_cast<QWindowsApplication *>(QGuiApplicationPrivate::platformIntegration())) {
+        result = windowsApp->isDarkMode()
+            && windowsApp->darkModeHandling().testFlag(QWindowsApplication::DarkModeStyle);
     }
 #endif
     return result;
@@ -857,7 +856,7 @@ void QWindowsStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, 
             QPointF  points[6];
             qreal scaleh = opt->rect.width() / 12.0;
             qreal scalev = opt->rect.height() / 12.0;
-            points[0] = { opt->rect.x() + 3.5 * scaleh, opt->rect.y() + 5.5 * scalev };
+            points[0] = { opt->rect.x() + qreal(3.5) * scaleh, opt->rect.y() + qreal(5.5) * scalev };
             points[1] = { points[0].x(),                points[0].y() + 2 * scalev };
             points[2] = { points[1].x() + 2 * scaleh,   points[1].y() + 2 * scalev };
             points[3] = { points[2].x() + 4 * scaleh,   points[2].y() - 4 * scalev };

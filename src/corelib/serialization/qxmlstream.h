@@ -81,9 +81,6 @@ class QXmlStreamReaderPrivate;
 class QXmlStreamAttributes;
 class Q_CORE_EXPORT QXmlStreamAttribute {
     QXmlStreamStringRef m_name, m_namespaceUri, m_qualifiedName, m_value;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    void *reserved;
-#endif
     uint m_isDefault : 1;
     friend class QXmlStreamReaderPrivate;
     friend class QXmlStreamAttributes;
@@ -113,17 +110,19 @@ public:
 
 Q_DECLARE_TYPEINFO(QXmlStreamAttribute, Q_MOVABLE_TYPE);
 
-class Q_CORE_EXPORT QXmlStreamAttributes : public QList<QXmlStreamAttribute>
+// We export each out-of-line method invidually to prevent MSVC from
+// exporting the whole QList class.
+class QXmlStreamAttributes : public QList<QXmlStreamAttribute>
 {
 public:
     inline QXmlStreamAttributes() {}
-    QStringRef value(const QString &namespaceUri, const QString &name) const;
-    QStringRef value(const QString &namespaceUri, QLatin1String name) const;
-    QStringRef value(QLatin1String namespaceUri, QLatin1String name) const;
-    QStringRef value(const QString &qualifiedName) const;
-    QStringRef value(QLatin1String qualifiedName) const;
-    void append(const QString &namespaceUri, const QString &name, const QString &value);
-    void append(const QString &qualifiedName, const QString &value);
+    Q_CORE_EXPORT QStringRef value(const QString &namespaceUri, const QString &name) const;
+    Q_CORE_EXPORT QStringRef value(const QString &namespaceUri, QLatin1String name) const;
+    Q_CORE_EXPORT QStringRef value(QLatin1String namespaceUri, QLatin1String name) const;
+    Q_CORE_EXPORT QStringRef value(const QString &qualifiedName) const;
+    Q_CORE_EXPORT QStringRef value(QLatin1String qualifiedName) const;
+    Q_CORE_EXPORT void append(const QString &namespaceUri, const QString &name, const QString &value);
+    Q_CORE_EXPORT void append(const QString &qualifiedName, const QString &value);
 
     inline bool hasAttribute(const QString &qualifiedName) const
     {
@@ -145,9 +144,6 @@ public:
 
 class Q_CORE_EXPORT QXmlStreamNamespaceDeclaration {
     QXmlStreamStringRef m_prefix, m_namespaceUri;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    void *reserved;
-#endif
 
     friend class QXmlStreamReaderPrivate;
 public:
@@ -168,9 +164,6 @@ typedef QList<QXmlStreamNamespaceDeclaration> QXmlStreamNamespaceDeclarations;
 
 class Q_CORE_EXPORT QXmlStreamNotationDeclaration {
     QXmlStreamStringRef m_name, m_systemId, m_publicId;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    void *reserved;
-#endif
 
     friend class QXmlStreamReaderPrivate;
 public:
@@ -192,9 +185,6 @@ typedef QList<QXmlStreamNotationDeclaration> QXmlStreamNotationDeclarations;
 
 class Q_CORE_EXPORT QXmlStreamEntityDeclaration {
     QXmlStreamStringRef m_name, m_notationName, m_systemId, m_publicId, m_value;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    void *reserved;
-#endif
 
     friend class QXmlStreamReaderPrivate;
 public:

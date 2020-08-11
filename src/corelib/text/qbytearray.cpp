@@ -411,9 +411,11 @@ int qstrnicmp(const char *str1, qsizetype len1, const char *str2, qsizetype len2
  */
 int QtPrivate::compareMemory(QByteArrayView lhs, QByteArrayView rhs)
 {
-    int ret = memcmp(lhs.data(), rhs.data(), qMin(lhs.size(), rhs.size()));
-    if (ret != 0)
-        return ret;
+    if (!lhs.isNull() && !rhs.isNull()) {
+        int ret = memcmp(lhs.data(), rhs.data(), qMin(lhs.size(), rhs.size()));
+        if (ret != 0)
+            return ret;
+    }
 
     // they matched qMin(l1, l2) bytes
     // so the longer one is lexically after the shorter one
@@ -844,6 +846,14 @@ QByteArray qUncompress(const uchar* data, int nbytes)
     to, but not including, the first '\\0' byte thereafter. Methods that accept
     such a pointer, without a length, will interpret it as this sequence of
     bytes. Such a sequence, by construction, cannot contain a '\\0' byte.
+
+    Take care when passing fixed size C arrays to QByteArray methods that accept
+    a QByteArrayView: the length of the data on which the method will operate is
+    determined by array size. A \c{char [N]} array will be handled as a view of
+    size \c{N-1}, on the expectation that the array is a string literal with a '\\0'
+    at index \c{N-1}. For example:
+
+    \snippet code/src_corelib_text_qbytearray.cpp 54
 
     Other overloads accept a start-pointer and a byte-count; these use the given
     number of bytes, following the start address, regardless of whether any of
@@ -1638,7 +1648,8 @@ void QByteArray::reallocData(uint alloc, Data::ArrayOptions options)
 {
     if (d->needsDetach()) {
         DataPointer dd(Data::allocate(alloc, options), qMin(qsizetype(alloc) - 1, d.size));
-        ::memcpy(dd.data(), d.data(), dd.size);
+        if (dd.size > 0)
+            ::memcpy(dd.data(), d.data(), dd.size);
         dd.data()[dd.size] = 0;
         d = dd;
     } else {
@@ -2103,7 +2114,7 @@ QByteArray &QByteArray::replace(const char *c, const QByteArray &after)
     \overload
 
     Replaces every occurrence of the \a bsize bytes starting at \a before with
-    the \asize bytes starting at \a after. Since the sizes of the strings are
+    the \a size bytes starting at \a after. Since the sizes of the strings are
     given by \a bsize and \a asize, they may contain '\\0' bytes and do not need
     to be '\\0'-terminated.
 */

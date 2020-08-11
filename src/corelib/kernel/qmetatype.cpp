@@ -500,12 +500,33 @@ int QMetaType::id() const
     This function is typically used together with construct()
     to perform low-level management of the memory used by a type.
 
-    \sa QMetaType::construct(), QMetaType::sizeOf()
+    \sa QMetaType::construct(), QMetaType::sizeOf(), QMetaType::alignOf()
 */
 int QMetaType::sizeOf() const
 {
     if (d_ptr)
         return d_ptr->size;
+    return 0;
+}
+
+/*!
+  \fn int QMetaType::alignOf() const
+  \since 6.0
+
+  Returns the alignment of the type in bytes (i.e. alignof(T),
+  where T is the actual type for which this QMetaType instance
+  was constructed for).
+
+  This function is typically used together with construct()
+  to perform low-level management of the memory used by a type.
+
+  \sa QMetaType::construct(), QMetaType::sizeOf()
+
+ */
+int QMetaType::alignOf() const
+{
+    if (d_ptr)
+        return d_ptr->alignment;
     return 0;
 }
 
@@ -676,7 +697,7 @@ void QMetaType::destruct(void *data) const
 
     \note If no less than operator was visible to the metatype declaration, values are
     unordered even if an equality operator visible to the declaration considers them equal:
-    \s{compare() == 0} only agrees with equals() if the less than operator was visible.
+    \c{compare() == 0} only agrees with equals() if the less than operator was visible.
 
     \since 6.0
     \sa equals(), isOrdered()
@@ -995,26 +1016,6 @@ bool QMetaType::convert(const void *from, int fromTypeId, void *to, int toTypeId
         customTypesConversionRegistry()->function(qMakePair(fromTypeId, toTypeId));
     return f && f->convert(f, from, to);
 }
-
-/*!
-    bool QMetaType::compare(const void *lhs, const void *rhs, int typeId, int* result)
-    \deprecated Use the non-static compare method instead
-
-    Compares the objects at \a lhs and \a rhs. Both objects need to be of type \a typeId.
-    \a result is set to less than, equal to or greater than zero, if \a lhs is less than, equal to
-    or greater than \a rhs. Returns \c true, if the comparison succeeded, otherwise \c false.
-    \since 5.2
-*/
-
-/*!
-    bool QMetaType::equals(const void *lhs, const void *rhs, int typeId, int *result)
-    \deprecated Use the non-static equals method instead
-
-    Compares the objects at \a lhs and \a rhs. Both objects need to be of type \a typeId.
-    \a result is set to zero, if \a lhs equals to rhs. Returns \c true, if the comparison
-    succeeded, otherwise \c false.
-    \since 5.5
-*/
 
 /*!
     Streams the object at \a rhs of type \a typeId to the debug stream \a dbg. Returns \c true
@@ -1605,7 +1606,7 @@ void QMetaType::destruct(int type, void *where)
     This function is typically used together with construct()
     to perform low-level management of the memory used by a type.
 
-    \sa construct()
+    \sa construct(), QMetaType::alignOf()
 */
 int QMetaType::sizeOf(int type)
 {

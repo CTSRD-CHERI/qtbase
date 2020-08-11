@@ -278,10 +278,15 @@ void qt_doubleToAscii(double d, QLocaleData::DoubleForm form, int precision, cha
         --length;
 }
 
-double qt_asciiToDouble(const char *num, int numLen, bool &ok, int &processed,
+double qt_asciiToDouble(const char *num, qsizetype numLen, bool &ok, int &processed,
                         StrayCharacterMode strayCharMode)
 {
-    if (*num == '\0') {
+    auto string_equals = [](const char *needle, const char *haystack, qsizetype haystackLen) {
+        qsizetype needleLen = strlen(needle);
+        return needleLen == haystackLen && memcmp(needle, haystack, haystackLen) == 0;
+    };
+
+    if (numLen == 0) {
         ok = false;
         processed = 0;
         return 0.0;
@@ -292,10 +297,10 @@ double qt_asciiToDouble(const char *num, int numLen, bool &ok, int &processed,
     // We have to catch NaN before because we need NaN as marker for "garbage" in the
     // libdouble-conversion case and, in contrast to libdouble-conversion or sscanf, we don't allow
     // "-nan" or "+nan"
-    if (qstrcmp(num, "nan") == 0) {
+    if (string_equals("nan", num, numLen)) {
         processed = 3;
         return qt_qnan();
-    } else if ((num[0] == '-' || num[0] == '+') && qstrcmp(num + 1, "nan") == 0) {
+    } else if (string_equals("+nan", num, numLen) || string_equals("-nan", num, numLen)) {
         processed = 0;
         ok = false;
         return 0.0;
@@ -303,13 +308,13 @@ double qt_asciiToDouble(const char *num, int numLen, bool &ok, int &processed,
 
     // Infinity values are implementation defined in the sscanf case. In the libdouble-conversion
     // case we need infinity as overflow marker.
-    if (qstrcmp(num, "+inf") == 0) {
+    if (string_equals("+inf", num, numLen)) {
         processed = 4;
         return qt_inf();
-    } else if (qstrcmp(num, "inf") == 0) {
+    } else if (string_equals("inf", num, numLen)) {
         processed = 3;
         return qt_inf();
-    } else if (qstrcmp(num, "-inf") == 0) {
+    } else if (string_equals("-inf", num, numLen)) {
         processed = 4;
         return -qt_inf();
     }
@@ -324,7 +329,14 @@ double qt_asciiToDouble(const char *num, int numLen, bool &ok, int &processed,
                 | double_conversion::StringToDoubleConverter::ALLOW_TRAILING_SPACES;
     }
     double_conversion::StringToDoubleConverter conv(conv_flags, 0.0, qt_qnan(), nullptr, nullptr);
-    d = conv.StringToDouble(num, numLen, &processed);
+    if (int(numLen) != numLen) {
+        // a number over 2 GB in length is silly, just assume it isn't valid
+        ok = false;
+        processed = 0;
+        return 0.0;
+    } else {
+        d = conv.StringToDouble(num, numLen, &processed);
+    }
 
     if (!qIsFinite(d)) {
         ok = false;
@@ -338,8 +350,22 @@ double qt_asciiToDouble(const char *num, int numLen, bool &ok, int &processed,
         }
     }
 #else
-    if (qDoubleSscanf(num, QT_CLOCALE, "%lf%n", &d, &processed) < 1)
+    // need to ensure that our input is null-terminated for sscanf
+    // (this is a QVarLengthArray<char, 128> but this code here is too low-level for QVLA)
+    char reasonableBuffer[128];
+    char *buffer;
+    if (numLen < qsizetype(sizeof(reasonableBuffer)) - 1)
+        buffer = reasonableBuffer;
+    else
+        buffer = static_cast<char *>(malloc(numLen + 1));
+    memcpy(buffer, num, numLen);
+    buffer[numLen] = '\0';
+
+    if (qDoubleSscanf(buffer, QT_CLOCALE, "%lf%n", &d, &processed) < 1)
         processed = 0;
+
+    if (buffer != reasonableBuffer)
+        free(buffer);
 
     if ((strayCharMode == TrailingJunkProhibited && processed != numLen) || qIsNaN(d)) {
         // Implementation defined nan symbol or garbage found. We don't accept it.
@@ -468,19 +494,12 @@ QString qulltoa(qulonglong number, int base, const QStringView zero)
     return QString(reinterpret_cast<QChar *>(p), end - p);
 }
 
-double qstrtod(const char *s00, const char **se, bool *ok)
-{
-    const int len = static_cast<int>(strlen(s00));
-    Q_ASSERT(len >= 0);
-    return qstrntod(s00, len, se, ok);
-}
-
 /*!
   \internal
 
   Converts the initial portion of the string pointed to by \a s00 to a double, using the 'C' locale.
  */
-double qstrntod(const char *s00, int len, const char **se, bool *ok)
+double qstrntod(const char *s00, qsizetype len, const char **se, bool *ok)
 {
     int processed = 0;
     bool nonNullOk = false;

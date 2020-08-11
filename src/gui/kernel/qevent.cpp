@@ -50,6 +50,7 @@
 #include "qmimedata.h"
 #include "qevent_p.h"
 #include "qmath.h"
+#include "qloggingcategory.h"
 
 #if QT_CONFIG(draganddrop)
 #include <qpa/qplatformdrag.h>
@@ -59,6 +60,18 @@
 #include <private/qdebug_p.h>
 
 QT_BEGIN_NAMESPACE
+
+Q_LOGGING_CATEGORY(lcPointerGrab, "qt.pointer.grab")
+
+static const QString pointDeviceName(const QEventPoint *point)
+{
+    if (!point->event())
+        return {};
+    auto device = point->event()->device();
+    QString deviceName = (device ? device->name() : QLatin1String("null device"));
+    deviceName.resize(16, u' '); // shorten, and align in case of sequential output
+    return deviceName;
+}
 
 /*!
     \class QEnterEvent
@@ -262,6 +275,12 @@ void QEventPoint::setAccepted(bool accepted)
 */
 void QEventPoint::setExclusiveGrabber(QObject *exclusiveGrabber)
 {
+    if (m_exclusiveGrabber == exclusiveGrabber)
+        return;
+    if (Q_UNLIKELY(lcPointerGrab().isDebugEnabled())) {
+        qCDebug(lcPointerGrab) << pointDeviceName(this) << "point" << Qt::hex << m_pointId << m_state << "@" << m_scenePos
+                               << ": grab" << m_exclusiveGrabber << "->" << exclusiveGrabber;
+    }
     m_exclusiveGrabber = exclusiveGrabber;
     m_globalGrabPos = m_globalPos;
 }
@@ -276,10 +295,18 @@ void QEventPoint::setExclusiveGrabber(QObject *exclusiveGrabber)
 void QEventPoint::setPassiveGrabbers(const QList<QPointer<QObject> > &grabbers)
 {
     m_passiveGrabbers = grabbers;
+    if (Q_UNLIKELY(lcPointerGrab().isDebugEnabled())) {
+        qCDebug(lcPointerGrab) << pointDeviceName(this) << "point" << Qt::hex << m_pointId << m_state
+                               << ": grab (passive)" << grabbers;
+    }
 }
 
 void QEventPoint::clearPassiveGrabbers()
 {
+    if (Q_UNLIKELY(lcPointerGrab().isDebugEnabled())) {
+        qCDebug(lcPointerGrab) << pointDeviceName(this) << "point" << Qt::hex << m_pointId << m_state
+                               << ": clearing" << m_passiveGrabbers;
+    }
     m_passiveGrabbers.clear();
 }
 
@@ -359,6 +386,30 @@ QSinglePointEvent::QSinglePointEvent(QEvent::Type type, const QPointingDevice *d
     mut.setPosition(localPos);
     mut.setScenePosition(scenePos);
     mut.setGlobalPosition(globalPos);
+}
+
+/*!
+    Returns true if this event represents a \l {button()}{button} being pressed.
+*/
+bool QSinglePointEvent::isPressEvent() const
+{
+    return m_button != Qt::NoButton && m_mouseState.testFlag(m_button);
+}
+
+/*!
+    Returns true if this event does not include a change in \l {buttons()}{button state}.
+*/
+bool QSinglePointEvent::isUpdateEvent() const
+{
+    return m_button == Qt::NoButton;
+}
+
+/*!
+    Returns true if this event represents a \l {button()}{button} being released.
+*/
+bool QSinglePointEvent::isReleaseEvent() const
+{
+    return m_button != Qt::NoButton && !m_mouseState.testFlag(m_button);
 }
 
 /*!
@@ -4224,6 +4275,32 @@ QTouchEvent::QTouchEvent(QEvent::Type eventType,
 QTouchEvent::~QTouchEvent()
 { }
 
+/*!
+    Returns true if this event includes at least one newly-pressed touchpoint.
+*/
+bool QTouchEvent::isPressEvent() const
+{
+    return m_touchPointStates.testFlag(QEventPoint::State::Pressed);
+}
+
+/*!
+    Returns true if this event does not include newly-pressed or newly-released
+    touchpoints.
+*/
+bool QTouchEvent::isUpdateEvent() const
+{
+    return !m_touchPointStates.testFlag(QEventPoint::State::Pressed) &&
+           !m_touchPointStates.testFlag(QEventPoint::State::Released);
+}
+
+/*!
+    Returns true if this event includes at least one newly-released touchpoint.
+*/
+bool QTouchEvent::isReleaseEvent() const
+{
+    return m_touchPointStates.testFlag(QEventPoint::State::Released);
+}
+
 /*! \fn QObject *QTouchEvent::target() const
 
     Returns the target object within the window on which the event occurred.
@@ -4260,10 +4337,13 @@ QTouchEvent::~QTouchEvent()
     Returns the unique ID of this touch point or token, if any.
 
     It is often invalid (see \l {QPointingDeviceUniqueId::isValid()} {isValid()}),
-    because touchscreens cannot uniquely identify fingers. But when the
-    \l {TouchPoint::InfoFlag} {Token} flag is set, it is expected to uniquely
-    identify a specific token (fiducial object). When it comes from a QTabletEvent,
-    it identifies the serial number of the stylus in use.
+    because touchscreens cannot uniquely identify fingers.
+
+    When it comes from a QTabletEvent, it identifies the serial number of the
+    stylus in use.
+
+    It may identify a specific token (fiducial object) when the TUIO driver is
+    in use with a touchscreen that supports them.
 
     \sa flags
 */

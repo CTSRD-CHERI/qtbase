@@ -31,8 +31,6 @@
 #include <QtWidgets>
 #include <private/qstylehelper_p.h>
 
-const int N = 1;
-
 Q_DECLARE_METATYPE(QStyleHelper::WidgetSizePolicy);
 
 #define CT(E) \
@@ -40,22 +38,13 @@ Q_DECLARE_METATYPE(QStyleHelper::WidgetSizePolicy);
 
 typedef QSizePolicy::ControlType ControlType;
 
-CT(DefaultType)
 CT(ButtonBox)
 CT(CheckBox)
 CT(ComboBox)
-CT(Frame)
-CT(GroupBox)
 CT(Label)
-CT(Line)
 CT(LineEdit)
 CT(PushButton)
 CT(RadioButton)
-CT(Slider)
-CT(SpinBox)
-CT(TabWidget)
-CT(ToolButton)
-
 
 class tst_QMacStyle : public QObject
 {
@@ -306,6 +295,8 @@ QSize tst_QMacStyle::gap(QWidget *widget1, QWidget *widget2)
 void tst_QMacStyle::setSize(QWidget *widget, QStyleHelper::WidgetSizePolicy size)
 {
     switch (size) {
+    case QStyleHelper::SizeDefault:
+        break;
     case QStyleHelper::SizeLarge:
         widget->setAttribute(Qt::WA_MacNormalSize, true);
         break;

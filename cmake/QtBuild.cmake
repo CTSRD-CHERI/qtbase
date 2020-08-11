@@ -949,7 +949,9 @@ QT.${config_module_name}_private.disabled_features = ${disabled_private_features
         ${CMAKE_STATIC_LIBRARY_SUFFIX})
     add_custom_command(
         OUTPUT "${private_pri_file_path}"
-        DEPENDS ${inputs} "${QT_CMAKE_DIR}/QtGenerateLibPri.cmake"
+        DEPENDS ${inputs}
+                "${QT_CMAKE_DIR}/QtGenerateLibPri.cmake"
+                "${QT_CMAKE_DIR}/QtGenerateLibHelpers.cmake"
         COMMAND ${CMAKE_COMMAND} "-DIN_FILES=${inputs}" "-DOUT_FILE=${private_pri_file_path}"
                 "-DLIBRARY_PREFIXES=${library_prefixes}"
                 "-DLIBRARY_SUFFIXES=${library_suffixes}"
@@ -1393,7 +1395,9 @@ CONFIG += ${private_config_joined}
         ${CMAKE_STATIC_LIBRARY_SUFFIX})
     add_custom_command(
         OUTPUT "${qmodule_pri_target_path}"
-        DEPENDS ${inputs} "${QT_CMAKE_DIR}/QtGenerateLibPri.cmake"
+        DEPENDS ${inputs}
+                "${QT_CMAKE_DIR}/QtGenerateLibPri.cmake"
+                "${QT_CMAKE_DIR}/QtGenerateLibHelpers.cmake"
         COMMAND ${CMAKE_COMMAND} "-DIN_FILES=${inputs}" "-DOUT_FILE=${qmodule_pri_target_path}"
                 "-DLIBRARY_PREFIXES=${library_prefixes}"
                 "-DLIBRARY_SUFFIXES=${library_suffixes}"
@@ -1598,17 +1602,26 @@ function(qt_create_nolink_target target dependee_target)
     if(NOT TARGET "${nolink_target}")
         add_library("${nolink_target}" INTERFACE)
         set(prefixed_nolink_target "${target}_nolink")
-        set_target_properties("${nolink_target}" PROPERTIES
-                              INTERFACE_INCLUDE_DIRECTORIES
-                              $<TARGET_PROPERTY:${target},INTERFACE_INCLUDE_DIRECTORIES>
-                              INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
-                              $<TARGET_PROPERTY:${target},INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>
-                              INTERFACE_COMPILE_DEFINITIONS
-                              $<TARGET_PROPERTY:${target},INTERFACE_COMPILE_DEFINITIONS>
-                              INTERFACE_COMPILE_OPTIONS
-                              $<TARGET_PROPERTY:${target},INTERFACE_COMPILE_OPTIONS>
-                              INTERFACE_COMPILE_FEATURES
-                              $<TARGET_PROPERTY:${target},INTERFACE_COMPILE_FEATURES>)
+
+        # Whe configuring an example with qmake, if QtGui is built with Vulkan support but the
+        # user's machine where Qt is installed doesn't have Vulkan, qmake doesn't fail saying
+        # that vulkan is not installed. Instead it silently configures and just doesn't add
+        # the include headers.
+        # To mimic that in CMake, if the Vulkan CMake package is not found, we shouldn't fail
+        # at generation time saying that the Vulkan target does not exist. Instead check with a
+        # genex that the target exists to query the properties, otherwise just silently continue.
+        # FIXME: If we figure out that such behavior should only be applied to Vulkan, and not the
+        # other _nolink targets, we'll have to modify this to be configurable.
+        set(target_exists_genex "$<TARGET_EXISTS:${target}>")
+        set(props_to_set INTERFACE_INCLUDE_DIRECTORIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
+                         INTERFACE_COMPILE_DEFINITIONS INTERFACE_COMPILE_OPTIONS
+                         INTERFACE_COMPILE_FEATURES)
+        foreach(prop ${props_to_set})
+            set_target_properties(
+                "${nolink_target}" PROPERTIES
+                ${prop} $<${target_exists_genex}:$<TARGET_PROPERTY:${target},${prop}>>
+                )
+        endforeach()
 
         add_library(${prefixed_nolink_target} ALIAS ${nolink_target})
         add_library("${INSTALL_CMAKE_NAMESPACE}::${nolink_target}" ALIAS ${nolink_target})
@@ -1830,8 +1843,8 @@ function(qt_internal_module_info result target)
     string(REPLACE "." "_" define "${define}")
     set("${result}_upper" "${upper}" PARENT_SCOPE)
     set("${result}_lower" "${lower}" PARENT_SCOPE)
-    set("${result}_repo_include_dir" "${QT_BUILD_DIR}/${INSTALL_INCLUDEDIR}" PARENT_SCOPE)
-    set("${result}_include_dir" "${QT_BUILD_DIR}/${INSTALL_INCLUDEDIR}/${module}" PARENT_SCOPE)
+    set("${result}_repo_include_dir" "${QT_BUILD_DIR}/include" PARENT_SCOPE)
+    set("${result}_include_dir" "${QT_BUILD_DIR}/include/${module}" PARENT_SCOPE)
     set("${result}_define" "${define}" PARENT_SCOPE)
 endfunction()
 
@@ -2171,7 +2184,7 @@ function(qt_install_injections target build_dir install_dir)
         # ${qtbase_build_dir}.
         #
         # In the code below, ${some_prefix} == ${build_dir}.
-        set(lower_case_forwarding_header_path "${build_dir}/${INSTALL_INCLUDEDIR}/${module}")
+        set(lower_case_forwarding_header_path "${build_dir}/include/${module}")
         if(destinationdir)
             string(APPEND lower_case_forwarding_header_path "/${destinationdir}")
         endif()
@@ -2206,7 +2219,7 @@ function(qt_install_injections target build_dir install_dir)
 
         # Generate UpperCaseNamed forwarding headers (part 3).
         foreach(fwd_hdr ${fwd_hdrs})
-            set(upper_case_forwarding_header_path "${INSTALL_INCLUDEDIR}/${module}")
+            set(upper_case_forwarding_header_path "include/${module}")
             if(destinationdir)
                 string(APPEND upper_case_forwarding_header_path "/${destinationdir}")
             endif()
@@ -2221,8 +2234,7 @@ function(qt_install_injections target build_dir install_dir)
                     "${build_dir}/${upper_case_forwarding_header_path}/${fwd_hdr}")
             else()
                 # Install the forwarding header.
-                qt_path_join(install_destination
-                            ${install_dir} ${upper_case_forwarding_header_path})
+                qt_path_join(install_destination "${install_dir}" "${INSTALL_INCLUDEDIR}" ${module})
                 qt_install(FILES "${build_dir}/${upper_case_forwarding_header_path}/${fwd_hdr}"
                         DESTINATION ${install_destination} OPTIONAL)
             endif()
@@ -2494,6 +2506,8 @@ function(qt_watch_current_list_dir variable access value current_list_file stack
                     qt_finalize_module(${a1} ${a2} ${a3} ${a4} ${a5} ${a6} ${a7} ${a8} ${a9})
                 elseif(func STREQUAL "qt_finalize_plugin")
                     qt_finalize_plugin(${a1} ${a2} ${a3} ${a4} ${a5} ${a6} ${a7} ${a8} ${a9})
+                elseif(func STREQUAL "qt_internal_finalize_app")
+                    qt_internal_finalize_app(${a1} ${a2} ${a3} ${a4} ${a5} ${a6} ${a7} ${a8} ${a9})
                 else()
                     message(FATAL_ERROR "qt_watch_current_list_dir doesn't know about ${func}. Consider adding it.")
                 endif()
@@ -2558,6 +2572,32 @@ function(qt_set_target_info_properties target)
         QT_TARGET_DESCRIPTION "${arg_TARGET_DESCRIPTION}"
         QT_TARGET_COPYRIGHT "${arg_TARGET_COPYRIGHT}"
         QT_TARGET_PRODUCT_NAME "${arg_TARGET_PRODUCT}")
+endfunction()
+
+# Uses the QT_DELAYED_TARGET_* property values to set the final QT_TARGET_* properties.
+# Needed when doing executable finalization at the end of a subdirectory scope
+# (aka scope finalization).
+function(qt_internal_set_target_info_properties_from_delayed_properties target)
+    set(args "")
+    foreach(prop ${__default_target_info_args})
+        get_target_property(prop_value "${target}" "QT_DELAYED_${prop}")
+        list(APPEND args "${prop}" "${prop_value}")
+    endforeach()
+    qt_set_target_info_properties(${target} ${args})
+endfunction()
+
+# Updates the QT_DELAYED_ properties with values from the QT_ variants, in case if they were
+# set in-between a qt_add_* call and before scope finalization.
+function(qt_internal_update_delayed_target_info_properties target)
+    foreach(prop ${__default_target_info_args})
+        get_target_property(prop_value "${target}" "QT_${prop}")
+        get_target_property(delayed_prop_value ${target} "QT_DELAYED_${prop}")
+        set(final_value "${delayed_prop_value}")
+        if(prop_value)
+            set(final_value "${prop_value}")
+        endif()
+        set_target_properties(${target} PROPERTIES "QT_DELAYED_${prop}" "${final_value}")
+    endforeach()
 endfunction()
 
 # This is the main entry function for creating a Qt module, that typically
@@ -2645,6 +2685,7 @@ function(qt_add_module target)
     endif()
     qt_internal_add_target_aliases("${target}")
     qt_skip_warnings_are_errors_when_repo_unclean("${target}")
+    _qt_internal_apply_strict_cpp("${target}")
 
     # Add _private target to link against the private headers:
     if(NOT ${arg_NO_PRIVATE_MODULE})
@@ -2740,7 +2781,7 @@ function(qt_add_module target)
         set_target_properties("${target}" PROPERTIES INTERFACE_MODULE_HAS_HEADERS ON)
 
         ### FIXME: Can we replace headers.pri?
-        set(module_include_dir "${QT_BUILD_DIR}/${INSTALL_INCLUDEDIR}/${module_include_name}")
+        set(module_include_dir "${QT_BUILD_DIR}/include/${module_include_name}")
         qt_read_headers_pri("${module_include_dir}" "module_headers")
         set(module_depends_header "${module_include_dir}/${module}Depends")
         if(is_framework)
@@ -3206,6 +3247,12 @@ function(qt_internal_walk_libs target out_var dict_name operation)
                     lib "${lib}")
             endwhile()
 
+            # Skip static plugins.
+            set(_is_plugin_marker_genex "\\$<BOOL:QT_IS_PLUGIN_GENEX>")
+            if(lib MATCHES "${_is_plugin_marker_genex}")
+                continue()
+            endif()
+
             if(lib MATCHES "^\\$<TARGET_OBJECTS:")
                 # Skip object files.
                 continue()
@@ -3215,7 +3262,12 @@ function(qt_internal_walk_libs target out_var dict_name operation)
                 set(lib_target ${lib})
             endif()
 
-            if(TARGET ${lib_target})
+            # Skip CMAKE_DIRECTORY_ID_SEP. If a target_link_libraries is applied to a target
+            # that was defined in a different scope, CMake appends and prepends a special directory
+            # id separator. Filter those out.
+            if(lib_target MATCHES "^::@")
+                continue()
+            elseif(TARGET ${lib_target})
                 if ("${lib_target}" MATCHES "^Qt::(.*)")
                     # If both, Qt::Foo and Foo targets exist, prefer the target name without
                     # namespace. Which one is preferred doesn't really matter. This code exists to
@@ -3284,12 +3336,11 @@ function(qt_generate_prl_file target install_dir)
         unset(rcc_objects)
     endif()
 
-    unset(prl_libs)
-    qt_collect_libs(${target} prl_libs)
-
     unset(prl_config)
+    set(is_static FALSE)
     if(target_type STREQUAL "STATIC_LIBRARY")
         list(APPEND prl_config static)
+        set(is_static TRUE)
     elseif(target_type STREQUAL "SHARED_LIBRARY")
         list(APPEND prl_config shared)
     endif()
@@ -3304,60 +3355,125 @@ function(qt_generate_prl_file target install_dir)
     # Generate a preliminary .prl file that contains absolute paths to all libraries
     if(MINGW)
         # For MinGW, qmake doesn't have a lib prefix in prl files.
-        set(prefix_for_prl_name "")
+        set(prefix_for_final_prl_name "")
     else()
-        set(prefix_for_prl_name "$<TARGET_FILE_PREFIX:${target}>")
+        set(prefix_for_final_prl_name "$<TARGET_FILE_PREFIX:${target}>")
     endif()
 
     # For frameworks, the prl file should be placed under the Resources subdir.
     get_target_property(is_framework ${target} FRAMEWORK)
     if(is_framework)
         get_target_property(fw_version ${target} FRAMEWORK_VERSION)
-        string(APPEND prefix_for_prl_name "Versions/${fw_version}/Resources/")
+        string(APPEND prefix_for_final_prl_name "Versions/${fw_version}/Resources/")
     endif()
 
-    set(prl_file_name "${prefix_for_prl_name}$<TARGET_FILE_BASE_NAME:${target}>.prl")
-    file(GENERATE
-        OUTPUT "${prl_file_name}"
-        CONTENT
+    # What follows is a complicated setup for generating configuration-specific
+    # prl files. It has to be this way, because add_custom_command doesn't support
+    # generator expressions in OUTPUT or DEPENDS.
+    # To circumvent that, we create well known file names with file(GENERATE)
+    # with configuration specific content, which are then fed to add_custom_command
+    # that uses these genex-less file names. The actual command will extract the info
+    # from the configuration-specific files, and create a properly named final prl file.
+
+    # The file is named according to a pattern, that is then used in the
+    # add_custom_command.
+    set(prl_step1_name_prefix "preliminary_prl_for_${target}_step1_")
+    set(prl_step1_name_suffix ".prl" )
+    qt_path_join(prl_step1_path
+                 "${CMAKE_CURRENT_BINARY_DIR}"
+                 "${prl_step1_name_prefix}$<CONFIG>${prl_step1_name_suffix}")
+
+    # Same, except instead of containing the prl contents, it will contain the final prl file
+    # name computed via a generator expression.
+    set(prl_meta_info_name_prefix "preliminary_prl_meta_info_for_${target}_")
+    set(prl_meta_info_name_suffix ".txt")
+    qt_path_join(prl_meta_info_path
+                 "${CMAKE_CURRENT_BINARY_DIR}"
+                 "${prl_meta_info_name_prefix}$<CONFIG>${prl_meta_info_name_suffix}")
+
+    # The final prl file name that will be embedded in the file above.
+    set(final_prl_file_name "${prefix_for_final_prl_name}$<TARGET_FILE_BASE_NAME:${target}>.prl")
+    qt_path_join(final_prl_file_path "${QT_BUILD_DIR}/${install_dir}" "${final_prl_file_name}")
+
+    # Generate the prl content and its final file name into configuration specific files
+    # whose names we know, and can be used in add_custom_command.
+    set(prl_step1_content
         "RCC_OBJECTS = ${rcc_objects}
 QMAKE_PRL_BUILD_DIR = ${CMAKE_CURRENT_BINARY_DIR}
 QMAKE_PRL_TARGET = $<TARGET_FILE_NAME:${target}>
 QMAKE_PRL_CONFIG = ${prl_config}
 QMAKE_PRL_VERSION = ${PROJECT_VERSION}
-QMAKE_PRL_LIBS_FOR_CMAKE = ${prl_libs}
-"
-    )
+")
+    if(NOT is_static AND WIN32)
+        # Do nothing. Prl files for shared libraries on Windows shouldn't have the libs listed,
+        # as per qt_build_config.prf and the conditional CONFIG+=explicitlib assignment.
+    else()
+        set(prl_libs "")
+        qt_collect_libs(${target} prl_libs)
+        string(APPEND prl_step1_content "QMAKE_PRL_LIBS_FOR_CMAKE = ${prl_libs}\n")
+    endif()
 
-    # Add a custom command that prepares the .prl file for installation
-    qt_path_join(final_prl_file_path "${QT_BUILD_DIR}/${install_dir}" "${prl_file_name}")
-    qt_path_join(fake_dependency_prl_file_path
-                 "${CMAKE_CURRENT_BINARY_DIR}" "fake_dep_prl_for_${target}.prl")
-    set(library_suffixes ${CMAKE_SHARED_LIBRARY_SUFFIX} ${CMAKE_STATIC_LIBRARY_SUFFIX})
-    add_custom_command(
-        OUTPUT "${fake_dependency_prl_file_path}"
-        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${prl_file_name}"
-                "${QT_CMAKE_DIR}/QtFinishPrlFile.cmake"
-        COMMAND ${CMAKE_COMMAND} "-DIN_FILE=${prl_file_name}"
-                "-DOUT_FILE=${fake_dependency_prl_file_path}"
-                "-DLIBRARY_SUFFIXES=${library_suffixes}"
-                "-DQT_BUILD_LIBDIR=${QT_BUILD_DIR}/${INSTALL_LIBDIR}"
-                -P "${QT_CMAKE_DIR}/QtFinishPrlFile.cmake"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${fake_dependency_prl_file_path}"
-            "${final_prl_file_path}"
-        VERBATIM
-        COMMENT "Generating prl file for target ${target}"
-        )
+    file(GENERATE
+        OUTPUT "${prl_step1_path}"
+        CONTENT "${prl_step1_content}")
+    file(GENERATE
+         OUTPUT "${prl_meta_info_path}"
+         CONTENT
+         "FINAL_PRL_FILE_PATH = ${final_prl_file_path}")
 
-    # Tell the target to depend on the fake dependency prl file, to ensure the custom command
-    # is executed. As a side-effect, this will also create the final_prl_file_path that uses
-    # generator expressions. It should not be specified as a BYPRODUCT.
-    # This allows proper per-file dependency tracking, without having to resort on a POST_BUILD
-    # step, which means that relinking would happen as well as transitive rebuilding of any
-    # dependees.
-    # This is inspired by https://gitlab.kitware.com/cmake/cmake/-/issues/20842
-    target_sources(${target} PRIVATE "${fake_dependency_prl_file_path}")
+    set(library_prefixes ${CMAKE_SHARED_LIBRARY_PREFIX} ${CMAKE_STATIC_LIBRARY_PREFIX})
+    set(library_suffixes
+        ${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${CMAKE_EXTRA_SHARED_LIBRARY_SUFFIXES}
+        ${CMAKE_STATIC_LIBRARY_SUFFIX})
+
+    if(QT_GENERATOR_IS_MULTI_CONFIG)
+        set(configs ${CMAKE_CONFIGURATION_TYPES})
+    else()
+        set(configs ${CMAKE_BUILD_TYPE})
+    endif()
+
+    foreach(config ${configs})
+        # Output file for dependency tracking, and which will contain the final content.
+        qt_path_join(prl_step2_path
+                     "${CMAKE_CURRENT_BINARY_DIR}" "preliminary_prl_for_${target}_step2_${config}.prl")
+
+        # Input dependency names that are constructed for each config manually
+        # (no genexes allowed).
+        qt_path_join(prl_step1_path
+                     "${CMAKE_CURRENT_BINARY_DIR}"
+                     "${prl_step1_name_prefix}${config}${prl_step1_name_suffix}")
+        qt_path_join(prl_meta_info_path
+                     "${CMAKE_CURRENT_BINARY_DIR}"
+                     "${prl_meta_info_name_prefix}${config}${prl_meta_info_name_suffix}")
+        add_custom_command(
+            OUTPUT  "${prl_step2_path}"
+            DEPENDS "${prl_step1_path}"
+                    "${prl_meta_info_path}"
+                    "${QT_CMAKE_DIR}/QtFinishPrlFile.cmake"
+                    "${QT_CMAKE_DIR}/QtGenerateLibHelpers.cmake"
+            COMMAND ${CMAKE_COMMAND}
+                    "-DIN_FILE=${prl_step1_path}"
+                    "-DIN_META_FILE=${prl_meta_info_path}"
+                    "-DOUT_FILE=${prl_step2_path}"
+                    "-DLIBRARY_PREFIXES=${library_prefixes}"
+                    "-DLIBRARY_SUFFIXES=${library_suffixes}"
+                    "-DLINK_LIBRARY_FLAG=${CMAKE_LINK_LIBRARY_FLAG}"
+                    "-DQT_BUILD_LIBDIR=${QT_BUILD_DIR}/${INSTALL_LIBDIR}"
+                    -P "${QT_CMAKE_DIR}/QtFinishPrlFile.cmake"
+            VERBATIM
+            COMMENT "Generating prl file for target ${target}"
+            )
+
+        # Tell the target to depend on the preliminary prl file, to ensure the custom command
+        # is executed. As a side-effect, this will also create the final prl file that
+        # is named appropriately. It should not be specified as a BYPRODUCT.
+        # This allows proper per-file dependency tracking, without having to resort on a POST_BUILD
+        # step, which means that relinking would happen as well as transitive rebuilding of any
+        # dependees.
+        # This is inspired by https://gitlab.kitware.com/cmake/cmake/-/issues/20842
+        target_sources(${target} PRIVATE "${prl_step2_path}")
+    endforeach()
 
     # Installation of the .prl file happens globally elsewhere,
     # because we have no clue here what the actual file name is.
@@ -3659,6 +3775,7 @@ function(qt_internal_add_plugin target)
     endif()
     qt_internal_add_target_aliases("${target}")
     qt_skip_warnings_are_errors_when_repo_unclean("${target}")
+    _qt_internal_apply_strict_cpp("${target}")
 
     # Disable linking of plugins against other plugins during static regular and
     # super builds. The latter causes cyclic dependencies otherwise.
@@ -3905,7 +4022,7 @@ endfunction()
 # Collection of qt_add_executable arguments so they can be shared across qt_add_executable
 # and qt_add_test_helper.
 set(__qt_add_executable_optional_args
-    "GUI;BOOTSTRAP;NO_QT;NO_INSTALL;EXCEPTIONS"
+    "GUI;BOOTSTRAP;NO_QT;NO_INSTALL;EXCEPTIONS;DELAY_RC;DELAY_TARGET_INFO"
 )
 set(__qt_add_executable_single_args
     "OUTPUT_DIRECTORY;INSTALL_DIRECTORY;VERSION"
@@ -3966,15 +4083,27 @@ function(qt_add_executable name)
         endif()
     endif()
 
-    if("${arg_TARGET_DESCRIPTION}" STREQUAL "")
-        set(arg_TARGET_DESCRIPTION "Qt ${name}")
+    if(arg_DELAY_TARGET_INFO)
+        # Delay the setting of target info properties if requested. Needed for scope finalization
+        # of Qt apps.
+        set_target_properties("${name}" PROPERTIES
+            QT_DELAYED_TARGET_VERSION "${arg_VERSION}"
+            QT_DELAYED_TARGET_PRODUCT "${arg_TARGET_PRODUCT}"
+            QT_DELAYED_TARGET_DESCRIPTION "${arg_TARGET_DESCRIPTION}"
+            QT_DELAYED_TARGET_COMPANY "${arg_TARGET_COMPANY}"
+            QT_DELAYED_TARGET_COPYRIGHT "${arg_TARGET_COPYRIGHT}"
+            )
+    else()
+        if("${arg_TARGET_DESCRIPTION}" STREQUAL "")
+            set(arg_TARGET_DESCRIPTION "Qt ${name}")
+        endif()
+        qt_set_target_info_properties(${name} ${ARGN}
+            TARGET_DESCRIPTION "${arg_TARGET_DESCRIPTION}"
+            TARGET_VERSION "${arg_VERSION}")
     endif()
 
-    qt_set_target_info_properties(${name} ${ARGN}
-        TARGET_DESCRIPTION "${arg_TARGET_DESCRIPTION}"
-        TARGET_VERSION "${arg_VERSION}")
 
-    if (WIN32)
+    if (WIN32 AND NOT arg_DELAY_RC)
         qt6_generate_win32_rc_file(${name})
     endif()
 
@@ -4134,7 +4263,7 @@ endfunction()
 # This function creates a CMake test target with the specified name for use with CTest.
 function(qt_add_test name)
     qt_parse_all_arguments(arg "qt_add_test"
-        "RUN_SERIAL;EXCEPTIONS;GUI;QMLTEST;CATCH"
+        "RUN_SERIAL;EXCEPTIONS;GUI;QMLTEST;CATCH;LOWDPI"
         "OUTPUT_DIRECTORY;WORKING_DIRECTORY;TIMEOUT;VERSION"
         "QML_IMPORTPATH;TESTDATA;${__default_private_args};${__default_public_args}" ${ARGN}
     )
@@ -4160,7 +4289,7 @@ function(qt_add_test name)
         set(private_includes
             "${CMAKE_CURRENT_SOURCE_DIR}"
             "${CMAKE_CURRENT_BINARY_DIR}"
-            "$<BUILD_INTERFACE:${QT_BUILD_DIR}/${INSTALL_INCLUDEDIR}>"
+            "$<BUILD_INTERFACE:${QT_BUILD_DIR}/include>"
              ${arg_INCLUDE_DIRECTORIES}
         )
 
@@ -4218,6 +4347,14 @@ function(qt_add_test name)
     # Generate a label in the form tests/auto/foo/bar/tst_baz
     # and use it also for XML output
     file(RELATIVE_PATH label "${PROJECT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${name}")
+
+    if (arg_LOWDPI)
+        target_compile_definitions("${name}" PUBLIC TESTCASE_LOWDPI)
+        if (MACOS)
+            set_property(TARGET "${name}" PROPERTY MACOSX_BUNDLE_INFO_PLIST "${QT_MKSPECS_DIR}/macx-clang/Info.plist.disable_highdpi")
+            set_property(TARGET "${name}" PROPERTY PROPERTY MACOSX_BUNDLE TRUE)
+        endif()
+    endif()
 
     if (ANDROID)
         qt_android_add_test("${name}")
@@ -4529,6 +4666,7 @@ function(qt_add_3rdparty_library target)
 
     qt_internal_add_qt_repo_known_module(${target})
     qt_internal_add_target_aliases(${target})
+    _qt_internal_apply_strict_cpp(${target})
 
     if (ANDROID)
         qt_android_apply_arch_suffix("${target}")
@@ -4845,6 +4983,12 @@ function(qt_add_tool target_name)
         TARGET_COPYRIGHT "${arg_TARGET_COPYRIGHT}"
     )
     qt_internal_add_target_aliases("${target_name}")
+    _qt_internal_apply_strict_cpp("${target_name}")
+
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.19.0" AND QT_FEATURE_debug_and_release)
+        set_property(TARGET "${target_name}"
+            PROPERTY EXCLUDE_FROM_ALL "$<NOT:$<CONFIG:${QT_MULTI_CONFIG_FIRST_CONFIG}>>")
+    endif()
 
     if (NOT target_name STREQUAL name)
         set_target_properties(${target_name} PROPERTIES
@@ -5961,6 +6105,8 @@ function(qt_internal_apply_win_prefix_and_suffix target)
         endif()
     endif()
 endfunction()
+
+include(QtApp)
 
 # Compatibility macros that should be removed once all their usages are removed.
 function(extend_target)

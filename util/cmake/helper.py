@@ -168,7 +168,6 @@ _qt_library_map = [
         "gsttools", "Qt6", "Qt::MultimediaGstTools", extra=["COMPONENTS", "MultimediaGstTools"]
     ),
     LibraryMapping("gui", "Qt6", "Qt::Gui", extra=["COMPONENTS", "Gui"]),
-    LibraryMapping("platformheaders", "Qt6", "Qt::PlatformHeaders", extra=["COMPONENTS", "PlatformHeaders"]),
     LibraryMapping("help", "Qt6", "Qt::Help", extra=["COMPONENTS", "Help"]),
     LibraryMapping(
         "hunspellinputmethod",
@@ -219,7 +218,9 @@ _qt_library_map = [
     LibraryMapping("nfc", "Qt6", "Qt::Nfc", extra=["COMPONENTS", "Nfc"]),
     LibraryMapping("oauth", "Qt6", "Qt::NetworkAuth", extra=["COMPONENTS", "NetworkAuth"]),
     LibraryMapping("opcua", "Qt6", "Qt::OpcUa", extra=["COMPONENTS", "OpcUa"]),
-    LibraryMapping("opcua_private", "Qt6", "Qt::OpcUaPrivate", extra=["COMPONENTS", "OpcUaPrivate"]),
+    LibraryMapping(
+        "opcua_private", "Qt6", "Qt::OpcUaPrivate", extra=["COMPONENTS", "OpcUaPrivate"]
+    ),
     LibraryMapping("opengl", "Qt6", "Qt::OpenGL", extra=["COMPONENTS", "OpenGL"]),
     LibraryMapping(
         "openglwidgets", "Qt6", "Qt::OpenGLWidgets", extra=["COMPONENTS", "OpenGLWidgets"]
@@ -362,12 +363,8 @@ _qt_library_map = [
         "webkitwidgets", "Qt6", "Qt::WebKitWidgets", extra=["COMPONENTS", "WebKitWidgets"]
     ),
     LibraryMapping("zlib", "Qt6", "Qt::Zlib", extra=["COMPONENTS", "Zlib"]),
-    LibraryMapping(
-        "httpserver", "Qt6", "Qt::HttpServer", extra=["COMPONENTS", "HttpServer"]
-    ),
-    LibraryMapping(
-        "sslserver", "Qt6", "Qt::SslServer", extra=["COMPONENTS", "HttpServer"]
-    )
+    LibraryMapping("httpserver", "Qt6", "Qt::HttpServer", extra=["COMPONENTS", "HttpServer"]),
+    LibraryMapping("sslserver", "Qt6", "Qt::SslServer", extra=["COMPONENTS", "HttpServer"]),
 ]
 
 # Note that the library map is adjusted dynamically further down.
@@ -375,11 +372,12 @@ _library_map = [
     # 3rd party:
     LibraryMapping("atspi", "ATSPI2", "PkgConfig::ATSPI2"),
     LibraryMapping("bluez", "BlueZ", "PkgConfig::BlueZ"),
+    LibraryMapping("brotli", "WrapBrotli", "WrapBrotli::WrapBrotliDec"),
     LibraryMapping("corewlan", None, None),
     LibraryMapping("cups", "Cups", "Cups::Cups"),
     LibraryMapping("directfb", "DirectFB", "PkgConfig::DirectFB"),
     LibraryMapping("db2", "DB2", "DB2::DB2"),
-    LibraryMapping("dbus", "WrapDBus1", "dbus-1", resultVariable="DBus1"),
+    LibraryMapping("dbus", "WrapDBus1", "dbus-1", resultVariable="DBus1", extra=["1.2"]),
     LibraryMapping(
         "doubleconversion", "WrapDoubleConversion", "WrapDoubleConversion::WrapDoubleConversion"
     ),
@@ -394,16 +392,17 @@ _library_map = [
         "freetype",
         "WrapFreetype",
         "WrapFreetype::WrapFreetype",
-        extra=["REQUIRED"],
+        extra=["2.2.0", "REQUIRED"],
         is_bundled_with_qt=True,
     ),
     LibraryMapping("gbm", "gbm", "gbm::gbm"),
     LibraryMapping("glib", "GLIB2", "GLIB2::GLIB2"),
     LibraryMapping("iconv", "WrapIconv", "WrapIconv::WrapIconv"),
-    LibraryMapping("gtk3", "GTK3", "PkgConfig::GTK3"),
+    LibraryMapping("gtk3", "GTK3", "PkgConfig::GTK3", extra=["3.6"]),
     LibraryMapping("gssapi", "GSSAPI", "GSSAPI::GSSAPI"),
     LibraryMapping(
-        "harfbuzz", "WrapHarfbuzz", "WrapHarfbuzz::WrapHarfbuzz", is_bundled_with_qt=True
+        "harfbuzz", "WrapHarfbuzz", "WrapHarfbuzz::WrapHarfbuzz", is_bundled_with_qt=True,
+        extra=["2.6.0"]
     ),
     LibraryMapping("host_dbus", None, None),
     LibraryMapping(
@@ -412,6 +411,7 @@ _library_map = [
     LibraryMapping("journald", "Libsystemd", "PkgConfig::Libsystemd"),
     LibraryMapping("jpeg", "JPEG", "JPEG::JPEG"),  # see also libjpeg
     LibraryMapping("libatomic", "WrapAtomic", "WrapAtomic::WrapAtomic"),
+    LibraryMapping("libb2", "Libb2", "PkgConfig::Libb2"),
     LibraryMapping("libclang", "WrapLibClang", "WrapLibClang::WrapLibClang"),
     LibraryMapping("libdl", None, "${CMAKE_DL_LIBS}"),
     LibraryMapping("libinput", "Libinput", "Libinput::Libinput"),
@@ -446,7 +446,7 @@ _library_map = [
     ),
     LibraryMapping("oci", "Oracle", "Oracle::OCI"),
     LibraryMapping(
-        "pcre2", "WrapPCRE2", "WrapPCRE2::WrapPCRE2", extra=["REQUIRED"], is_bundled_with_qt=True
+        "pcre2", "WrapPCRE2", "WrapPCRE2::WrapPCRE2", extra=["10.20", "REQUIRED"], is_bundled_with_qt=True
     ),
     LibraryMapping("pps", "PPS", "PPS::PPS"),
     LibraryMapping("psql", "PostgreSQL", "PostgreSQL::PostgreSQL"),
@@ -473,7 +473,7 @@ _library_map = [
         "xcb",
         "XCB",
         "XCB::XCB",
-        extra=["1.9"],
+        extra=["1.11"],
         resultVariable="TARGET XCB::XCB",
         appendFoundSuffix=False,
     ),
@@ -481,16 +481,16 @@ _library_map = [
         "xcb_glx", "XCB", "XCB::GLX", extra=["COMPONENTS", "GLX"], resultVariable="XCB_GLX"
     ),
     LibraryMapping(
-        "xcb_icccm", "XCB", "XCB::ICCCM", extra=["COMPONENTS", "ICCCM"], resultVariable="XCB_ICCCM"
+        "xcb_icccm", "XCB", "XCB::ICCCM", extra=["0.3.9", "COMPONENTS", "ICCCM"], resultVariable="XCB_ICCCM"
     ),
     LibraryMapping(
-        "xcb_image", "XCB", "XCB::IMAGE", extra=["COMPONENTS", "IMAGE"], resultVariable="XCB_IMAGE"
+        "xcb_image", "XCB", "XCB::IMAGE", extra=["0.3.9", "COMPONENTS", "IMAGE"], resultVariable="XCB_IMAGE"
     ),
     LibraryMapping(
         "xcb_keysyms",
         "XCB",
         "XCB::KEYSYMS",
-        extra=["COMPONENTS", "KEYSYMS"],
+        extra=["0.3.9", "COMPONENTS", "KEYSYMS"],
         resultVariable="XCB_KEYSYMS",
     ),
     LibraryMapping(
@@ -507,7 +507,7 @@ _library_map = [
         "xcb_renderutil",
         "XCB",
         "XCB::RENDERUTIL",
-        extra=["COMPONENTS", "RENDERUTIL"],
+        extra=["0.3.9", "COMPONENTS", "RENDERUTIL"],
         resultVariable="XCB_RENDERUTIL",
     ),
     LibraryMapping(
@@ -544,7 +544,7 @@ _library_map = [
         "xcb_xinput",
         "XCB",
         "XCB::XINPUT",
-        extra=["COMPONENTS", "XINPUT"],
+        extra=["1.12", "COMPONENTS", "XINPUT"],
         resultVariable="XCB_XINPUT",
     ),
     LibraryMapping(
@@ -552,13 +552,13 @@ _library_map = [
     ),
     LibraryMapping("xcb_xlib", "X11_XCB", "X11::XCB"),
     LibraryMapping("xcomposite", "XComposite", "PkgConfig::XComposite"),
-    LibraryMapping("xkbcommon_evdev", "XKB", "XKB::XKB", extra=["0.4.1"]),  # see also xkbcommon
-    LibraryMapping("xkbcommon_x11", "XKB_COMMON_X11", "PkgConfig::XKB_COMMON_X11", extra=["0.4.1"]),
-    LibraryMapping("xkbcommon", "XKB", "XKB::XKB", extra=["0.4.1"]),
+    LibraryMapping("xkbcommon_evdev", "XKB", "XKB::XKB", extra=["0.5.0"]),  # see also xkbcommon
+    LibraryMapping("xkbcommon_x11", "XKB_COMMON_X11", "PkgConfig::XKB_COMMON_X11", extra=["0.5.0"]),
+    LibraryMapping("xkbcommon", "XKB", "XKB::XKB", extra=["0.5.0"]),
     LibraryMapping("xlib", "X11", "X11::X11"),
-    LibraryMapping("xrender", "XRender", "PkgConfig::XRender"),
-    LibraryMapping("zlib", "ZLIB", "ZLIB::ZLIB"),
-    LibraryMapping("zstd", "ZSTD", "ZSTD::ZSTD"),
+    LibraryMapping("xrender", "XRender", "PkgConfig::XRender", extra=["0.6"]),
+    LibraryMapping("zlib", "ZLIB", "ZLIB::ZLIB", extra=["1.0.8"]),
+    LibraryMapping("zstd", "ZSTD", "ZSTD::ZSTD", extra=["1.3"]),
     LibraryMapping("tiff", "TIFF", "TIFF::TIFF"),
     LibraryMapping("webp", "WrapWebP", "WrapWebP::WrapWebP"),
     LibraryMapping("jasper", "WrapJasper", "WrapJasper::WrapJasper"),
@@ -760,12 +760,12 @@ def generate_find_package_info(
     if cmake_target_name.endswith("_nolink") or cmake_target_name.endswith("/nolink"):
         cmake_target_name = cmake_target_name[:-7]
 
-    initial_package_name = lib.packageName
-    package_name = initial_package_name
+    initial_package_name: str = lib.packageName if lib.packageName else ""
+    package_name: str = initial_package_name
     if use_system_package_name:
         replace_args = ["Wrap", "WrapSystem"]
-        package_name = package_name.replace(*replace_args)
-        cmake_target_name = cmake_target_name.replace(*replace_args)
+        package_name = package_name.replace(*replace_args) # type: ignore
+        cmake_target_name = cmake_target_name.replace(*replace_args) # type: ignore
 
     if use_qt_find_package:
         if cmake_target_name:

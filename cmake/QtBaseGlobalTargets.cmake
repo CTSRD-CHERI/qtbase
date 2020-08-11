@@ -4,7 +4,7 @@ add_library(Qt::Platform ALIAS Platform)
 target_include_directories(Platform
     INTERFACE
     $<BUILD_INTERFACE:${QT_PLATFORM_DEFINITION_DIR_ABSOLUTE}>
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/${INSTALL_INCLUDEDIR}>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:${QT_PLATFORM_DEFINITION_DIR}>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDEDIR}>
     )
@@ -93,7 +93,12 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
 # Generate toolchain file for convenience
 if(QT_HOST_PATH)
     get_filename_component(init_qt_host_path "${QT_HOST_PATH}" ABSOLUTE)
+    # TODO: Figure out how to make these relocatable.
     set(init_qt_host_path "set(QT_HOST_PATH \"${init_qt_host_path}\" CACHE PATH \"\" FORCE)")
+    get_filename_component(QT_HOST_PATH_CMAKE_DIR
+        "${Qt${PROJECT_VERSION_MAJOR}HostInfo_DIR}/.." ABSOLUTE)
+    set(init_qt_host_path_cmake_dir
+        "set(QT_HOST_PATH_CMAKE_DIR \"${QT_HOST_PATH_CMAKE_DIR}\" CACHE PATH \"\" FORCE)")
 endif()
 
 if(CMAKE_TOOLCHAIN_FILE)
@@ -271,8 +276,8 @@ qt_install(PROGRAMS "${QT_BUILD_DIR}/${INSTALL_BINDIR}/${__qt_cmake_install_scri
 ## files always lived in Qt::Core, so we keep it that way
 add_library(GlobalConfig INTERFACE)
 target_include_directories(GlobalConfig INTERFACE
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/${INSTALL_INCLUDEDIR}>
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/${INSTALL_INCLUDEDIR}/QtCore>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include/QtCore>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDEDIR}>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDEDIR}/QtCore>
 )
@@ -303,8 +308,8 @@ add_library(Qt::GlobalConfig ALIAS GlobalConfig)
 add_library(GlobalConfigPrivate INTERFACE)
 target_link_libraries(GlobalConfigPrivate INTERFACE GlobalConfig)
 target_include_directories(GlobalConfigPrivate INTERFACE
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/${INSTALL_INCLUDEDIR}/QtCore/${PROJECT_VERSION}>
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/${INSTALL_INCLUDEDIR}/QtCore/${PROJECT_VERSION}/QtCore>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include/QtCore/${PROJECT_VERSION}>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include/QtCore/${PROJECT_VERSION}/QtCore>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDEDIR}/QtCore/${PROJECT_VERSION}>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDEDIR}/QtCore/${PROJECT_VERSION}/QtCore>
 )
@@ -326,6 +331,7 @@ set(__export_targets Platform
                      PlatformCommonInternal
                      PlatformModuleInternal
                      PlatformPluginInternal
+                     PlatformAppInternal
                      PlatformToolInternal)
 set(__export_name "${INSTALL_CMAKE_NAMESPACE}Targets")
 qt_install(TARGETS ${__export_targets} EXPORT "${__export_name}")
@@ -342,10 +348,12 @@ qt_internal_export_modern_cmake_config_targets_file(TARGETS ${__export_targets}
 qt_copy_or_install(FILES
                    cmake/ModuleDescription.json.in
                    cmake/Qt3rdPartyLibraryConfig.cmake.in
+                   cmake/QtApp.cmake
                    cmake/QtBuild.cmake
                    cmake/QtBuildInformation.cmake
                    cmake/QtCompilerFlags.cmake
                    cmake/QtCompilerOptimization.cmake
+                   cmake/QtConfigDependencies.cmake.in
                    cmake/QtFeature.cmake
                    cmake/QtFinishPrlFile.cmake
                    cmake/QtFindWrapHelper.cmake
@@ -353,6 +361,7 @@ qt_copy_or_install(FILES
                    cmake/QtFileConfigure.txt.in
                    cmake/QtGenerateExtPri.cmake
                    cmake/QtGenerateLibPri.cmake
+                   cmake/QtGenerateLibHelpers.cmake
                    cmake/QtPlatformSupport.cmake
                    cmake/QtPlatformAndroid.cmake
                    cmake/QtPostProcess.cmake

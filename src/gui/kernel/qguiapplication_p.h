@@ -373,6 +373,9 @@ Q_GUI_EXPORT bool operator==(const QGuiApplicationPrivate::ActiveTouchPointsKey 
 namespace QPlatformInterface::Private {
 
 #if defined(Q_OS_WIN)
+
+class QWindowsMime;
+
 struct Q_GUI_EXPORT QWindowsApplication
 {
     QT_DECLARE_PLATFORM_INTERFACE(QWindowsApplication)
@@ -390,6 +393,13 @@ struct Q_GUI_EXPORT QWindowsApplication
 
     Q_DECLARE_FLAGS(TouchWindowTouchTypes, TouchWindowTouchType)
 
+    enum DarkModeHandlingFlag {
+        DarkModeWindowFrames = 0x1,
+        DarkModeStyle = 0x2
+    };
+
+    Q_DECLARE_FLAGS(DarkModeHandling, DarkModeHandlingFlag)
+
     virtual void setTouchWindowTouchType(TouchWindowTouchTypes type) = 0;
     virtual TouchWindowTouchTypes touchWindowTouchType() const = 0;
 
@@ -400,6 +410,26 @@ struct Q_GUI_EXPORT QWindowsApplication
 
     virtual bool isWinTabEnabled() const = 0;
     virtual bool setWinTabEnabled(bool enabled) = 0;
+
+    virtual bool isDarkMode() const = 0;
+
+    virtual DarkModeHandling darkModeHandling() const = 0;
+    virtual void setDarkModeHandling(DarkModeHandling handling) = 0;
+
+    virtual void registerMime(QWindowsMime *mime) = 0;
+    virtual void unregisterMime(QWindowsMime *mime) = 0;
+
+    virtual int registerMimeType(const QString &mime) = 0;
+
+    virtual HWND createMessageWindow(const QString &classNameTemplate,
+                                     const QString &windowName,
+                                     QFunctionPointer eventProc = nullptr) const = 0;
+
+    virtual bool asyncExpose() const = 0; // internal, used by Active Qt
+    virtual void setAsyncExpose(bool value) = 0;
+
+    virtual QVariant gpu() const = 0; // internal, used by qtdiag
+    virtual QVariant gpuList() const = 0;
 };
 #endif // Q_OS_WIN
 
@@ -407,6 +437,7 @@ struct Q_GUI_EXPORT QWindowsApplication
 
 #if defined(Q_OS_WIN)
 Q_DECLARE_OPERATORS_FOR_FLAGS(QPlatformInterface::Private::QWindowsApplication::TouchWindowTouchTypes)
+Q_DECLARE_OPERATORS_FOR_FLAGS(QPlatformInterface::Private::QWindowsApplication::DarkModeHandling)
 #endif
 
 QT_END_NAMESPACE

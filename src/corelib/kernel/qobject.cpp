@@ -2035,7 +2035,7 @@ void QObjectPrivate::deleteChildren()
     // delete siblings
     for (int i = 0; i < children.count(); ++i) {
         currentChildBeingDeleted = children.at(i);
-        children[i] = 0;
+        children[i] = nullptr;
         delete currentChildBeingDeleted;
     }
     children.clear();
@@ -2076,7 +2076,7 @@ void QObjectPrivate::setParent_helper(QObject *o)
             if (index < 0) {
                 // we're probably recursing into setParent() from a ChildRemoved event, don't do anything
             } else if (parentD->isDeletingChildren) {
-                parentD->children[index] = 0;
+                parentD->children[index] = nullptr;
             } else {
                 parentD->children.removeAt(index);
                 if (sendChildEvents && parentD->receiveChildEvents) {
@@ -4091,21 +4091,6 @@ static void dumpRecursive(int level, const QObject *object)
     }
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-/*!
-    \overload
-    \obsolete
-
-    Dumps a tree of children to the debug output.
-
-    \sa dumpObjectInfo()
-*/
-
-void QObject::dumpObjectTree()
-{
-    const_cast<const QObject *>(this)->dumpObjectTree();
-}
-#endif
 
 /*!
     Dumps a tree of children to the debug output.
@@ -4119,23 +4104,6 @@ void QObject::dumpObjectTree() const
 {
     dumpRecursive(0, this);
 }
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-/*!
-    \overload
-    \obsolete
-
-    Dumps information about signal connections, etc. for this object
-    to the debug output.
-
-    \sa dumpObjectTree()
-*/
-
-void QObject::dumpObjectInfo()
-{
-    const_cast<const QObject *>(this)->dumpObjectInfo();
-}
-#endif
 
 /*!
     Dumps information about signal connections, etc. for this object

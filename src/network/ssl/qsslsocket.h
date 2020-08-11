@@ -57,7 +57,6 @@ class QDir;
 class QSslCipher;
 class QSslCertificate;
 class QSslConfiguration;
-class QSslEllipticCurve;
 class QSslPreSharedKeyAuthenticator;
 class QOcspResponse;
 
@@ -191,7 +190,7 @@ protected:
 
 private:
     Q_DECLARE_PRIVATE(QSslSocket)
-    Q_DISABLE_COPY(QSslSocket)
+    Q_DISABLE_COPY_MOVE(QSslSocket)
     Q_PRIVATE_SLOT(d_func(), void _q_connectedSlot())
     Q_PRIVATE_SLOT(d_func(), void _q_hostFoundSlot())
     Q_PRIVATE_SLOT(d_func(), void _q_disconnectedSlot())

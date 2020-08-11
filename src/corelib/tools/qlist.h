@@ -162,22 +162,10 @@ public:
 
     void swap(QList<T> &other) noexcept { qSwap(d, other.d); }
 
-    template <typename U = T>
-    friend QTypeTraits::compare_eq_result<U> operator==(const QList &l, const QList &r)
-    {
-        if (l.size() != r.size())
-            return false;
-        if (l.begin() == r.begin())
-            return true;
-
-        // do element-by-element comparison
-        return l.d->compare(l.begin(), r.begin(), l.size());
-    }
-    template <typename U = T>
-    friend QTypeTraits::compare_eq_result<U> operator!=(const QList &l, const QList &r)
-    {
-        return !(l == r);
-    }
+    template <typename U>
+    friend QTypeTraits::compare_eq_result<U> operator==(const QList<U> &l, const QList<U> &r);
+    template <typename U>
+    friend QTypeTraits::compare_eq_result<U> operator!=(const QList<U> &l, const QList<U> &r);
 
     qsizetype size() const noexcept { return d->size; }
     qsizetype count() const noexcept { return size(); }
@@ -239,6 +227,7 @@ public:
     void append(const_iterator i1, const_iterator i2);
     void append(rvalue_ref t) { emplaceBack(std::move(t)); }
     void append(const QList<T> &l) { append(l.constBegin(), l.constEnd()); }
+    void append(QList<T> &&l);
     void prepend(rvalue_ref t);
     void prepend(const T &t);
 
@@ -434,14 +423,19 @@ public:
 
     // comfort
     QList<T> &operator+=(const QList<T> &l) { append(l.cbegin(), l.cend()); return *this; }
+    QList<T> &operator+=(QList<T> &&l) { append(std::move(l)); return *this; }
     inline QList<T> operator+(const QList<T> &l) const
     { QList n = *this; n += l; return n; }
+    inline QList<T> operator+(QList<T> &&l) const
+    { QList n = *this; n += std::move(l); return n; }
     inline QList<T> &operator+=(const T &t)
     { append(t); return *this; }
     inline QList<T> &operator<< (const T &t)
     { append(t); return *this; }
     inline QList<T> &operator<<(const QList<T> &l)
     { *this += l; return *this; }
+    inline QList<T> &operator<<(QList<T> &&l)
+    { *this += std::move(l); return *this; }
     inline QList<T> &operator+=(rvalue_ref t)
     { append(std::move(t)); return *this; }
     inline QList<T> &operator<<(rvalue_ref t)
@@ -578,6 +572,33 @@ inline void QList<T>::append(const_iterator i1, const_iterator i2)
         d->copyAppend(i1, i2);
     }
 }
+
+template <typename T>
+inline void QList<T>::append(QList<T> &&other)
+{
+    if (other.isEmpty())
+        return;
+    if (other.d->needsDetach() || !std::is_nothrow_move_constructible_v<T>)
+        return append(other);
+
+    const size_t newSize = size() + other.size();
+    if (d->needsDetach() || newSize > d->allocatedCapacity()) {
+        DataPointer detached(Data::allocate(d->detachCapacity(newSize),
+                                            d->detachFlags() | Data::GrowsForward));
+
+        if (!d->needsDetach())
+            detached->moveAppend(begin(), end());
+        else
+            detached->copyAppend(cbegin(), cend());
+        detached->moveAppend(other.begin(), other.end());
+
+        d.swap(detached);
+    } else {
+        // we're detached and we can just move data around
+        d->moveAppend(other.begin(), other.end());
+    }
+}
+
 
 template <typename T>
 inline typename QList<T>::iterator
@@ -759,6 +780,24 @@ size_t qHash(const QList<T> &key, size_t seed = 0)
     return qHashRange(key.cbegin(), key.cend(), seed);
 }
 
+template <typename U>
+QTypeTraits::compare_eq_result<U> operator==(const QList<U> &l, const QList<U> &r)
+{
+    if (l.size() != r.size())
+        return false;
+    if (l.begin() == r.begin())
+        return true;
+
+    // do element-by-element comparison
+    return l.d->compare(l.begin(), r.begin(), l.size());
+}
+
+template <typename U>
+QTypeTraits::compare_eq_result<U> operator!=(const QList<U> &l, const QList<U> &r)
+{
+    return !(l == r);
+}
+
 template <typename T>
 auto operator<(const QList<T> &lhs, const QList<T> &rhs)
     noexcept(noexcept(std::lexicographical_compare(lhs.begin(), lhs.end(),
@@ -792,21 +831,6 @@ auto operator>=(const QList<T> &lhs, const QList<T> &rhs)
 {
     return !(lhs < rhs);
 }
-
-/*
-   ### Qt 5:
-   ### This needs to be removed for next releases of Qt. It is a workaround for vc++ because
-   ### Qt exports QPolygon and QPolygonF that inherit QList<QPoint> and
-   ### QList<QPointF> respectively.
-*/
-
-#if defined(Q_CC_MSVC) && !defined(QT_BUILD_CORE_LIB)
-QT_BEGIN_INCLUDE_NAMESPACE
-#include <QtCore/qpoint.h>
-QT_END_INCLUDE_NAMESPACE
-extern template class Q_CORE_EXPORT QList<QPointF>;
-extern template class Q_CORE_EXPORT QList<QPoint>;
-#endif
 
 QList<uint> QStringView::toUcs4() const { return QtPrivate::convertToUcs4(*this); }
 

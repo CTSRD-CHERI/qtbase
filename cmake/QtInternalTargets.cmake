@@ -81,14 +81,18 @@ add_library(PlatformPluginInternal INTERFACE)
 add_library(Qt::PlatformPluginInternal ALIAS PlatformPluginInternal)
 target_link_libraries(PlatformPluginInternal INTERFACE PlatformCommonInternal)
 
+add_library(PlatformAppInternal INTERFACE)
+add_library(Qt::PlatformAppInternal ALIAS PlatformAppInternal)
+target_link_libraries(PlatformAppInternal INTERFACE PlatformCommonInternal)
+
 add_library(PlatformToolInternal INTERFACE)
 add_library(Qt::PlatformToolInternal ALIAS PlatformToolInternal)
-target_link_libraries(PlatformToolInternal INTERFACE PlatformCommonInternal)
+target_link_libraries(PlatformToolInternal INTERFACE PlatformAppInternal)
 
 if(WARNINGS_ARE_ERRORS)
     qt_internal_set_warnings_are_errors_flags(PlatformModuleInternal)
     qt_internal_set_warnings_are_errors_flags(PlatformPluginInternal)
-    qt_internal_set_warnings_are_errors_flags(PlatformToolInternal)
+    qt_internal_set_warnings_are_errors_flags(PlatformAppInternal)
 endif()
 if(WIN32)
     # Needed for M_PI define. Same as mkspecs/features/qt_module.prf.
@@ -102,7 +106,10 @@ endif()
 
 # We can't use the gold linker on android with the NDK, which is the default
 # linker. To build our own target we will use the lld linker.
-if (ANDROID)
+# TODO: Why not?
+# Linking Android libs with lld on Windows sometimes deadlocks. Don't use lld on
+# Windows. qmake doesn't use lld to build Android on any host platform.
+if (ANDROID AND NOT CMAKE_HOST_WIN32)
     target_link_options(PlatformModuleInternal INTERFACE -fuse-ld=lld)
 endif()
 
@@ -174,6 +181,10 @@ if (MSVC)
         $<$<CONFIG:Release>:-OPT:REF>
         $<$<CONFIG:RelWithDebInfo>:-OPT:REF>
     )
+endif()
+
+if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
+    target_compile_options(PlatformCommonInternal INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
 endif()
 
 function(qt_get_implicit_sse2_genex_condition out_var)

@@ -673,7 +673,7 @@ void QProcessPrivate::Channel::clear()
 
     \value FailedToStart The process failed to start. Either the
     invoked program is missing, or you may have insufficient
-    permissions to invoke the program.
+    permissions or resources to invoke the program.
 
     \value Crashed The process crashed some time after starting
     successfully.
@@ -763,13 +763,6 @@ void QProcessPrivate::Channel::clear()
     \c CreateProcessArgumentModifier functions.
 
     \sa QProcess::CreateProcessArgumentModifier
-*/
-
-/*!
-    \fn void QProcess::error(QProcess::ProcessError error)
-    \obsolete
-
-    Use errorOccurred() instead.
 */
 
 /*!

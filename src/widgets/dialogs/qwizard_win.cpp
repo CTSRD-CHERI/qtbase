@@ -43,7 +43,9 @@
 
 #include "qwizard_win_p.h"
 #include <private/qapplication_p.h>
-#include <qpa/qplatformnativeinterface.h>
+#include <private/qwindowsfontdatabasebase_p.h>
+#include <qpa/qplatformwindow.h>
+#include <qpa/qplatformwindow_p.h>
 #include "qwizard.h"
 #include "qpaintengine.h"
 #include "qapplication.h"
@@ -166,6 +168,8 @@ QVistaHelper::~QVistaHelper()
 
 void QVistaHelper::updateCustomMargins(bool vistaMargins)
 {
+    using namespace QPlatformInterface::Private;
+
     if (QWindow *window = wizard->windowHandle()) {
         // Reduce top frame to zero since we paint it ourselves. Use
         // device pixel to avoid rounding errors.
@@ -176,11 +180,8 @@ void QVistaHelper::updateCustomMargins(bool vistaMargins)
         // The dynamic property takes effect when creating the platform window.
         window->setProperty("_q_windowsCustomMargins", customMarginsV);
         // If a platform window exists, change via native interface.
-        if (QPlatformWindow *platformWindow = window->handle()) {
-            QGuiApplication::platformNativeInterface()->
-                setWindowProperty(platformWindow, QStringLiteral("WindowsCustomMargins"),
-                                  customMarginsV);
-        }
+        if (auto platformWindow = dynamic_cast<QWindowsWindow *>(window->handle()))
+            platformWindow->setCustomMargins(customMarginsDp);
     }
 }
 
@@ -259,11 +260,8 @@ static bool getCaptionQFont(int dpi, QFont *result)
         return false;
     // Call into QWindowsNativeInterface to convert the LOGFONT into a QFont.
     const LOGFONT logFont = getCaptionLogFont(hTheme);
-    QPlatformNativeInterface *ni = QGuiApplication::platformNativeInterface();
-    return ni && QMetaObject::invokeMethod(ni, "logFontToQFont", Qt::DirectConnection,
-                                           Q_RETURN_ARG(QFont, *result),
-                                           Q_ARG(const void*, &logFont),
-                                           Q_ARG(int, dpi));
+    *result = QWindowsFontDatabaseBase::LOGFONT_to_QFont(logFont, dpi);
+    return true;
 }
 
 void QVistaHelper::drawTitleBar(QPainter *painter)

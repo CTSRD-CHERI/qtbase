@@ -117,17 +117,13 @@ src_gui.subdir = $$PWD/gui
 src_gui.target = sub-gui
 src_gui.depends = src_corelib src_tools_rcc
 
-src_platformheaders.subdir = $$PWD/platformheaders
-src_platformheaders.target = sub-platformheaders
-src_platformheaders.depends = src_corelib src_gui
-
 src_platformsupport.subdir = $$PWD/platformsupport
 src_platformsupport.target = sub-platformsupport
-src_platformsupport.depends = src_corelib src_gui src_platformheaders
+src_platformsupport.depends = src_corelib src_gui
 
 src_widgets.subdir = $$PWD/widgets
 src_widgets.target = sub-widgets
-src_widgets.depends = src_corelib src_gui src_tools_uic src_platformheaders
+src_widgets.depends = src_corelib src_gui src_tools_uic
 
 src_opengl.subdir = $$PWD/opengl
 src_opengl.target = sub-opengl
@@ -212,13 +208,13 @@ qtConfig(gui) {
         src_gui.depends += src_tools_qvkgen
         TOOLS += src_tools_qvkgen
     }
-    SUBDIRS += src_gui src_platformsupport src_platformheaders
+    SUBDIRS += src_gui src_platformsupport
     qtConfig(opengl) {
         SUBDIRS += src_opengl
         src_plugins.depends += src_opengl
         src_platformsupport.depends += src_opengl
     }
-    src_plugins.depends += src_gui src_platformsupport src_platformheaders
+    src_plugins.depends += src_gui src_platformsupport
     src_testlib.depends += src_gui      # if QtGui is enabled, QtTest requires QtGui's headers
     qtConfig(widgets) {
         SUBDIRS += src_tools_uic src_widgets
@@ -243,6 +239,7 @@ qtConfig(private_tests) {
         src_network_doc_snippets.subdir = network/doc/snippets
         src_network_doc_snippets.target = sub-network-doc-snippets
         src_network_doc_snippets.depends = src_network src_gui
+        uikit: src_network_doc_snippets.depends += src_plugins
         SUBDIRS += src_network_doc_snippets
     }
 
@@ -250,6 +247,7 @@ qtConfig(private_tests) {
         src_sql_doc_snippets.subdir = sql/doc/snippets
         src_sql_doc_snippets.target = sub-sql-doc-snippets
         src_sql_doc_snippets.depends = src_sql
+        uikit: src_network_doc_snippets.depends += src_plugins
         SUBDIRS += src_sql_doc_snippets
     }
 
@@ -257,6 +255,7 @@ qtConfig(private_tests) {
         src_testlib_doc_snippets.subdir = testlib/doc/snippets
         src_testlib_doc_snippets.target = sub-testlib-doc-snippets
         src_testlib_doc_snippets.depends = src_testlib src_widgets src_sql
+        uikit: src_network_doc_snippets.depends += src_plugins
         SUBDIRS += src_testlib_doc_snippets
     }
 
@@ -264,6 +263,7 @@ qtConfig(private_tests) {
         src_widgets_doc_snippets.subdir = widgets/doc/snippets
         src_widgets_doc_snippets.target = sub-widgets-doc-snippets
         src_widgets_doc_snippets.depends = src_widgets src_printsupport src_opengl
+        uikit: src_network_doc_snippets.depends += src_plugins
         SUBDIRS += src_widgets_doc_snippets
     }
 }

@@ -2501,6 +2501,7 @@ void QRhiGles2::executeCommandBuffer(QRhiCommandBuffer *cb)
                                  GL_COLOR_BUFFER_BIT,
                                  GL_LINEAR);
             f->glBindFramebuffer(GL_FRAMEBUFFER, ctx->defaultFramebufferObject());
+            f->glDeleteFramebuffers(2, fbo);
         }
             break;
         case QGles2CommandBuffer::Command::GenMip:
@@ -3459,7 +3460,8 @@ void QRhiGles2::gatherUniforms(GLuint program,
             const int baseOffset = blockMember.offset;
             if (blockMember.arrayDims.isEmpty()) {
                 for (const QShaderDescription::BlockVariable &structMember : blockMember.structMembers)
-                    registerUniformIfActive(structMember, structPrefix, ub.binding, baseOffset, program, dst);
+                    registerUniformIfActive(structMember, structPrefix + ".", ub.binding,
+                                            baseOffset, program, dst);
             } else {
                 if (blockMember.arrayDims.count() > 1) {
                     qWarning("Array of struct '%s' has more than one dimension. Only the first "

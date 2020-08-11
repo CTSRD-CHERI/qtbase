@@ -100,6 +100,7 @@ qt_extend_target(Network CONDITION WASM
 
 qt_extend_target(Network CONDITION QT_FEATURE_http
     SOURCES
+        access/qdecompresshelper.cpp access/qdecompresshelper_p.h
         access/http2/bitstreams.cpp access/http2/bitstreams_p.h
         access/http2/hpack.cpp access/http2/hpack_p.h
         access/http2/hpacktable.cpp access/http2/hpacktable_p.h
@@ -120,6 +121,11 @@ qt_extend_target(Network CONDITION QT_FEATURE_http
         access/qhttpthreaddelegate.cpp access/qhttpthreaddelegate_p.h
         access/qnetworkreplyhttpimpl.cpp access/qnetworkreplyhttpimpl_p.h
         socket/qhttpsocketengine.cpp socket/qhttpsocketengine_p.h
+)
+
+qt_extend_target(Network CONDITION QT_FEATURE_brotli AND QT_FEATURE_http
+    LIBRARIES
+        WrapBrotli::WrapBrotliDec
 )
 
 qt_extend_target(Network CONDITION QT_FEATURE_system_zlib
@@ -384,7 +390,7 @@ qt_extend_target(Network CONDITION ANDROID AND QT_FEATURE_openssl AND QT_FEATURE
         ssl/qsslsocket_openssl_android.cpp
 )
 
-qt_extend_target(Network CONDITION ANDROID AND QT_FEATURE_openssl AND QT_FEATURE_openssl_linked AND QT_FEATURE_ssl AND build_pass
+qt_extend_target(Network CONDITION ANDROID AND QT_FEATURE_openssl AND QT_FEATURE_openssl_linked AND QT_FEATURE_ssl AND (build_pass OR singleAndroidAbi)
     LIBRARIES
         crypto_${CMAKE_SYSTEM_PROCESSOR}
         ssl_${CMAKE_SYSTEM_PROCESSOR}

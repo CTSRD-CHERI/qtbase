@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2019 The Qt Company Ltd.
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the utils of the Qt Toolkit.
@@ -1232,7 +1232,6 @@ static void readUnicodeData()
                 Q_ASSERT(QChar::lowSurrogate(codepoint) + diff == QChar::lowSurrogate(upperCase));
             }
             if (qAbs(diff) >= (1<<13)) {
-                qWarning() << "upperCaseDiff exceeded (" << hex << codepoint << "->" << upperCase << "); map it for special case";
                 data.p.upperCaseSpecial = true;
                 data.p.upperCaseDiff = appendToSpecialCaseMap(QList<int>() << upperCase);
             } else {
@@ -1251,7 +1250,6 @@ static void readUnicodeData()
                 Q_ASSERT(QChar::lowSurrogate(codepoint) + diff == QChar::lowSurrogate(lowerCase));
             }
             if (qAbs(diff) >= (1<<13)) {
-                qWarning() << "lowerCaseDiff exceeded (" << hex << codepoint << "->" << lowerCase << "); map it for special case";
                 data.p.lowerCaseSpecial = true;
                 data.p.lowerCaseDiff = appendToSpecialCaseMap(QList<int>() << lowerCase);
             } else {
@@ -1273,7 +1271,6 @@ static void readUnicodeData()
                 Q_ASSERT(QChar::lowSurrogate(codepoint) + diff == QChar::lowSurrogate(titleCase));
             }
             if (qAbs(diff) >= (1<<13)) {
-                qWarning() << "titleCaseDiff exceeded (" << hex << codepoint << "->" << titleCase << "); map it for special case";
                 data.p.titleCaseSpecial = true;
                 data.p.titleCaseDiff = appendToSpecialCaseMap(QList<int>() << titleCase);
             } else {
@@ -1462,7 +1459,7 @@ static void readDerivedAge()
         }
 
         QChar::UnicodeVersion age = age_map.value(l[1].trimmed(), QChar::Unicode_Unassigned);
-        //qDebug() << hex << from << ".." << to << ba << age;
+        //qDebug() << Qt::hex << from << ".." << to << ba << age;
         if (age == QChar::Unicode_Unassigned)
             qFatal("unassigned or unhandled age value: %s", l[1].constData());
 
@@ -1593,9 +1590,8 @@ static QByteArray createNormalizationCorrections()
 
     f.open(QFile::ReadOnly);
 
-    QByteArray out;
-
-    out += "struct NormalizationCorrection {\n"
+    QByteArray out
+         = "struct NormalizationCorrection {\n"
            "    uint ucs4;\n"
            "    uint old_mapping;\n"
            "    int version;\n"
@@ -1637,8 +1633,9 @@ static QByteArray createNormalizationCorrections()
         else
             qFatal("unknown unicode version in NormalizationCorrection.txt");
 
-        out += "    { 0x" + QByteArray::number(c.codepoint, 16) + ", 0x" + QByteArray::number(c.mapped, 16)
-             + ", " + QString::number(c.version) + " },\n";
+        out += "    { 0x" + QByteArray::number(c.codepoint, 16) + ", 0x"
+               + QByteArray::number(c.mapped, 16) + ", "
+               + QByteArray::number(c.version) + " },\n";
         ++numCorrections;
         maxVersion = qMax(c.version, maxVersion);
     }
@@ -1742,7 +1739,7 @@ static void readSpecialCasing()
         // lower/upper/title casing code and case folding code
         Q_ASSERT(!QChar::requiresSurrogates(codepoint));
 
-//         qDebug() << "codepoint" << hex << codepoint;
+//         qDebug() << "codepoint" << Qt::hex << codepoint;
 //         qDebug() << line;
 
         QList<QByteArray> lower = l[1].trimmed().split(' ');
@@ -1826,7 +1823,7 @@ static void readCaseFolding()
         if (l[1] == "F" || l[1] == "T")
             continue;
 
-//         qDebug() << "codepoint" << hex << codepoint;
+//         qDebug() << "codepoint" << Qt::hex << codepoint;
 //         qDebug() << line;
         QList<QByteArray> fold = l[2].trimmed().split(' ');
         QList<int> foldMap;
@@ -1847,7 +1844,6 @@ static void readCaseFolding()
                 Q_ASSERT(QChar::lowSurrogate(codepoint) + diff == QChar::lowSurrogate(caseFolded));
             }
             if (qAbs(diff) >= (1<<13)) {
-                qWarning() << "caseFoldDiff exceeded (" << hex << codepoint << "->" << caseFolded << "); map it for special case";
                 ud.p.caseFoldSpecial = true;
                 ud.p.caseFoldDiff = appendToSpecialCaseMap(foldMap);
             } else {
@@ -1856,7 +1852,7 @@ static void readCaseFolding()
             }
         } else {
             qFatal("we currently don't support full case foldings");
-//             qDebug() << "special" << hex << foldMap;
+//             qDebug() << "special" << Qt::hex << foldMap;
             ud.p.caseFoldSpecial = true;
             ud.p.caseFoldDiff = appendToSpecialCaseMap(foldMap);
         }
@@ -2299,7 +2295,7 @@ static void computeUniqueProperties()
         }
         d.propertyIndex = index;
     }
-    qDebug("    %d unique unicode properties found", uniqueProperties.size());
+    qDebug("    %zd unique unicode properties found", ssize_t(uniqueProperties.size()));
 }
 
 struct UniqueBlock {
@@ -2392,9 +2388,7 @@ static QByteArray createPropertyInfo()
 
     Q_ASSERT(blockMap.last() + blockMap.size() < (1<<(sizeof(unsigned short)*8)));
 
-    QByteArray out;
-
-    out += "static const unsigned short uc_property_trie[] = {\n";
+    QByteArray out = "static const unsigned short uc_property_trie[] = {\n";
     // first write the map
     out += "    // [0x0..0x" + QByteArray::number(BMP_END, 16) + ")";
     for (int i = 0; i < BMP_END/BMP_BLOCKSIZE; ++i) {
@@ -2575,10 +2569,10 @@ static QByteArray createSpecialCaseMap()
 {
     qDebug("createSpecialCaseMap:");
 
-    QByteArray out;
-
-    out += "static const unsigned short specialCaseMap[] = {\n"
+    QByteArray out
+         = "static const unsigned short specialCaseMap[] = {\n"
            "    0x0, // placeholder";
+
     int i = 1;
     int maxN = 0;
     while (i < specialCaseMap.size()) {
@@ -2594,9 +2588,9 @@ static QByteArray createSpecialCaseMap()
     out.chop(1);
     out += "\n};\n\nconst unsigned int MaxSpecialCaseLength = ";
     out += QByteArray::number(maxN);
-    out += ";\n\n\n";
+    out += ";\n\n";
 
-    qDebug("    memory usage: %ld bytes", specialCaseMap.size()*sizeof(unsigned short));
+    qDebug("    memory usage: %zd bytes", ssize_t(specialCaseMap.size() * sizeof(unsigned short)));
 
     return out;
 }
@@ -2724,9 +2718,7 @@ static QByteArray createCompositionInfo()
 
     Q_ASSERT(blockMap.last() + blockMap.size() < (1<<(sizeof(unsigned short)*8)));
 
-    QByteArray out;
-
-    out += "static const unsigned short uc_decomposition_trie[] = {\n";
+    QByteArray out = "static const unsigned short uc_decomposition_trie[] = {\n";
     // first write the map
     out += "    // 0 - 0x" + QByteArray::number(BMP_END, 16);
     for (int i = 0; i < BMP_END/BMP_BLOCKSIZE; ++i) {
@@ -2779,13 +2771,16 @@ static QByteArray createCompositionInfo()
 
     out += "#define GET_DECOMPOSITION_INDEX(ucs4) \\\n"
            "       (ucs4 < 0x" + QByteArray::number(BMP_END, 16) + " \\\n"
-           "        ? (uc_decomposition_trie[uc_decomposition_trie[ucs4>>" + QByteArray::number(BMP_SHIFT) +
-           "] + (ucs4 & 0x" + QByteArray::number(BMP_BLOCKSIZE-1, 16)+ ")]) \\\n"
-           "        : (ucs4 < 0x" + QByteArray::number(SMP_END, 16) + " \\\n"
-           "           ? uc_decomposition_trie[uc_decomposition_trie[((ucs4 - 0x" + QByteArray::number(BMP_END, 16) +
-           ")>>" + QByteArray::number(SMP_SHIFT) + ") + 0x" + QByteArray::number(BMP_END/BMP_BLOCKSIZE, 16) + "]"
-           " + (ucs4 & 0x" + QByteArray::number(SMP_BLOCKSIZE-1, 16) + ")] \\\n"
-           "           : 0xffff))\n\n";
+           "        ? (uc_decomposition_trie[uc_decomposition_trie[ucs4 >> "
+           + QByteArray::number(BMP_SHIFT) + "] + (ucs4 & 0x"
+           + QByteArray::number(BMP_BLOCKSIZE-1, 16)+ ")]) \\\n"
+           "        : ucs4 < 0x" + QByteArray::number(SMP_END, 16) + " \\\n"
+           "        ? uc_decomposition_trie[uc_decomposition_trie[((ucs4 - 0x"
+           + QByteArray::number(BMP_END, 16) + ") >> "
+           + QByteArray::number(SMP_SHIFT) + ") + 0x"
+           + QByteArray::number(BMP_END/BMP_BLOCKSIZE, 16) + "] + (ucs4 & 0x"
+           + QByteArray::number(SMP_BLOCKSIZE-1, 16) + ")] \\\n"
+           "        : 0xffff)\n\n";
 
     out += "static const unsigned short uc_decomposition_map[] = {";
     for (int i = 0; i < decompositions.size(); ++i) {
@@ -2923,9 +2918,7 @@ static QByteArray createLigatureInfo()
 
     Q_ASSERT(blockMap.last() + blockMap.size() < (1<<(sizeof(unsigned short)*8)));
 
-    QByteArray out;
-
-    out += "static const unsigned short uc_ligature_trie[] = {\n";
+    QByteArray out = "static const unsigned short uc_ligature_trie[] = {\n";
     // first write the map
     out += "    // 0 - 0x" + QByteArray::number(BMP_END, 16);
     for (int i = 0; i < BMP_END/BMP_BLOCKSIZE; ++i) {
@@ -2978,13 +2971,16 @@ static QByteArray createLigatureInfo()
 
     out += "#define GET_LIGATURE_INDEX(ucs4) \\\n"
            "       (ucs4 < 0x" + QByteArray::number(BMP_END, 16) + " \\\n"
-           "        ? (uc_ligature_trie[uc_ligature_trie[ucs4>>" + QByteArray::number(BMP_SHIFT) +
-           "] + (ucs4 & 0x" + QByteArray::number(BMP_BLOCKSIZE-1, 16)+ ")]) \\\n"
-           "        : (ucs4 < 0x" + QByteArray::number(SMP_END, 16) + " \\\n"
-           "           ? uc_ligature_trie[uc_ligature_trie[((ucs4 - 0x" + QByteArray::number(BMP_END, 16) +
-           ")>>" + QByteArray::number(SMP_SHIFT) + ") + 0x" + QByteArray::number(BMP_END/BMP_BLOCKSIZE, 16) + "]"
-           " + (ucs4 & 0x" + QByteArray::number(SMP_BLOCKSIZE-1, 16) + ")] \\\n"
-           "           : 0xffff))\n\n";
+           "        ? (uc_ligature_trie[uc_ligature_trie[ucs4 >> "
+           + QByteArray::number(BMP_SHIFT) + "] + (ucs4 & 0x"
+           + QByteArray::number(BMP_BLOCKSIZE-1, 16)+ ")]) \\\n"
+           "        : ucs4 < 0x" + QByteArray::number(SMP_END, 16) + " \\\n"
+           "        ? uc_ligature_trie[uc_ligature_trie[((ucs4 - 0x"
+           + QByteArray::number(BMP_END, 16) + ") >> "
+           + QByteArray::number(SMP_SHIFT) + ") + 0x"
+           + QByteArray::number(BMP_END/BMP_BLOCKSIZE, 16) + "]" " + (ucs4 & 0x"
+           + QByteArray::number(SMP_BLOCKSIZE-1, 16) + ")] \\\n"
+           "        : 0xffff)\n\n";
 
     out += "static const unsigned short uc_ligature_map[] = {";
     for (int i = 0; i < ligatures.size(); ++i) {
@@ -2998,16 +2994,15 @@ static QByteArray createLigatureInfo()
     }
     if (out.endsWith(' '))
         out.chop(2);
-    out += "\n};\n\n";
+    out += "\n};\n";
 
     return out;
 }
 
 QByteArray createCasingInfo()
 {
-    QByteArray out;
-
-    out += "struct CasingInfo {\n"
+    QByteArray out
+         = "struct CasingInfo {\n"
            "    uint codePoint : 16;\n"
            "    uint flags : 8;\n"
            "    uint offset : 8;\n"
@@ -3114,9 +3109,7 @@ int main(int, char **)
     f.write("QT_BEGIN_NAMESPACE\n\n");
     f.write("namespace QUnicodeTables {\n\n");
     f.write(properties);
-    f.write("\n");
     f.write(specialCases);
-    f.write("\n");
     f.write(compositions);
     f.write(ligatures);
     f.write("\n");
@@ -3150,11 +3143,11 @@ int main(int, char **)
             "#endif // QUNICODETABLES_P_H\n");
     f.close();
 
-    qDebug() << "maxMirroredDiff  = " << hex << maxMirroredDiff;
-    qDebug() << "maxLowerCaseDiff = " << hex << maxLowerCaseDiff;
-    qDebug() << "maxUpperCaseDiff = " << hex << maxUpperCaseDiff;
-    qDebug() << "maxTitleCaseDiff = " << hex << maxTitleCaseDiff;
-    qDebug() << "maxCaseFoldDiff  = " << hex << maxCaseFoldDiff;
+    qDebug() << "maxMirroredDiff  = " << Qt::hex << maxMirroredDiff;
+    qDebug() << "maxLowerCaseDiff = " << Qt::hex << maxLowerCaseDiff;
+    qDebug() << "maxUpperCaseDiff = " << Qt::hex << maxUpperCaseDiff;
+    qDebug() << "maxTitleCaseDiff = " << Qt::hex << maxTitleCaseDiff;
+    qDebug() << "maxCaseFoldDiff  = " << Qt::hex << maxCaseFoldDiff;
 #if 0
 //     dump(0, 0x7f);
 //     dump(0x620, 0x640);

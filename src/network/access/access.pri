@@ -87,6 +87,7 @@ qtConfig(http) {
     include($$PWD/http2/http2.pri)
 
     SOURCES += \
+        access/qdecompresshelper.cpp \
         access/qabstractprotocolhandler.cpp \
         access/qhttp2protocolhandler.cpp \
         access/qhttpmultipart.cpp \
@@ -101,6 +102,7 @@ qtConfig(http) {
         access/qhttp2configuration.cpp
 
     HEADERS += \
+        access/qdecompresshelper_p.h \
         access/qabstractprotocolhandler_p.h \
         access/qhttp2protocolhandler_p.h \
         access/qhttpmultipart.h \
@@ -114,4 +116,8 @@ qtConfig(http) {
         access/qhttpthreaddelegate_p.h \
         access/qnetworkreplyhttpimpl_p.h \
         access/qhttp2configuration.h
+
+    qtConfig(brotli) {
+        QMAKE_USE_PRIVATE += brotli
+    }
 }

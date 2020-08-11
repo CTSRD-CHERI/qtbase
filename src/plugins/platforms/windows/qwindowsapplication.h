@@ -58,9 +58,29 @@ public:
     bool isWinTabEnabled() const override;
     bool setWinTabEnabled(bool enabled) override;
 
+    bool isDarkMode() const override;
+    DarkModeHandling darkModeHandling() const override;
+    void setDarkModeHandling(DarkModeHandling handling) override;
+
+    void registerMime(QPlatformInterface::Private::QWindowsMime *mime) override;
+    void unregisterMime(QPlatformInterface::Private::QWindowsMime *mime) override;
+
+    int registerMimeType(const QString &mime) override;
+
+    HWND createMessageWindow(const QString &classNameTemplate,
+                             const QString &windowName,
+                             QFunctionPointer eventProc = nullptr) const override;
+
+    bool asyncExpose() const override;
+    void setAsyncExpose(bool value) override;
+
+    QVariant gpu() const override;
+    QVariant gpuList() const override;
+
 private:
     WindowActivationBehavior m_windowActivationBehavior = DefaultActivateWindow;
     TouchWindowTouchTypes m_touchWindowTouchTypes = NormalTouch;
+    DarkModeHandling m_darkModeHandling;
 };
 
 QT_END_NAMESPACE

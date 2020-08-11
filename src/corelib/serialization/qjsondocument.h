@@ -106,25 +106,6 @@ public:
 
     void swap(QJsonDocument &other) noexcept;
 
-    enum DataValidation {
-        Validate,
-        BypassValidation
-    };
-
-#if QT_CONFIG(binaryjson) && QT_DEPRECATED_SINCE(5, 15)
-    QT_DEPRECATED_X("Use CBOR format instead")
-    static QJsonDocument fromRawData(const char *data, int size, DataValidation validation = Validate);
-
-    QT_DEPRECATED_X("Use CBOR format instead")
-    const char *rawData(int *size) const;
-
-    QT_DEPRECATED_X("Use CBOR format instead")
-    static QJsonDocument fromBinaryData(const QByteArray &data, DataValidation validation  = Validate);
-
-    QT_DEPRECATED_X("Use CBOR format instead")
-    QByteArray toBinaryData() const;
-#endif // QT_CONFIG(binaryjson) && QT_DEPRECATED_SINCE(5, 15)
-
     static QJsonDocument fromVariant(const QVariant &variant);
     QVariant toVariant() const;
 
@@ -136,8 +117,7 @@ public:
     static QJsonDocument fromJson(const QByteArray &json, QJsonParseError *error = nullptr);
 
 #if !defined(QT_JSON_READONLY) || defined(Q_CLANG_QDOC)
-    QByteArray toJson() const; //### Merge in Qt6
-    QByteArray toJson(JsonFormat format) const;
+    QByteArray toJson(JsonFormat format = Indented) const;
 #endif
 
     bool isEmpty() const;

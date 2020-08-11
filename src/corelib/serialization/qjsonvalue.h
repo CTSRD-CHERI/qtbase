@@ -164,6 +164,8 @@ public:
     QJsonValueRef(QJsonObject *object, int idx)
         : o(object), is_object(true), index(static_cast<uint>(idx)) {}
 
+    QJsonValueRef(const QJsonValueRef &) = default;
+
     inline operator QJsonValue() const { return toValue(); }
     QJsonValueRef &operator = (const QJsonValue &val);
     QJsonValueRef &operator = (const QJsonValueRef &val);
@@ -178,18 +180,12 @@ public:
     inline bool isObject() const { return type() == QJsonValue::Object; }
     inline bool isUndefined() const { return type() == QJsonValue::Undefined; }
 
-    inline bool toBool() const { return toValue().toBool(); }
-    inline int toInt() const { return toValue().toInt(); }
-    inline double toDouble() const { return toValue().toDouble(); }
-    inline QString toString() const { return toValue().toString(); }
+    inline bool toBool(bool defaultValue = false) const { return toValue().toBool(defaultValue); }
+    inline int toInt(int defaultValue = 0) const { return toValue().toInt(defaultValue); }
+    inline double toDouble(double defaultValue = 0) const { return toValue().toDouble(defaultValue); }
+    inline QString toString(const QString &defaultValue = {}) const { return toValue().toString(defaultValue); }
     QJsonArray toArray() const;
     QJsonObject toObject() const;
-
-    // ### Qt 6: Add default values
-    inline bool toBool(bool defaultValue) const { return toValue().toBool(defaultValue); }
-    inline int toInt(int defaultValue) const { return toValue().toInt(defaultValue); }
-    inline double toDouble(double defaultValue) const { return toValue().toDouble(defaultValue); }
-    inline QString toString(const QString &defaultValue) const { return toValue().toString(defaultValue); }
 
     inline bool operator==(const QJsonValue &other) const { return toValue() == other; }
     inline bool operator!=(const QJsonValue &other) const { return toValue() != other; }
@@ -203,31 +199,9 @@ private:
     };
     uint is_object : 1;
     uint index : 31;
-};
 
-// ### Qt 6: Get rid of these fake pointer classes
-class QJsonValuePtr
-{
-    QJsonValue value;
-public:
-    explicit QJsonValuePtr(const QJsonValue& val)
-        : value(val) {}
-
-    QJsonValue& operator*() { return value; }
-    QJsonValue* operator->() { return &value; }
-};
-
-class QJsonValueRefPtr
-{
-    QJsonValueRef valueRef;
-public:
-    QJsonValueRefPtr(QJsonArray *array, int idx)
-        : valueRef(array, idx) {}
-    QJsonValueRefPtr(QJsonObject *object, int idx)
-        : valueRef(object, idx)  {}
-
-    QJsonValueRef& operator*() { return valueRef; }
-    QJsonValueRef* operator->() { return &valueRef; }
+    friend class QJsonArray;
+    friend class QJsonObject;
 };
 
 Q_DECLARE_SHARED(QJsonValue)

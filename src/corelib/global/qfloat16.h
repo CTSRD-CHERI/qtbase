@@ -80,9 +80,9 @@ public:
     inline operator float() const noexcept;
 
     // Support for qIs{Inf,NaN,Finite}:
-    bool isInf() const noexcept { return ((b16 >> 8) & 0x7e) == 0x7c; }
-    bool isNaN() const noexcept { return ((b16 >> 8) & 0x7e) == 0x7e; }
-    bool isFinite() const noexcept { return ((b16 >> 8) & 0x7c) != 0x7c; }
+    bool isInf() const noexcept { return (b16 & 0x7fff) == 0x7c00; }
+    bool isNaN() const noexcept { return (b16 & 0x7fff) > 0x7c00; }
+    bool isFinite() const noexcept { return (b16 & 0x7fff) < 0x7c00; }
     Q_CORE_EXPORT int fpClassify() const noexcept;
     // Can't specialize std::copysign() for qfloat16
     qfloat16 copySign(qfloat16 sign) const noexcept
@@ -96,10 +96,10 @@ public:
     static constexpr qfloat16 _limit_infinity()   noexcept { return qfloat16(Wrap(0x7c00)); }
     static constexpr qfloat16 _limit_quiet_NaN()  noexcept { return qfloat16(Wrap(0x7e00)); }
 #if QT_CONFIG(signaling_nan)
-    static constexpr qfloat16 _limit_signaling_NaN() noexcept { return qfloat16(Wrap(0x7f00)); }
+    static constexpr qfloat16 _limit_signaling_NaN() noexcept { return qfloat16(Wrap(0x7d00)); }
 #endif
     inline constexpr bool isNormal() const noexcept
-    { return (b16 & 0x7fff) == 0 || ((b16 & 0x7c00) && (b16 & 0x7c00) != 0x7c00); }
+    { return (b16 & 0x7c00) && (b16 & 0x7c00) != 0x7c00; }
 private:
     quint16 b16;
     constexpr inline explicit qfloat16(Wrap nibble) noexcept : b16(nibble.b16) {}
@@ -172,8 +172,20 @@ inline qfloat16::qfloat16(float f) noexcept
 #else
     quint32 u;
     memcpy(&u, &f, sizeof(quint32));
-    b16 = quint16(basetable[(u >> 23) & 0x1ff]
-                  + ((u & 0x007fffff) >> shifttable[(u >> 23) & 0x1ff]));
+    const quint32 signAndExp = u >> 23;
+    const quint32 base = basetable[signAndExp];
+    const quint32 shift = shifttable[signAndExp];
+    quint32 mantissa = (u & 0x007fffff);
+    if ((signAndExp & 0xff) == 0xff) {
+        if (mantissa) // keep nan from truncating to inf
+            mantissa = qMax(1U << shift, mantissa);
+    } else {
+        mantissa += (1U << (shift - 1)) - 1; // rounding
+    }
+
+    // We use add as the mantissa may overflow causing
+    // the exp part to shift exactly one value.
+    b16 = quint16(base + (mantissa >> shift));
 #endif
 }
 QT_WARNING_POP

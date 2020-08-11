@@ -221,13 +221,20 @@ bool compareOutput(const QString &logger, const QString &subdir,
 
         if (actualLineBA.startsWith("Config: Using QtTest library") // Text build string
             || actualLineBA.startsWith("    <QtBuild") // XML, Light XML build string
-            || (actualLineBA.startsWith("    <property value=") &&  actualLineBA.endsWith("name=\"QtBuild\"/>"))) { // XUNIT-XML build string
+            || (actualLineBA.startsWith("    <property name=\"QtBuild\" value="))) { // JUnit-XML build string
             continue;
         }
 
         QString actualLine = QString::fromLatin1(actualLineBA);
         QString expectedLine = QString::fromLatin1(expected.at(i));
         expectedLine.replace(qtVersionPlaceHolder(), qtVersion);
+
+        if (logger.endsWith(QLatin1String("junitxml"))) {
+            static QRegularExpression timestampRegex("timestamp=\".*?\"");
+            actualLine.replace(timestampRegex, "timestamp=\"@TEST_START_TIME@\"");
+            static QRegularExpression timeRegex("time=\".*?\"");
+            actualLine.replace(timeRegex, "time=\"@TEST_DURATION@\"");
+        }
 
         // Special handling for ignoring _FILE_ and _LINE_ if logger is teamcity
         if (logger.endsWith(QLatin1String("teamcity"))) {

@@ -173,12 +173,10 @@
 #if defined(Q_OS_WIN32) || defined(Q_OS_WIN64)
 #  define Q_OS_WINDOWS
 #  define Q_OS_WIN
-#  if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 // On Windows, pointers to dllimport'ed variables are not constant expressions,
 // so to keep to certain initializations (like QMetaObject) constexpr, we need
 // to use functions instead.
-#    define QT_NO_DATA_RELOCATION
-#  endif
+#  define QT_NO_DATA_RELOCATION
 #endif
 
 #if defined(Q_OS_WIN)
@@ -235,6 +233,9 @@
 #  if !defined(__MAC_10_15)
 #       define __MAC_10_15 101500
 #  endif
+#  if !defined(__MAC_10_16)
+#       define __MAC_10_16 101600
+#  endif
 #  if !defined(MAC_OS_X_VERSION_10_11)
 #       define MAC_OS_X_VERSION_10_11 __MAC_10_11
 #  endif
@@ -249,6 +250,9 @@
 #  endif
 #  if !defined(MAC_OS_X_VERSION_10_15)
 #       define MAC_OS_X_VERSION_10_15 __MAC_10_15
+#  endif
+#  if !defined(MAC_OS_X_VERSION_10_16)
+#       define MAC_OS_X_VERSION_10_16 __MAC_10_16
 #  endif
 #
 #  if !defined(__IPHONE_10_0)

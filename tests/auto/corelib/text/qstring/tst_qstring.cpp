@@ -1,7 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2016 Intel Corporation.
+** Copyright (C) 2020 The Qt Company Ltd.
+** Copyright (C) 2020 Intel Corporation.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
@@ -580,7 +580,6 @@ private slots:
     void truncateWithNegative() const;
     void QCharRefMutableUnicode() const;
     void QCharRefDetaching() const;
-    void sprintfZU() const;
     void repeatedSignature() const;
     void repeated() const;
     void repeated_data() const;
@@ -1257,6 +1256,33 @@ void tst_QString::asprintf()
     QCOMPARE(QString::asprintf("%lf", 1.23456789), QLatin1String("1.234568"));
     QCOMPARE(QString::asprintf("%p", ptrValue(0xbfffd350)), QLatin1String("0xbfffd350"));
     QCOMPARE(QString::asprintf("%p", ptrValue(0)), QLatin1String("0x0"));
+    QCOMPARE(QString::asprintf("%td", ptrdiff_t(6)), QString::fromLatin1("6"));
+    QCOMPARE(QString::asprintf("%td", ptrdiff_t(-6)), QString::fromLatin1("-6"));
+    QCOMPARE(QString::asprintf("%zu", size_t(6)), QString::fromLatin1("6"));
+    QCOMPARE(QString::asprintf("%zu", size_t(1) << 31), QString::fromLatin1("2147483648"));
+
+    // cross z and t
+    using ssize_t = std::make_signed<size_t>::type;         // should be ptrdiff_t
+    using uptrdiff_t = std::make_unsigned<ptrdiff_t>::type; // should be size_t
+    QCOMPARE(QString::asprintf("%tu", uptrdiff_t(6)), QString::fromLatin1("6"));
+    QCOMPARE(QString::asprintf("%tu", uptrdiff_t(1) << 31), QString::fromLatin1("2147483648"));
+    QCOMPARE(QString::asprintf("%zd", ssize_t(-6)), QString::fromLatin1("-6"));
+
+    if (sizeof(qsizetype) > sizeof(int)) {
+        // 64-bit test
+        QCOMPARE(QString::asprintf("%zu", SIZE_MAX), QString::fromLatin1("18446744073709551615"));
+        QCOMPARE(QString::asprintf("%td", PTRDIFF_MAX), QString::fromLatin1("9223372036854775807"));
+        QCOMPARE(QString::asprintf("%td", PTRDIFF_MIN), QString::fromLatin1("-9223372036854775808"));
+
+        // sign extension is easy, make sure we can get something middle-ground
+        // (24 + 8 = 32; addition used to avoid warning about shifting more
+        // than size type on 32-bit systems)
+        size_t ubig = size_t(1) << (24 + sizeof(size_t));
+        ptrdiff_t sbig = ptrdiff_t(1) << (24 + sizeof(ptrdiff_t));
+        QCOMPARE(QString::asprintf("%zu", ubig), QString::fromLatin1("4294967296"));
+        QCOMPARE(QString::asprintf("%td", sbig), QString::fromLatin1("4294967296"));
+        QCOMPARE(QString::asprintf("%td", -sbig), QString::fromLatin1("-4294967296"));
+    }
 
     int i = 6;
     long l = -2;
@@ -1265,6 +1291,14 @@ void tst_QString::asprintf()
 
     double d = -514.25683;
     QCOMPARE(QString::asprintf("%f", d), QLatin1String("-514.256830"));
+
+    {
+        /* This code crashed. I don't know how to reduce it further. In other words,
+         * both %zu and %s needs to be present. */
+        size_t s = 6;
+        QCOMPARE(QString::asprintf("%zu%s", s, "foo"), QString::fromLatin1("6foo"));
+        QCOMPARE(QString::asprintf("%zu %s\n", s, "foo"), QString::fromLatin1("6 foo\n"));
+    }
 }
 
 void tst_QString::asprintfS()
@@ -6147,6 +6181,23 @@ void tst_QString::compare_data()
         in2[i] = 'b';
         QTest::addRow("all-same-except-char-%d", i) << in1 << in2 << -1 << -1;
     }
+
+    // some non-US-ASCII comparisons
+    QChar smallA = u'a';
+    QChar smallAWithAcute = u'á';
+    QChar capitalAWithAcute = u'Á';
+    QChar nbsp = u'\u00a0';
+    for (int i = 1; i <= 65; ++i) {
+        QString padding(i - 1, ' ');
+        QTest::addRow("ascii-nonascii-%d", i)
+                << (padding + smallA) << (padding + smallAWithAcute) << -1 << -1;
+        QTest::addRow("nonascii-nonascii-equal-%d", i)
+                << (padding + smallAWithAcute) << (padding + smallAWithAcute) << 0 << 0;
+        QTest::addRow("nonascii-nonascii-caseequal-%d", i)
+                << (padding + capitalAWithAcute) << (padding + smallAWithAcute) << -1 << 0;
+        QTest::addRow("nonascii-nonascii-notequal-%d", i)
+                << (padding + nbsp) << (padding + smallAWithAcute) << -1 << -1;
+    }
 }
 
 static bool isLatin(const QString &s)
@@ -6166,7 +6217,10 @@ void tst_QString::compare()
 
     QStringRef r1(&s1, 0, s1.length());
     QStringRef r2(&s2, 0, s2.length());
+    QByteArray s1_8 = s1.toUtf8();
+    QByteArray s2_8 = s2.toUtf8();
 
+    const QStringView v1(s1);
     const QStringView v2(s2);
 
     QCOMPARE(sign(QString::compare(s1, s2)), csr);
@@ -6184,6 +6238,10 @@ void tst_QString::compare()
     QCOMPARE(sign(r1.compare(r2, Qt::CaseInsensitive)), cir);
     QCOMPARE(sign(s1.compare(v2, Qt::CaseSensitive)), csr);
     QCOMPARE(sign(s1.compare(v2, Qt::CaseInsensitive)), cir);
+    QCOMPARE(sign(QtPrivate::compareStringsUtf8(s1_8, s1_8.size(), v2, Qt::CaseSensitive)), csr);
+    QCOMPARE(sign(QtPrivate::compareStringsUtf8(s1_8, s1_8.size(), v2, Qt::CaseInsensitive)), cir);
+    QCOMPARE(sign(QtPrivate::compareStringsUtf8(s2_8, s2_8.size(), v1, Qt::CaseSensitive)), -csr);
+    QCOMPARE(sign(QtPrivate::compareStringsUtf8(s2_8, s2_8.size(), v1, Qt::CaseInsensitive)), -cir);
 
     QCOMPARE(sign(QString::compare(s1, s2, Qt::CaseSensitive)), csr);
     QCOMPARE(sign(QString::compare(s1, s2, Qt::CaseInsensitive)), cir);
@@ -6204,6 +6262,7 @@ void tst_QString::compare()
     }
 
     if (isLatin(s2)) {
+        QVERIFY(QtPrivate::isLatin1(s2));
         QCOMPARE(sign(QString::compare(s1, QLatin1String(s2.toLatin1()))), csr);
         QCOMPARE(sign(QString::compare(s1, QLatin1String(s2.toLatin1()), Qt::CaseInsensitive)), cir);
         QCOMPARE(sign(QStringRef::compare(r1, QLatin1String(s2.toLatin1()))), csr);
@@ -6218,6 +6277,7 @@ void tst_QString::compare()
     }
 
     if (isLatin(s1)) {
+        QVERIFY(QtPrivate::isLatin1(s1));
         QCOMPARE(sign(QString::compare(QLatin1String(s1.toLatin1()), s2)), csr);
         QCOMPARE(sign(QString::compare(QLatin1String(s1.toLatin1()), s2, Qt::CaseInsensitive)), cir);
     }
@@ -6365,30 +6425,6 @@ void tst_QString::QCharRefDetaching() const
         str[0] = QLatin1Char('S');
 
         QCOMPARE(buf[0], ushort('s'));
-    }
-}
-
-void tst_QString::sprintfZU() const
-{
-    {
-        size_t s = 6;
-        QCOMPARE(QString::asprintf("%zu", s), QString::fromLatin1("6"));
-    }
-
-    {
-        QCOMPARE(QString::asprintf("%s\n", "foo"), QString::fromLatin1("foo\n"));
-    }
-
-    {
-        /* This code crashed. I don't know how to reduce it further. In other words,
-         * both %zu and %s needs to be present. */
-        size_t s = 6;
-        QCOMPARE(QString::asprintf("%zu%s", s, "foo"), QString::fromLatin1("6foo"));
-    }
-
-    {
-        size_t s = 6;
-        QCOMPARE(QString::asprintf("%zu %s\n", s, "foo"), QString::fromLatin1("6 foo\n"));
     }
 }
 

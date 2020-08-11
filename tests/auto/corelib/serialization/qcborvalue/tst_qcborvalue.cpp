@@ -229,7 +229,7 @@ void tst_QCborValue::basics_data()
             if (t == QCborValue::Double)
                 return QTest::addRow("Double:%g", exp.toDouble());
             if (t == QCborValue::ByteArray || t == QCborValue::String)
-                return QTest::addRow("%s:%d", typeString, exp.toString().size());
+                return QTest::addRow("%s:%zd", typeString, size_t(exp.toString().size()));
             return QTest::newRow(typeString);
         };
         addRow() << t << v << exp;
@@ -468,9 +468,12 @@ void tst_QCborValue::copyCompare()
     QFETCH(QCborValue, v);
     QCborValue other = v;
 
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_CLANG("-Wself-move")
     // self-moving
     v = std::move(v);
     QCOMPARE(v, other); // make sure it's still valid
+QT_WARNING_POP
 
     // moving
     v = std::move(other);

@@ -468,7 +468,7 @@ QSslErrorEntry QSslErrorEntry::fromStoreContext(X509_STORE_CTX *ctx)
 
 #if QT_CONFIG(ocsp)
 
-QSslError qt_OCSP_response_status_to_QSslError(long code)
+QSslError::SslError qt_OCSP_response_status_to_SslError(long code)
 {
     switch (code) {
     case OCSP_RESPONSE_STATUS_MALFORMEDREQUEST:
@@ -1736,8 +1736,13 @@ void QSslSocketBackendPrivate::fetchCaRootForCert(const QSslCertificate &cert)
     if (fetchAuthorityInformation)
         customRoots = configuration.caCertificates;
 
+    //Remember we are fetching and what we are fetching:
+    caToFetch = cert;
+
     QWindowsCaRootFetcher *fetcher = new QWindowsCaRootFetcher(cert, mode, customRoots, q->peerVerifyName());
-    QObject::connect(fetcher, SIGNAL(finished(QSslCertificate,QSslCertificate)), q, SLOT(_q_caRootLoaded(QSslCertificate,QSslCertificate)), Qt::QueuedConnection);
+    QObjectPrivate::connect(fetcher,  &QWindowsCaRootFetcher::finished,
+                            this, &QSslSocketBackendPrivate::_q_caRootLoaded,
+                            Qt::QueuedConnection);
     QMetaObject::invokeMethod(fetcher, "start", Qt::QueuedConnection);
     pauseSocketNotifiers(q);
     paused = true;
@@ -1746,6 +1751,14 @@ void QSslSocketBackendPrivate::fetchCaRootForCert(const QSslCertificate &cert)
 //This is the callback from QWindowsCaRootFetcher, trustedRoot will be invalid (default constructed) if it failed.
 void QSslSocketBackendPrivate::_q_caRootLoaded(QSslCertificate cert, QSslCertificate trustedRoot)
 {
+    if (caToFetch != cert) {
+        //Ooops, something from the previous connection attempt, ignore!
+        return;
+    }
+
+    //Done, fetched already:
+    caToFetch = QSslCertificate{};
+
     if (fetchAuthorityInformation) {
         if (!configuration.caCertificates.contains(trustedRoot))
             trustedRoot = QSslCertificate{};
@@ -1814,7 +1827,7 @@ bool QSslSocketBackendPrivate::checkOcspStatus()
     const unsigned char *responseData = nullptr;
     const long responseLength = q_SSL_get_tlsext_status_ocsp_resp(ssl, &responseData);
     if (responseLength <= 0 || !responseData) {
-        ocspErrors.push_back(QSslError::OcspNoResponseFound);
+        ocspErrors.push_back(QSslError(QSslError::OcspNoResponseFound));
         return false;
     }
 
@@ -1829,7 +1842,7 @@ bool QSslSocketBackendPrivate::checkOcspStatus()
     const int ocspStatus = q_OCSP_response_status(response);
     if (ocspStatus != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
         // It's not a definitive response, it's an error message (not signed by the responder).
-        ocspErrors.push_back(qt_OCSP_response_status_to_QSslError(ocspStatus));
+        ocspErrors.push_back(QSslError(qt_OCSP_response_status_to_SslError(ocspStatus)));
         return false;
     }
 
@@ -1871,10 +1884,10 @@ bool QSslSocketBackendPrivate::checkOcspStatus()
     const unsigned long verificationFlags = 0;
     const int success = q_OCSP_basic_verify(basicResponse, peerChain, store, verificationFlags);
     if (success <= 0)
-        ocspErrors.push_back(QSslError::OcspResponseCannotBeTrusted);
+        ocspErrors.push_back(QSslError(QSslError::OcspResponseCannotBeTrusted));
 
     if (q_OCSP_resp_count(basicResponse) != 1) {
-        ocspErrors.push_back(QSslError::OcspMalformedResponse);
+        ocspErrors.push_back(QSslError(QSslError::OcspMalformedResponse));
         return false;
     }
 
