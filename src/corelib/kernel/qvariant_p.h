@@ -63,11 +63,11 @@ inline void v_construct(QVariant::Private *x, const T &t)
 {
     if constexpr (QVariant::Private::CanUseInternalSpace<T>) {
         new (&x->data) T(t);
-        x->is_shared = false;
+        x->set_shared(false);
     } else {
         x->data.shared = QVariant::PrivateShared::create(QMetaType::fromType<T>());
         new (x->data.shared->data()) T(t);
-        x->is_shared = true;
+        x->set_shared(true);
     }
 }
 

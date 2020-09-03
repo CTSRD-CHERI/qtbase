@@ -2044,7 +2044,7 @@ bool QVariant::convert(QMetaType targetType)
         return false;
 
     bool ok = QMetaType::convert(oldValue.d.type(), oldValue.constData(), targetType, data());
-    d.is_null = !ok;
+    d.set_null(!ok);
     return ok;
 }
 
@@ -2339,7 +2339,7 @@ void* QVariant::data()
 {
     detach();
     // set is_null to false, as the caller is likely to write some data into this variant
-    d.is_null = false;
+    d.set_null(false);
     return const_cast<void *>(constData());
 }
 
@@ -2357,7 +2357,7 @@ void* QVariant::data()
 */
 bool QVariant::isNull() const
 {
-    if (d.is_null || !metaType().isValid())
+    if (d.is_null() || !metaType().isValid())
         return true;
     if (metaType().flags() & QMetaType::IsPointer)
         return d.get<void *>() == nullptr;

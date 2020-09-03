@@ -429,6 +429,7 @@ class Q_CORE_EXPORT QVariant
     };
     struct Private
     {
+        enum class Flags { IsNull = 1, IsShared = 2 };
         static constexpr size_t MaxInternalSize = 3*sizeof(void *);
         template<typename T>
         static constexpr bool CanUseInternalSpace = (sizeof(T) <= MaxInternalSize && alignof(T) <= alignof(double));
@@ -447,7 +448,7 @@ class Q_CORE_EXPORT QVariant
         QTaggedPointer<QtPrivate::QMetaTypeInterface> packedType;
 
         Private() noexcept : packedType(nullptr, uint8_t(Flags::IsNull)) {}
-        explicit Private(QMetaType type) noexcept :
+        explicit Private(QMetaType type) noexcept
         {
             qptraddr mt = qptraddr(type.d_ptr);
             Q_ASSERT((mt & 0x3) == 0);
@@ -455,11 +456,13 @@ class Q_CORE_EXPORT QVariant
         }
         explicit Private(int type) noexcept : Private(QMetaType(type)) {}
 
-        const void *storage() const
-        { return is_shared ? data.shared->data() : &data.data; }
+        const void *storage() const { return is_shared() ? data.shared->data() : &data.data; }
 
         const void *internalStorage() const
-        { Q_ASSERT(is_shared); return &data.data; }
+        {
+            Q_ASSERT(is_shared());
+            return &data.data;
+        }
 
         // determine internal storage at compile time
         template<typename T>
