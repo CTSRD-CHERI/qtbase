@@ -5,7 +5,7 @@
 #####################################################################
 
 # Collect test data
-list(APPEND test_data "./typeFlags.bin")
+list(APPEND test_data "../qmetatype/typeFlags.bin")
 
 qt_add_test(tst_qmetacontainer
     SOURCES
