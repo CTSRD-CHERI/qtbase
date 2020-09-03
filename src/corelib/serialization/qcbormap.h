@@ -54,6 +54,8 @@ typedef QHash<QString, QVariant> QVariantHash;
 class QJsonObject;
 class QDataStream;
 
+namespace QJsonPrivate { class Variant; }
+
 class QCborContainerPrivate;
 class Q_CORE_EXPORT QCborMap
 {
@@ -76,8 +78,8 @@ public:
         typedef QPair<const QCborValueRef, QCborValueRef> reference;
         typedef QPair<const QCborValueRef, QCborValueRef> pointer;
 
-        Q_DECL_CONSTEXPR Iterator() = default;
-        Q_DECL_CONSTEXPR Iterator(const Iterator &) = default;
+        constexpr Iterator() = default;
+        constexpr Iterator(const Iterator &) = default;
         Iterator &operator=(const Iterator &other)
         {
             // rebind the reference
@@ -128,8 +130,8 @@ public:
         typedef QPair<const QCborValueRef, const QCborValueRef> reference;
         typedef QPair<const QCborValueRef, const QCborValueRef> pointer;
 
-        Q_DECL_CONSTEXPR ConstIterator() = default;
-        Q_DECL_CONSTEXPR ConstIterator(const ConstIterator &) = default;
+        constexpr ConstIterator() = default;
+        constexpr ConstIterator(const ConstIterator &) = default;
         ConstIterator &operator=(const ConstIterator &other)
         {
             // rebind the reference
@@ -327,6 +329,7 @@ public:
 private:
     friend class QCborValue;
     friend class QCborValueRef;
+    friend class QJsonPrivate::Variant;
     void detach(qsizetype reserve = 0);
 
     explicit QCborMap(QCborContainerPrivate &dd) noexcept;

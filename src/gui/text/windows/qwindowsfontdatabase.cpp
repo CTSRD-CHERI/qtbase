@@ -95,8 +95,9 @@ static inline bool useDirectWrite(QFont::HintingPreference hintingPreference,
 #endif // !QT_NO_DIRECTWRITE
 
 /*!
-    \struct QWindowsFontEngineData
+    \class QWindowsFontEngineData
     \brief Static constant data shared by the font engines.
+    \internal
 */
 
 QWindowsFontEngineData::QWindowsFontEngineData()
@@ -525,7 +526,7 @@ static bool addFontToDatabase(QString familyName,
     const int size = scalable ? SMOOTH_SCALABLE : textmetric->tmHeight;
     const QFont::Style style = textmetric->tmItalic ? QFont::StyleItalic : QFont::StyleNormal;
     const bool antialias = false;
-    const QFont::Weight weight = QPlatformFontDatabase::weightFromInteger(textmetric->tmWeight);
+    const QFont::Weight weight = static_cast<QFont::Weight>(textmetric->tmWeight);
     const QFont::Stretch stretch = QFont::Unstretched;
 
 #ifndef QT_NO_DEBUG_OUTPUT
@@ -648,6 +649,21 @@ static int QT_WIN_CALLBACK storeFont(const LOGFONT *logFont, const TEXTMETRIC *t
 
     // keep on enumerating
     return 1;
+}
+
+bool QWindowsFontDatabase::populateFamilyAliases(const QString &missingFamily)
+{
+    Q_UNUSED(missingFamily);
+
+    if (m_hasPopulatedAliases)
+        return false;
+
+    QStringList families = QFontDatabase::families();
+    for (const QString &family : families)
+        populateFamily(family);
+    m_hasPopulatedAliases = true;
+
+    return true;
 }
 
 void QWindowsFontDatabase::populateFamily(const QString &familyName)
@@ -994,7 +1010,7 @@ QStringList QWindowsFontDatabase::addApplicationFont(const QByteArray &fontData,
             if (applicationFont != nullptr) {
                 QFontDatabasePrivate::ApplicationFont::Properties properties;
                 properties.style = values.isItalic ? QFont::StyleItalic : QFont::StyleNormal;
-                properties.weight = QPlatformFontDatabase::weightFromInteger(values.weight);
+                properties.weight = static_cast<int>(values.weight);
                 properties.familyName = familyName;
                 properties.styleName = styleName;
 
@@ -1041,7 +1057,7 @@ QStringList QWindowsFontDatabase::addApplicationFont(const QByteArray &fontData,
 
                 QFontDatabasePrivate::ApplicationFont::Properties properties;
                 properties.style = values.isItalic ? QFont::StyleItalic : QFont::StyleNormal;
-                properties.weight = QPlatformFontDatabase::weightFromInteger(values.weight);
+                properties.weight = static_cast<int>(values.weight);
                 properties.familyName = familyName;
                 properties.styleName = styleName;
 

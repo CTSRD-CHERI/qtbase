@@ -43,7 +43,7 @@ private Q_SLOTS:
     void testDeductionRules();
 };
 
-class C { C() {} Q_DECL_UNUSED_MEMBER char _[4]; };
+class C { C() {} ~C() {} Q_DECL_UNUSED_MEMBER char _[4]; };
 class M { M() {} Q_DECL_UNUSED_MEMBER char _[4]; };
 class P { Q_DECL_UNUSED_MEMBER char _[4]; };
 
@@ -64,31 +64,31 @@ typedef QPair<P,M> QPairPM;
 typedef QPair<P,P> QPairPP;
 
 static_assert( QTypeInfo<QPairCC>::isComplex);
-static_assert( QTypeInfo<QPairCC>::isStatic );
+static_assert( !QTypeInfo<QPairCC>::isRelocatable );
 
 static_assert( QTypeInfo<QPairCM>::isComplex);
-static_assert( QTypeInfo<QPairCM>::isStatic );
+static_assert( !QTypeInfo<QPairCM>::isRelocatable );
 
 static_assert( QTypeInfo<QPairCP>::isComplex);
-static_assert( QTypeInfo<QPairCP>::isStatic );
+static_assert( !QTypeInfo<QPairCP>::isRelocatable );
 
 static_assert( QTypeInfo<QPairMC>::isComplex);
-static_assert( QTypeInfo<QPairMC>::isStatic );
+static_assert( !QTypeInfo<QPairMC>::isRelocatable );
 
 static_assert( QTypeInfo<QPairMM>::isComplex);
-static_assert(!QTypeInfo<QPairMM>::isStatic );
+static_assert( QTypeInfo<QPairMM>::isRelocatable );
 
 static_assert( QTypeInfo<QPairMP>::isComplex);
-static_assert(!QTypeInfo<QPairMP>::isStatic );
+static_assert( QTypeInfo<QPairMP>::isRelocatable );
 
 static_assert( QTypeInfo<QPairPC>::isComplex);
-static_assert( QTypeInfo<QPairPC>::isStatic );
+static_assert( !QTypeInfo<QPairPC>::isRelocatable );
 
 static_assert( QTypeInfo<QPairPM>::isComplex);
-static_assert(!QTypeInfo<QPairPM>::isStatic );
+static_assert( QTypeInfo<QPairPM>::isRelocatable );
 
 static_assert(!QTypeInfo<QPairPP>::isComplex);
-static_assert(!QTypeInfo<QPairPP>::isStatic );
+static_assert( QTypeInfo<QPairPP>::isRelocatable );
 
 static_assert(!QTypeInfo<QPairPP>::isPointer);
 
@@ -174,15 +174,15 @@ void tst_QPair::structuredBindings()
 
 void tst_QPair::testConstexpr()
 {
-    Q_CONSTEXPR QPair<int, double> pID = qMakePair(0, 0.0);
+    constexpr QPair<int, double> pID = qMakePair(0, 0.0);
     Q_UNUSED(pID);
 
-    Q_CONSTEXPR QPair<double, double> pDD  = qMakePair(0.0, 0.0);
-    Q_CONSTEXPR QPair<double, double> pDD2 = qMakePair(0, 0.0);   // involes (rvalue) conversion ctor
-    Q_CONSTEXPR bool equal = pDD2 == pDD;
+    constexpr QPair<double, double> pDD  = qMakePair(0.0, 0.0);
+    constexpr QPair<double, double> pDD2 = qMakePair(0, 0.0);   // involes (rvalue) conversion ctor
+    constexpr bool equal = pDD2 == pDD;
     QVERIFY(equal);
 
-    Q_CONSTEXPR QPair<QSize, int> pSI = qMakePair(QSize(4, 5), 6);
+    constexpr QPair<QSize, int> pSI = qMakePair(QSize(4, 5), 6);
     Q_UNUSED(pSI);
 }
 

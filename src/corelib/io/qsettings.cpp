@@ -964,7 +964,7 @@ static inline int pathHashKey(QSettings::Format format, QSettings::Scope scope)
 #ifndef Q_OS_WIN
 static QString make_user_path()
 {
-    static Q_CONSTEXPR QChar sep = QLatin1Char('/');
+    static constexpr QChar sep = QLatin1Char('/');
 #ifndef QSETTINGS_USE_QSTANDARDPATHS
     // Non XDG platforms (OS X, iOS, Android...) have used this code path erroneously
     // for some time now. Moving away from that would require migrating existing settings.
@@ -1979,8 +1979,9 @@ void QConfFileSettingsPrivate::ensureSectionParsed(QConfFile *confFile,
 
     \snippet code/src_corelib_io_qsettings.cpp 1
 
-    Custom types registered using qRegisterMetaType() and
-    qRegisterMetaTypeStreamOperators() can be stored using QSettings.
+    Custom types registered using qRegisterMetaType() that have
+    operators for streaming to and from a QDataStream can be stored
+    using QSettings.
 
     \section1 Section and Key Syntax
 

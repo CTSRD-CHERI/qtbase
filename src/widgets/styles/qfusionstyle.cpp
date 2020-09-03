@@ -366,11 +366,6 @@ static void qt_fusion_draw_mdibutton(QPainter *painter, const QStyleOptionTitleB
     painter->drawPoint(tmp.right() , tmp.bottom() - 1);
 }
 
-static QWindow *qt_getWindow(const QWidget *widget)
-{
-    return widget ? QWidgetPrivate::get(widget)->windowHandle(QWidgetPrivate::WindowHandleMode::Closest) : nullptr;
-}
-
 /*
     \internal
 */
@@ -1002,7 +997,7 @@ void QFusionStyle::drawPrimitive(PrimitiveElement elem,
             d->tabBarcloseButtonIcon = proxy()->standardIcon(SP_DialogCloseButton, option, widget);
         if ((option->state & State_Enabled) && (option->state & State_MouseOver))
             proxy()->drawPrimitive(PE_PanelButtonCommand, option, painter, widget);
-        QPixmap pixmap = d->tabBarcloseButtonIcon.pixmap(qt_getWindow(widget), QSize(16, 16), QIcon::Normal, QIcon::On);
+        QPixmap pixmap = d->tabBarcloseButtonIcon.pixmap(QSize(16, 16), painter->device()->devicePixelRatio(), QIcon::Normal, QIcon::On);
         proxy()->drawItemPixmap(painter, option->rect, Qt::AlignCenter, pixmap);
     }
         break;
@@ -1042,7 +1037,7 @@ void QFusionStyle::drawControl(ControlElement element, const QStyleOption *optio
             if (!cb->currentIcon.isNull()) {
                 QIcon::Mode mode = cb->state & State_Enabled ? QIcon::Normal
                                                              : QIcon::Disabled;
-                QPixmap pixmap = cb->currentIcon.pixmap(qt_getWindow(widget), cb->iconSize, mode);
+                QPixmap pixmap = cb->currentIcon.pixmap(cb->iconSize, painter->device()->devicePixelRatio(), mode);
                 QRect iconRect(editRect);
                 iconRect.setWidth(cb->iconSize.width() + 4);
                 iconRect = alignedRect(cb->direction,
@@ -1369,8 +1364,7 @@ void QFusionStyle::drawControl(ControlElement element, const QStyleOption *optio
             bool indeterminate = (bar->minimum == 0 && bar->maximum == 0);
             bool complete = bar->progress == bar->maximum;
 
-            // Get extra style options if version 2
-            vertical = (bar->orientation == Qt::Vertical);
+            vertical = !(bar->state & QStyle::State_Horizontal);
             inverted = bar->invertedAppearance;
 
             // If the orientation is vertical, we use a transform to rotate
@@ -1479,7 +1473,7 @@ void QFusionStyle::drawControl(ControlElement element, const QStyleOption *optio
 
             painter->save();
             bool vertical = false, inverted = false;
-            vertical = (bar->orientation == Qt::Vertical);
+            vertical = !(bar->state & QStyle::State_Horizontal);
             inverted = bar->invertedAppearance;
             if (vertical)
                 rect = QRect(rect.left(), rect.top(), rect.height(), rect.width()); // flip width and height
@@ -1656,9 +1650,9 @@ void QFusionStyle::drawControl(ControlElement element, const QStyleOption *optio
                     iconSize = combo->iconSize();
 #endif
                 if (checked)
-                    pixmap = menuItem->icon.pixmap(qt_getWindow(widget), iconSize, mode, QIcon::On);
+                    pixmap = menuItem->icon.pixmap(iconSize, painter->device()->devicePixelRatio(), mode, QIcon::On);
                 else
-                    pixmap = menuItem->icon.pixmap(qt_getWindow(widget), iconSize, mode);
+                    pixmap = menuItem->icon.pixmap(iconSize, painter->device()->devicePixelRatio(), mode);
 
                 const int pixw = pixmap.width() / pixmap.devicePixelRatio();
                 const int pixh = pixmap.height() / pixmap.devicePixelRatio();
@@ -1686,7 +1680,7 @@ void QFusionStyle::drawControl(ControlElement element, const QStyleOption *optio
             }
             int x, y, w, h;
             menuitem->rect.getRect(&x, &y, &w, &h);
-            int tab = menuitem->tabWidth;
+            int tab = menuitem->reservedShortcutWidth;
             QColor discol;
             if (dis) {
                 discol = menuitem->palette.text().color();

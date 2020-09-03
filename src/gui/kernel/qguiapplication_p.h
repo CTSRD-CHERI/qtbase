@@ -107,8 +107,8 @@ public:
     virtual bool shouldQuit() override;
 
     bool shouldQuitInternal(const QWindowList &processedWindows);
-    virtual bool tryCloseAllWindows();
 
+    static void captureGlobalModifierState(QEvent *e);
     static Qt::KeyboardModifiers modifier_buttons;
     static Qt::MouseButtons mouse_buttons;
 
@@ -160,6 +160,7 @@ public:
     static void processThemeChanged(QWindowSystemInterfacePrivate::ThemeChangeEvent *tce);
 
     static void processExposeEvent(QWindowSystemInterfacePrivate::ExposeEvent *e);
+    static void processPaintEvent(QWindowSystemInterfacePrivate::PaintEvent *e);
 
     static void processFileOpenEvent(QWindowSystemInterfacePrivate::FileOpenEvent *e);
 
@@ -277,7 +278,6 @@ public:
 #endif
 
 #ifndef QT_NO_SESSIONMANAGER
-    static bool is_fallback_session_management_enabled;
     QSessionManager *session_manager;
     bool is_session_restored;
     bool is_saving_session;
@@ -330,6 +330,7 @@ public:
 #endif
 
     static void updatePalette();
+    QEvent *cloneEvent(QEvent *e) override;
 
 protected:
     virtual void notifyThemeChanged();
@@ -338,7 +339,6 @@ protected:
     virtual QPalette basePalette() const;
     virtual void handlePaletteChanged(const char *className = nullptr);
 
-    bool tryCloseRemainingWindows(QWindowList processedWindows);
 #if QT_CONFIG(draganddrop)
     virtual void notifyDragStarted(const QDrag *);
 #endif // QT_CONFIG(draganddrop)
@@ -372,7 +372,7 @@ Q_GUI_EXPORT bool operator==(const QGuiApplicationPrivate::ActiveTouchPointsKey 
 
 namespace QPlatformInterface::Private {
 
-#if defined(Q_OS_WIN)
+#if defined(Q_OS_WIN) || defined(Q_CLANG_QDOC)
 
 class QWindowsMime;
 

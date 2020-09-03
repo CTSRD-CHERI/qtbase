@@ -479,10 +479,6 @@
 #include <qscopedvaluerollback.h>
 #include <qvarlengtharray.h>
 
-#ifndef QT_NO_SSL
-#include <QtNetwork/qsslsocket.h>
-#endif
-
 #include <private/qthread_p.h>
 
 #ifdef QABSTRACTSOCKET_DEBUG
@@ -1361,20 +1357,23 @@ void QAbstractSocketPrivate::fetchConnectionParameters()
     emit q->connected();
 }
 
-/*! \internal
+/*! \reimp
 */
-qint64 QAbstractSocketPrivate::skip(qint64 maxSize)
+qint64 QAbstractSocket::skipData(qint64 maxSize)
 {
+    Q_D(const QAbstractSocket);
+
     // if we're not connected, return -1 indicating EOF
-    if (!socketEngine || !socketEngine->isValid() || state != QAbstractSocket::ConnectedState)
+    if (!d->socketEngine || !d->socketEngine->isValid()
+        || d->state != QAbstractSocket::ConnectedState)
         return -1;
 
     // Caller, QIODevice::skip(), has ensured buffer is empty. So, wait
     // for more data in buffered mode.
-    if (isBuffered)
+    if (d->isBuffered)
         return 0;
 
-    return QIODevicePrivate::skip(maxSize);
+    return QIODevice::skipData(maxSize);
 }
 
 void QAbstractSocketPrivate::pauseSocketNotifiers(QAbstractSocket *socket)
@@ -1863,22 +1862,6 @@ QString QAbstractSocket::peerName() const
 {
     Q_D(const QAbstractSocket);
     return d->peerName.isEmpty() ? d->hostName : d->peerName;
-}
-
-/*!
-    Returns \c true if a line of data can be read from the socket;
-    otherwise returns \c false.
-
-    \sa readLine()
-*/
-bool QAbstractSocket::canReadLine() const
-{
-    bool hasLine = QIODevice::canReadLine();
-#if defined (QABSTRACTSOCKET_DEBUG)
-    qDebug("QAbstractSocket::canReadLine() == %s, buffer size = %lld, size = %lld",
-           hasLine ? "true" : "false", d_func()->buffer.size(), d_func()->buffer.size());
-#endif
-    return hasLine;
 }
 
 /*!
@@ -2403,15 +2386,6 @@ void QAbstractSocket::abort()
     qDebug("QAbstractSocket::abort()");
 #endif
     d->setWriteChannelCount(0);
-    if (d->state == UnconnectedState)
-        return;
-#ifndef QT_NO_SSL
-    if (QSslSocket *socket = qobject_cast<QSslSocket *>(this)) {
-        socket->abort();
-        return;
-    }
-#endif
-
     d->abortCalled = true;
     close();
 }
@@ -2421,23 +2395,6 @@ void QAbstractSocket::abort()
 bool QAbstractSocket::isSequential() const
 {
     return true;
-}
-
-/*! \reimp
-
-     Returns \c true if no more data is currently
-     available for reading; otherwise returns \c false.
-
-     This function is most commonly used when reading data from the
-     socket in a loop. For example:
-
-     \snippet code/src_network_socket_qabstractsocket.cpp 2
-
-     \sa bytesAvailable(), readyRead()
- */
-bool QAbstractSocket::atEnd() const
-{
-    return QIODevice::atEnd();
 }
 
 /*!
@@ -2552,7 +2509,7 @@ qint64 QAbstractSocket::writeData(const char *data, qint64 size)
     // We just write to our write buffer and enable the write notifier
     // The write notifier then flush()es the buffer.
 
-    d->writeBuffer.append(data, size);
+    d->write(data, size);
     qint64 written = size;
 
     if (d->socketEngine && !d->writeBuffer.isEmpty())
@@ -2892,7 +2849,7 @@ void QAbstractSocket::setSocketError(SocketError socketError)
     To disable the use of a proxy for this socket, use the
     QNetworkProxy::NoProxy proxy type:
 
-    \snippet code/src_network_socket_qabstractsocket.cpp 3
+    \snippet code/src_network_socket_qabstractsocket.cpp 2
 
     The default value for the proxy is QNetworkProxy::DefaultProxy,
     which means the socket will use the application settings: if a

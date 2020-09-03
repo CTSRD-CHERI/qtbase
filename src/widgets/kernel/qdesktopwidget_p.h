@@ -68,35 +68,22 @@ public:
     QDesktopWidget();
     ~QDesktopWidget();
 
+    QWidget *widgetForScreen(QScreen *qScreen) const;
 
 private:
     Q_DISABLE_COPY(QDesktopWidget)
     Q_DECLARE_PRIVATE(QDesktopWidget)
-
-    friend class QApplication;
-    friend class QApplicationPrivate;
 };
 
-class QDesktopScreenWidget : public QWidget {
-    Q_OBJECT
-public:
-    explicit QDesktopScreenWidget(QScreen *, const QRect &geometry);
-
-    QScreen *screen() const;
-};
-
-class QDesktopWidgetPrivate : public QWidgetPrivate {
+class QDesktopWidgetPrivate : public QWidgetPrivate
+{
     Q_DECLARE_PUBLIC(QDesktopWidget)
 
 public:
     ~QDesktopWidgetPrivate();
     void updateScreens();
-    QDesktopScreenWidget *widgetForScreen(QScreen *qScreen) const
-    {
-        return screenWidgets.value(qScreen);
-    }
 
-    QFlatMap<QScreen*, QDesktopScreenWidget*> screenWidgets;
+    QFlatMap<QScreen*, QWidget*> screenWidgets;
 };
 
 QT_END_NAMESPACE

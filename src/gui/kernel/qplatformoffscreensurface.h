@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2017 The Qt Company Ltd.
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtGui module of the Qt Toolkit.
@@ -49,8 +49,9 @@
 // source and binary incompatible with future versions of Qt.
 //
 
-#include <QtGui/qtguiglobal.h>
 #include "qplatformsurface.h"
+
+#include <QtGui/qoffscreensurface.h>
 #include <QtCore/qscopedpointer.h>
 
 QT_BEGIN_NAMESPACE
@@ -75,9 +76,29 @@ public:
 
 protected:
     QScopedPointer<QPlatformOffscreenSurfacePrivate> d_ptr;
+    friend class QOffscreenSurfacePrivate;
 private:
     Q_DISABLE_COPY(QPlatformOffscreenSurface)
 };
+
+template <typename T>
+T *QOffscreenSurface::platformInterface() const
+{
+    return dynamic_cast<T*>(surfaceHandle());
+}
+
+namespace QPlatformInterface::Private {
+
+#if defined(Q_OS_ANDROID)
+struct Q_GUI_EXPORT QAndroidOffScreenIntegration
+{
+    QT_DECLARE_PLATFORM_INTERFACE(QAndroidOffScreenIntegration)
+    virtual QOffscreenSurface *createOffscreenSurface(ANativeWindow *nativeSurface) const = 0;
+};
+#endif
+
+} // QPlatformInterface::Private
+
 
 QT_END_NAMESPACE
 

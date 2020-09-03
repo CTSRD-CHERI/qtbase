@@ -92,8 +92,6 @@ static jmethodID m_createBitmapMethodID = nullptr;
 static jobject m_ARGB_8888_BitmapConfigValue = nullptr;
 static jobject m_RGB_565_BitmapConfigValue = nullptr;
 
-static bool m_statusBarShowing = true;
-
 static jclass m_bitmapDrawableClass = nullptr;
 static jmethodID m_bitmapDrawableConstructorMethodID = nullptr;
 
@@ -456,7 +454,8 @@ static jboolean startQtAndroidPlugin(JNIEnv *env, jobject /*object*/, jstring pa
     QByteArray string = nativeString;
     env->ReleaseStringUTFChars(paramsString, nativeString);
 
-    m_applicationParams=string.split('\t');
+    for (auto str : string.split('\t'))
+        m_applicationParams.append(str.split(' '));
 
     // Go home
     QDir::setCurrent(QDir::homePath());

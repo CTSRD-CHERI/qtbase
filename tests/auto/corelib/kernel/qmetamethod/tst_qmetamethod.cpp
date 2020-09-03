@@ -52,6 +52,8 @@ private slots:
 
     void returnMetaType();
     void parameterMetaType();
+
+    void parameterTypeName();
 };
 
 struct CustomType { };
@@ -629,7 +631,13 @@ void tst_QMetaMethod::method()
     QVERIFY(method.typeName() != 0);
     if (QByteArray(method.typeName()) != returnTypeName) {
         // QMetaMethod should always produce a semantically equivalent typename
-        QCOMPARE(QMetaType::type(method.typeName()), QMetaType::type(returnTypeName));
+        QCOMPARE(QMetaType::fromName(method.typeName()), QMetaType::fromName(returnTypeName));
+    }
+
+    // check that parameterNames and parameterTypeName agree
+    const auto methodParmaterTypes = method.parameterTypes();
+    for (int i = 0; i< methodParmaterTypes.size(); ++i) {
+        QCOMPARE(methodParmaterTypes[i], method.parameterTypeName(i));
     }
 
     if (method.parameterTypes() != parameterTypeNames) {
@@ -637,8 +645,8 @@ void tst_QMetaMethod::method()
         QList<QByteArray> actualTypeNames = method.parameterTypes();
         QCOMPARE(actualTypeNames.size(), parameterTypeNames.size());
         for (int i = 0; i < parameterTypeNames.size(); ++i) {
-            QCOMPARE(QMetaType::type(actualTypeNames.at(i)),
-                     QMetaType::type(parameterTypeNames.at(i)));
+            QCOMPARE(QMetaType::fromName(actualTypeNames.at(i)),
+                     QMetaType::fromName(parameterTypeNames.at(i)));
         }
     }
     QCOMPARE(method.parameterNames(), parameterNames);
@@ -835,6 +843,25 @@ void tst_QMetaMethod::parameterMetaType()
         QCOMPARE(mm.parameterMetaType(0), QMetaType::fromType<int>());
         QCOMPARE(mm.parameterMetaType(1), QMetaType::fromType<float>());
         QCOMPARE(mm.parameterMetaType(2), QMetaType::fromType<MyGadget>());
+    }
+}
+
+
+void tst_QMetaMethod::parameterTypeName()
+{
+    auto mo = MyTestClass::staticMetaObject;
+    const auto normalized = QMetaObject::normalizedSignature("doStuff(int, float, MyGadget)");
+    const int idx = mo.indexOfSlot(normalized);
+    QMetaMethod mm = mo.method(idx);
+    {
+        // check invalid indices
+        QVERIFY(mm.parameterTypeName(-1).isEmpty());
+        QVERIFY(mm.parameterTypeName(3).isEmpty());
+    }
+    {
+        QCOMPARE(mm.parameterTypeName(0), QByteArray("int"));
+        QCOMPARE(mm.parameterTypeName(1), QByteArray("float"));
+        QCOMPARE(mm.parameterTypeName(2), QByteArray("MyGadget"));
     }
 }
 

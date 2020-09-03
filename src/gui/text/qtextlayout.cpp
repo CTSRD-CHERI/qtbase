@@ -356,9 +356,13 @@ QTextLayout::QTextLayout(const QString& text)
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 /*!
+\if !defined(qt6)
     \fn QTextLayout::QTextLayout(const QString &text, const QFont &font, QPaintDevice *paintdevice)
     \obsolete
     Identical to QTextLayout::QTextLayout(const QString &text, const QFont &font, const QPaintDevice *paintdevice)
+\else
+    \nothing
+\endif
 */
 
 QTextLayout::QTextLayout(const QString &text, const QFont &font, QPaintDevice *paintdevice)
@@ -516,16 +520,6 @@ QString QTextLayout::preeditAreaText() const
     return d->preeditAreaText();
 }
 
-#if QT_DEPRECATED_SINCE(5, 6)
-/*!
-    \obsolete Use setFormats() instead.
-*/
-void QTextLayout::setAdditionalFormats(const QList<FormatRange> &formatList)
-{
-    setFormats(formatList.toVector());
-}
-#endif // deprecated since 5.6
-
 /*!
     \since 5.6
 
@@ -542,18 +536,6 @@ void QTextLayout::setFormats(const QList<FormatRange> &formats)
         QTextDocumentPrivate::get(d->block)->documentChange(d->block.position(), d->block.length());
 }
 
-#if QT_DEPRECATED_SINCE(5, 6)
-/*!
-    \obsolete Use formats() instead.
-
-    \sa setAdditionalFormats(), clearAdditionalFormats()
-*/
-QList<QTextLayout::FormatRange> QTextLayout::additionalFormats() const
-{
-    return formats().toList();
-}
-#endif // deprecated since 5.6
-
 /*!
     \since 5.6
 
@@ -565,16 +547,6 @@ QList<QTextLayout::FormatRange> QTextLayout::formats() const
 {
     return d->formats();
 }
-
-#if QT_DEPRECATED_SINCE(5, 6)
-/*!
-    \obsolete Use clearFormats() instead.
-*/
-void QTextLayout::clearAdditionalFormats()
-{
-    clearFormats();
-}
-#endif // deprecated since 5.6
 
 /*!
     \since 5.6
@@ -1216,7 +1188,7 @@ void QTextLayout::draw(QPainter *p, const QPointF &pos, const QList<FormatRange>
 
         for (int line = firstLine; line < lastLine; ++line) {
             QTextLine l(line, d);
-            l.draw(p, position, &selection);
+            l.draw_internal(p, position, &selection);
         }
         p->restore();
 
@@ -1240,7 +1212,7 @@ void QTextLayout::draw(QPainter *p, const QPointF &pos, const QList<FormatRange>
         selection.format.setProperty(SuppressBackground, true);
         for (int line = firstLine; line < lastLine; ++line) {
             QTextLine l(line, d);
-            l.draw(p, position, &selection);
+            l.draw_internal(p, position, &selection);
         }
         p->restore();
     }
@@ -2505,12 +2477,17 @@ QList<QGlyphRun> QTextLine::glyphRuns(int from, int length) const
 #endif // QT_NO_RAWFONT
 
 /*!
-    \fn void QTextLine::draw(QPainter *painter, const QPointF &position, const QTextLayout::FormatRange *selection) const
+    \fn void QTextLine::draw(QPainter *painter, const QPointF &position) const
 
     Draws a line on the given \a painter at the specified \a position.
-    The \a selection is reserved for internal use.
 */
-void QTextLine::draw(QPainter *p, const QPointF &pos, const QTextLayout::FormatRange *selection) const
+void QTextLine::draw(QPainter *painter, const QPointF &position) const
+{
+    draw_internal(painter, position, nullptr);
+}
+
+void QTextLine::draw_internal(QPainter *p, const QPointF &pos,
+                              const QTextLayout::FormatRange *selection) const
 {
 #ifndef QT_NO_RAWFONT
     // Not intended to work with rawfont
@@ -2543,6 +2520,8 @@ void QTextLine::draw(QPainter *p, const QPointF &pos, const QTextLayout::FormatR
 
     const QFixed y = QFixed::fromReal(pos.y()) + line.y + lineBase;
 
+    const QTextFormatCollection *formatCollection = eng->formatCollection();
+
     bool suppressColors = (eng->option.flags() & QTextOption::SuppressColors);
     while (!iterator.atEnd()) {
         QScriptItem &si = iterator.next();
@@ -2557,10 +2536,12 @@ void QTextLine::draw(QPainter *p, const QPointF &pos, const QTextLayout::FormatR
         QFixed itemBaseLine = y;
         QFont f = eng->font(si);
         QTextCharFormat format;
+        if (formatCollection != nullptr)
+            format = formatCollection->defaultTextFormat();
 
+        if (eng->hasFormats() || selection || formatCollection) {
+            format.merge(eng->format(&si));
 
-        if (eng->hasFormats() || selection) {
-            format = eng->format(&si);
             if (suppressColors) {
                 format.clearForeground();
                 format.clearBackground();
@@ -2572,14 +2553,20 @@ void QTextLine::draw(QPainter *p, const QPointF &pos, const QTextLayout::FormatR
             setPenAndDrawBackground(p, pen, format, QRectF(iterator.x.toReal(), (y - lineBase).toReal(),
                                                            iterator.itemWidth.toReal(), line.height().toReal()));
 
+            const qreal baseLineOffset = format.baselineOffset() / 100.0;
             QTextCharFormat::VerticalAlignment valign = format.verticalAlignment();
-            if (valign == QTextCharFormat::AlignSuperScript || valign == QTextCharFormat::AlignSubScript) {
+            if (valign == QTextCharFormat::AlignSuperScript
+                || valign == QTextCharFormat::AlignSubScript
+                || !qFuzzyIsNull(baseLineOffset))
+            {
                 QFontEngine *fe = f.d->engineForScript(si.analysis.script);
                 QFixed height = fe->ascent() + fe->descent();
+                itemBaseLine -= height * QFixed::fromReal(baseLineOffset);
+
                 if (valign == QTextCharFormat::AlignSubScript)
-                    itemBaseLine += height / 6;
+                    itemBaseLine += height * QFixed::fromReal(format.subScriptBaseline() / 100.0);
                 else if (valign == QTextCharFormat::AlignSuperScript)
-                    itemBaseLine -= height / 2;
+                    itemBaseLine -= height * QFixed::fromReal(format.superScriptBaseline() / 100.0);
             }
         }
 

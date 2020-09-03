@@ -119,8 +119,9 @@ int pipes[2];
 }
 ")
 
+# special case begin
 # cxx11_future
-if (UNIX)
+if (UNIX AND NOT ANDROID AND NOT QNX)
     set(cxx11_future_TEST_LIBRARIES pthread)
 endif()
 qt_config_compile_test(cxx11_future
@@ -141,6 +142,7 @@ std::future<int> f = std::async([]() { return 42; });
     return 0;
 }
 ")
+# special case end
 
 # cxx11_random
 qt_config_compile_test(cxx11_random
@@ -876,17 +878,6 @@ qt_feature("animation" PUBLIC
     CONDITION QT_FEATURE_properties AND QT_FEATURE_easingcurve
 )
 qt_feature_definition("animation" "QT_NO_ANIMATION" NEGATE VALUE "1")
-qt_feature("statemachine" PUBLIC
-    SECTION "Utilities"
-    LABEL "State machine"
-    PURPOSE "Provides hierarchical finite state machines."
-    CONDITION QT_FEATURE_properties
-)
-qt_feature_definition("statemachine" "QT_NO_STATEMACHINE" NEGATE VALUE "1")
-qt_feature("qeventtransition" PUBLIC
-    LABEL "QEventTransition class"
-    CONDITION QT_FEATURE_statemachine
-)
 qt_feature("gestures" PUBLIC
     SECTION "Utilities"
     LABEL "Gesture"

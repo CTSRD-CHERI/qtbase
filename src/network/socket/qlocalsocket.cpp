@@ -152,6 +152,11 @@ QT_BEGIN_NAMESPACE
 */
 
 /*!
+    \fn qint64 QLocalSocket::skipData(qint64 maxSize)
+    \reimp
+*/
+
+/*!
     \fn qint64 QLocalSocket::writeData(const char *data, qint64 c)
     \reimp
 */
@@ -541,6 +546,9 @@ QDebug operator<<(QDebug debug, QLocalSocket::LocalSocketError error)
         break;
     case QLocalSocket::UnknownSocketError:
         debug << "QLocalSocket::UnknownSocketError";
+        break;
+    case QLocalSocket::OperationError:
+        debug << "QLocalSocket::OperationError";
         break;
     default:
         debug << "QLocalSocket::SocketError(" << int(error) << ')';

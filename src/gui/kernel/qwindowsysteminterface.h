@@ -190,7 +190,10 @@ public:
 
     // region is in local coordinates, do not confuse with geometry which is parent-relative
     template<typename Delivery = QWindowSystemInterface::DefaultDelivery>
-    static void handleExposeEvent(QWindow *window, const QRegion &region);
+    static bool handleExposeEvent(QWindow *window, const QRegion &region);
+
+    template<typename Delivery = QWindowSystemInterface::DefaultDelivery>
+    static bool handlePaintEvent(QWindow *window, const QRegion &region);
 
     template<typename Delivery = QWindowSystemInterface::DefaultDelivery>
     static bool handleCloseEvent(QWindow *window);
@@ -296,7 +299,6 @@ public:
     static void deferredFlushWindowSystemEvents(QEventLoop::ProcessEventsFlags flags);
     static int windowSystemEventsQueued();
     static bool nonUserInputEventsQueued();
-    static void setPlatformFiltersEvents(bool enable);
 };
 
 #ifndef QT_NO_DEBUG_STREAM

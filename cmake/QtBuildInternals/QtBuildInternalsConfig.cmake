@@ -66,7 +66,7 @@ function(qt_build_internals_disable_pkg_config_if_needed)
     # only be found via FooConfig.cmake files which means /usr/local should be in the system prefix
     # path.
     set(pkg_config_enabled ON)
-    if(APPLE OR WIN32)
+    if(APPLE OR WIN32 OR QNX)
         set(pkg_config_enabled OFF)
     endif()
     if(DEFINED FEATURE_pkg_config)
@@ -179,6 +179,10 @@ macro(qt_enable_cmake_languages)
             enable_language(${__qt_lang})
         endif()
     endforeach()
+
+    if(NOT PROJECT_NAME STREQUAL "QtBase")
+        qt_internal_set_up_config_optimizations_like_in_qmake()
+    endif()
 endmacro()
 
 # Minimum setup required to have any CMakeList.txt build as as a standalone

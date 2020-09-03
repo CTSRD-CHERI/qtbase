@@ -57,7 +57,7 @@
 #include "private/qdialog_p.h"
 #include "qplatformdefs.h"
 
-#include "qfilesystemmodel_p.h"
+#include <QtGui/private/qfilesystemmodel_p.h>
 #include <qlistview.h>
 #include <qtreeview.h>
 #include <qcombobox.h>
@@ -69,6 +69,7 @@
 #include <qstackedwidget.h>
 #include <qdialogbuttonbox.h>
 #include <qabstractproxymodel.h>
+#include <qfileiconprovider.h>
 #if QT_CONFIG(completer)
 #include <qcompleter.h>
 #endif
@@ -98,15 +99,15 @@ class QPlatformDialogHelper;
 
 struct QFileDialogArgs
 {
-    QFileDialogArgs() : parent(nullptr), mode(QFileDialog::AnyFile) {}
+    QFileDialogArgs(const QUrl &url = {});
 
-    QWidget *parent;
+    QWidget *parent = nullptr;
     QString caption;
     QUrl directory;
     QString selection;
     QString filter;
-    QFileDialog::FileMode mode;
-    QFileDialog::Options options;
+    QFileDialog::FileMode mode = QFileDialog::AnyFile;
+    QFileDialog::Options options = {};
 };
 
 #define UrlRole (Qt::UserRole + 1)
@@ -133,12 +134,9 @@ public:
     void createMenuActions();
     void createWidgets();
 
-    void init(const QUrl &directory = QUrl(), const QString &nameFilter = QString(),
-              const QString &caption = QString());
+    void init(const QFileDialogArgs &args);
     bool itemViewKeyboardEvent(QKeyEvent *event);
     QString getEnvironmentVariable(const QString &string);
-    static QUrl workingDirectory(const QUrl &path);
-    static QString initialSelection(const QUrl &path);
     QStringList typedFiles() const;
     QList<QUrl> userSelectedFiles() const;
     QStringList addDefaultSuffixToFiles(const QStringList &filesToFix) const;
@@ -288,6 +286,7 @@ public:
     QByteArray splitterState;
     QByteArray headerData;
     QList<QUrl> sidebarUrls;
+    QFileIconProvider defaultIconProvider;
 
     ~QFileDialogPrivate();
 

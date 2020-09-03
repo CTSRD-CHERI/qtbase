@@ -5,6 +5,7 @@
 #####################################################################
 
 qt_add_module(Network
+    PLUGIN_TYPES networkaccessbackends
     SOURCES
         access/qabstractnetworkcache.cpp access/qabstractnetworkcache.h access/qabstractnetworkcache_p.h
         access/qhsts.cpp access/qhsts_p.h
@@ -70,13 +71,6 @@ qt_extend_target(Network CONDITION MSVC AND (TEST_architecture_arch STREQUAL "i3
         "/BASE:0x64000000"
 )
 
-qt_extend_target(Network CONDITION QT_FEATURE_ftp
-    SOURCES
-        access/qftp.cpp access/qftp_p.h
-        access/qnetworkaccessftpbackend.cpp access/qnetworkaccessftpbackend_p.h
-        kernel/qurlinfo.cpp kernel/qurlinfo_p.h
-)
-
 qt_extend_target(Network CONDITION QT_FEATURE_networkdiskcache
     SOURCES
         access/qnetworkdiskcache.cpp access/qnetworkdiskcache.h access/qnetworkdiskcache_p.h
@@ -126,6 +120,11 @@ qt_extend_target(Network CONDITION QT_FEATURE_http
 qt_extend_target(Network CONDITION QT_FEATURE_brotli AND QT_FEATURE_http
     LIBRARIES
         WrapBrotli::WrapBrotliDec
+)
+
+qt_extend_target(Network CONDITION QT_FEATURE_http AND QT_FEATURE_zstd
+    LIBRARIES
+        ZSTD::ZSTD
 )
 
 qt_extend_target(Network CONDITION QT_FEATURE_system_zlib

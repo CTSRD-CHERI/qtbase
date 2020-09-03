@@ -146,21 +146,18 @@ public:
     PauseModes pauseMode() const;
     void setPauseMode(PauseModes pauseMode);
 
-    // ### Qt6: make the first one virtual
-    bool bind(const QHostAddress &address, quint16 port = 0, BindMode mode = DefaultForPlatform);
+    virtual bool bind(const QHostAddress &address, quint16 port = 0,
+                      BindMode mode = DefaultForPlatform);
     bool bind(quint16 port = 0, BindMode mode = DefaultForPlatform);
 
-    // ### Qt6: de-virtualize connectToHost(QHostAddress) overload
     virtual void connectToHost(const QString &hostName, quint16 port, OpenMode mode = ReadWrite, NetworkLayerProtocol protocol = AnyIPProtocol);
-    virtual void connectToHost(const QHostAddress &address, quint16 port, OpenMode mode = ReadWrite);
+    void connectToHost(const QHostAddress &address, quint16 port, OpenMode mode = ReadWrite);
     virtual void disconnectFromHost();
 
     bool isValid() const;
 
     qint64 bytesAvailable() const override;
     qint64 bytesToWrite() const override;
-
-    bool canReadLine() const override; // ### Qt6: remove me
 
     quint16 localPort() const;
     QHostAddress localAddress() const;
@@ -187,7 +184,6 @@ public:
     // from QIODevice
     void close() override;
     bool isSequential() const override;
-    bool atEnd() const override; // ### Qt6: remove me
     bool flush();
 
     // for synchronous access
@@ -216,6 +212,7 @@ Q_SIGNALS:
 protected:
     qint64 readData(char *data, qint64 maxlen) override;
     qint64 readLineData(char *data, qint64 maxlen) override;
+    qint64 skipData(qint64 maxSize) override;
     qint64 writeData(const char *data, qint64 len) override;
 
     void setSocketState(SocketState state);

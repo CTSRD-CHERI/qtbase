@@ -41,6 +41,7 @@ qt_add_tool(${target_name}
         ../src/3rdparty/pcre2/src/pcre2_ucp.h
         ../src/3rdparty/pcre2/src/pcre2_valid_utf.c
         ../src/3rdparty/pcre2/src/pcre2_xclass.c
+        ../src/corelib/global/qcontainerinfo.h
         ../src/corelib/global/qendian.cpp # special case
         ../src/corelib/global/qglobal.cpp ../src/corelib/global/qglobal.h
         ../src/corelib/global/qlibraryinfo.cpp
@@ -61,15 +62,18 @@ qt_add_tool(${target_name}
         ../src/corelib/io/qfilesystementry.cpp
         ../src/corelib/io/qfsfileengine.cpp
         ../src/corelib/io/qfsfileengine_iterator.cpp
+        ../src/corelib/io/qiodevicebase.h
         ../src/corelib/io/qiodevice.cpp ../src/corelib/io/qiodevice.h
         ../src/corelib/io/qsettings.cpp
         ../src/corelib/io/qtemporaryfile.cpp ../src/corelib/io/qtemporaryfile.h
+        ../src/corelib/kernel/qmetacontainer.cpp ../src/corelib/kernel/qmetacontainer.h
         ../src/corelib/kernel/qmetatype.cpp ../src/corelib/kernel/qmetatype.h
         ../src/corelib/kernel/qsystemerror.cpp ../src/corelib/kernel/qsystemerror_p.h
         ../src/corelib/kernel/qvariant.cpp
         ../src/corelib/plugin/quuid.cpp ../src/corelib/plugin/quuid.h
         ../src/corelib/serialization/qcborstreamwriter.cpp ../src/corelib/serialization/qcborstreamwriter.h
         ../src/corelib/serialization/qcborvalue.cpp ../src/corelib/serialization/qcborvalue.h ../src/corelib/serialization/qcborvalue_p.h
+        ../src/corelib/serialization/qdatastream.cpp ../src/corelib/serialization/qdatastream.h
         ../src/corelib/serialization/qjson_p.h
         ../src/corelib/serialization/qjsonarray.cpp ../src/corelib/serialization/qjsonarray.h
         ../src/corelib/serialization/qjsoncbor.cpp
@@ -109,7 +113,7 @@ qt_add_tool(${target_name}
         ../src/corelib/time/qromancalendar.cpp ../src/corelib/time/qromancalendar_p.h # special case
         ../src/corelib/time/qdatetime.cpp ../src/corelib/time/qdatetime.h ../src/corelib/time/qdatetime_p.h # special case
         ../src/corelib/tools/qhash.cpp ../src/corelib/tools/qhash.h
-        ../src/corelib/tools/qlist.cpp ../src/corelib/tools/qlist.h
+        ../src/corelib/tools/qlist.h
         ../src/corelib/text/qlocale.cpp ../src/corelib/text/qlocale.h
         ../src/corelib/text/qlocale_tools.cpp ../src/corelib/text/qlocale_tools_p.h
         ../src/corelib/tools/qmap.h

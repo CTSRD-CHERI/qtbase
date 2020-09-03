@@ -58,7 +58,7 @@
 #include <qfuture.h>
 #include <qfuturewatcher.h>
 #include <qpromise.h>
-#include <qpointer.h>
+#include <qscopedpointer.h>
 #include <qsharedpointer.h>
 
 class snippet_QPromise
@@ -75,11 +75,8 @@ void snippet_QPromise::basicExample()
     QPromise<int> promise;
     QFuture<int> future = promise.future();
 
-    // Note: calling reportStarted() prior to thread creation to enforce order
-    // of calls: first promise.reportStarted() then future.waitForFinished()
-    promise.reportStarted();  // notifies QFuture that the computation is started
-
-    QPointer<QThread> thread(QThread::create([] (QPromise<int> promise) {
+    QScopedPointer<QThread> thread(QThread::create([] (QPromise<int> promise) {
+        promise.reportStarted();   // notifies QFuture that the computation is started
         promise.addResult(42);
         promise.reportFinished();  // notifies QFuture that the computation is finished
     }, std::move(promise)));
@@ -106,14 +103,14 @@ void snippet_QPromise::multithreadExample()
 
 //! [multithread_main]
     // here, QPromise is shared between threads via a smart pointer
-    QPointer<QThread> threads[] = {
-        QPointer<QThread>(QThread::create([] (auto sharedPromise) {
+    QScopedPointer<QThread> threads[] = {
+        QScopedPointer<QThread>(QThread::create([] (auto sharedPromise) {
             sharedPromise->addResult(0, 0);  // adds value 0 by index 0
         }, sharedPromise)),
-        QPointer<QThread>(QThread::create([] (auto sharedPromise) {
+        QScopedPointer<QThread>(QThread::create([] (auto sharedPromise) {
             sharedPromise->addResult(-1, 1);  // adds value -1 by index 1
         }, sharedPromise)),
-        QPointer<QThread>(QThread::create([] (auto sharedPromise) {
+        QScopedPointer<QThread>(QThread::create([] (auto sharedPromise) {
             sharedPromise->addResult(-2, 2);  // adds value -2 by index 2
         }, sharedPromise)),
         // ...
@@ -147,7 +144,7 @@ void snippet_QPromise::suspendExample()
 
     promise.reportStarted();
     // Start a computation thread that supports suspension and cancellation
-    QPointer<QThread> thread(QThread::create([] (QPromise<int> promise) {
+    QScopedPointer<QThread> thread(QThread::create([] (QPromise<int> promise) {
         for (int i = 0; i < 100; ++i) {
             promise.addResult(i);
             promise.suspendIfRequested();   // support suspension

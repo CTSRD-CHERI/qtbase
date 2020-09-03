@@ -75,6 +75,7 @@ qt_add_module(Bootstrap
         ../../corelib/io/qurlrecode.cpp
         ../../corelib/kernel/qcoreapplication.cpp
         ../../corelib/kernel/qcoreglobaldata.cpp
+        ../../corelib/kernel/qmetacontainer.cpp
         ../../corelib/kernel/qmetatype.cpp
         ../../corelib/kernel/qsharedmemory.cpp
         ../../corelib/kernel/qsystemerror.cpp
@@ -94,6 +95,7 @@ qt_add_module(Bootstrap
         ../../corelib/serialization/qjsonwriter.cpp
         ../../corelib/serialization/qtextstream.cpp
         ../../corelib/serialization/qxmlstream.cpp
+        ../../corelib/serialization/qxmlstreamgrammar.cpp
         ../../corelib/serialization/qxmlutils.cpp
         ../../corelib/text/qbytearray.cpp
         ../../corelib/text/qbytearraylist.cpp

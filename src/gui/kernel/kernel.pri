@@ -6,6 +6,8 @@ PRECOMPILED_HEADER = kernel/qt_gui_pch.h
 
 KERNEL_P= kernel
 HEADERS += \
+        kernel/qoffscreensurface_p.h \
+        kernel/qoffscreensurface_platform.h \
         kernel/qtguiglobal.h \
         kernel/qtguiglobal_p.h \
         kernel/qgenericpluginfactory.h \
@@ -128,7 +130,8 @@ SOURCES += \
         kernel/qplatformgraphicsbufferhelper.cpp \
         kernel/qinputdevicemanager.cpp \
         kernel/qhighdpiscaling.cpp \
-        kernel/qtestsupport_gui.cpp
+        kernel/qtestsupport_gui.cpp \
+        kernel/qguistatemachine.cpp
 
 qtConfig(action) {
     HEADERS += \

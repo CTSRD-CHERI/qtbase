@@ -49,7 +49,6 @@ QT_USE_NAMESPACE
 #include "qmenubar.h"
 #include "qmenubar_p.h"
 #endif
-#include "qmacnativewidget_mac.h"
 
 #include <QtCore/QDebug>
 #include <QtGui/QGuiApplication>
@@ -112,26 +111,16 @@ void QMenu::setAsDockMenu()
         cocoaPlatformMenu->setAsDockMenu();
 }
 
-
-/*! \fn void qt_mac_set_dock_menu(QMenu *menu)
-    \relates QMenu
-    \deprecated
-
-    Sets this \a menu to be the dock menu available by option-clicking
-    on the application dock icon. Available on \macos only.
-
-    Deprecated; use \l QMenu::setAsDockMenu() instead.
-*/
-
 void QMenuPrivate::moveWidgetToPlatformItem(QWidget *widget, QPlatformMenuItem* item)
 {
-    auto *container = new QT_IGNORE_DEPRECATIONS(QMacNativeWidget);
+    auto *container = new QWidget;
+    container->setAttribute(Qt::WA_TranslucentBackground);
     QObject::connect(platformMenu, SIGNAL(destroyed()), container, SLOT(deleteLater()));
     container->resize(widget->sizeHint());
     widget->setParent(container);
     widget->setVisible(true);
 
-    NSView *containerView = container->nativeView();
+    NSView *containerView = reinterpret_cast<NSView*>(container->winId());
     QWindow *containerWindow = container->windowHandle();
     Qt::WindowFlags wf = containerWindow->flags();
     containerWindow->setFlags(wf | Qt::SubWindow);

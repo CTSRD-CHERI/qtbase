@@ -61,6 +61,8 @@
 #include "qnetworkcookiejar.h"
 #include "qnetconmonitor_p.h"
 
+#include "qnetworkreplyimpl_p.h"
+
 #include <string.h>             // for strchr
 
 QT_BEGIN_NAMESPACE
@@ -670,12 +672,10 @@ void QNetworkReplyHttpImplPrivate::postRequest(const QNetworkRequest &newHttpReq
     }
 #endif
 
-    auto redirectPolicy = QNetworkRequest::ManualRedirectPolicy;
+    auto redirectPolicy = QNetworkRequest::NoLessSafeRedirectPolicy;
     const QVariant value = newHttpRequest.attribute(QNetworkRequest::RedirectPolicyAttribute);
     if (value.isValid())
         redirectPolicy = qvariant_cast<QNetworkRequest::RedirectPolicy>(value);
-    else if (newHttpRequest.attribute(QNetworkRequest::FollowRedirectsAttribute).toBool())
-        redirectPolicy = QNetworkRequest::NoLessSafeRedirectPolicy;
 
     httpRequest.setRedirectPolicy(redirectPolicy);
 

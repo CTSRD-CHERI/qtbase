@@ -627,7 +627,7 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
     QRect aligned = alignedRect(QGuiApplication::layoutDirection(), QFlag(alignment), pixmap.size() / scale, rect);
     QRect inter = aligned.intersected(rect);
 
-    painter->drawPixmap(inter.x(), inter.y(), pixmap, inter.x() - aligned.x(), inter.y() - aligned.y(), inter.width() * scale, inter.height() *scale);
+    painter->drawPixmap(inter.x(), inter.y(), pixmap, inter.x() - aligned.x(), inter.y() - aligned.y(), qRound(inter.width() * scale), qRound(inter.height() *scale));
 }
 
 /*!
@@ -636,8 +636,6 @@ void QStyle::drawItemPixmap(QPainter *painter, const QRect &rect, int alignment,
     This enum describes the various primitive elements. A
     primitive element is a common GUI element, such as a checkbox
     indicator or button bevel.
-
-    \omitvalue PE_IndicatorViewItemCheck
 
     \value PE_PanelButtonCommand  Button used to initiate an action, for
         example, a QPushButton.

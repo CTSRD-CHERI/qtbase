@@ -1055,10 +1055,10 @@ bool QIBaseResult::exec()
     }
 
     if (ok) {
+        isc_dsql_free_statement(d->status, &d->stmt, DSQL_close);
+        if (d->isError(QT_TRANSLATE_NOOP("QIBaseResult", "Unable to close statement")))
+            return false;
         if (colCount() && d->queryType != isc_info_sql_stmt_exec_procedure) {
-            isc_dsql_free_statement(d->status, &d->stmt, DSQL_close);
-            if (d->isError(QT_TRANSLATE_NOOP("QIBaseResult", "Unable to close statement")))
-                return false;
             cleanup();
         }
         if (d->queryType == isc_info_sql_stmt_exec_procedure)
@@ -1379,7 +1379,7 @@ QSqlRecord QIBaseResult::record() const
 QVariant QIBaseResult::handle() const
 {
     Q_D(const QIBaseResult);
-    return QVariant(qRegisterMetaType<isc_stmt_handle>("isc_stmt_handle"), &d->stmt);
+    return QVariant(QMetaType::fromType<isc_stmt_handle>(), &d->stmt);
 }
 
 /*********************************/
@@ -1730,7 +1730,7 @@ QString QIBaseDriver::formatValue(const QSqlField &field, bool trimStrings) cons
 QVariant QIBaseDriver::handle() const
 {
     Q_D(const QIBaseDriver);
-    return QVariant(qRegisterMetaType<isc_db_handle>("isc_db_handle"), &d->ibase);
+    return QVariant(QMetaType::fromType<isc_db_handle>(), &d->ibase);
 }
 
 static ISC_EVENT_CALLBACK qEventCallback(char *result, ISC_USHORT length, const ISC_UCHAR *updated)
@@ -1882,6 +1882,12 @@ QString QIBaseDriver::escapeIdentifier(const QString &identifier, IdentifierType
         res.replace(QLatin1Char('.'), QLatin1String("\".\""));
     }
     return res;
+}
+
+int QIBaseDriver::maximumIdentifierLength(IdentifierType type) const
+{
+    Q_UNUSED(type);
+    return 31;
 }
 
 QT_END_NAMESPACE

@@ -1,3 +1,6 @@
+include(QtFeatureCommon)
+include(CheckCXXCompilerFlag)
+
 function(qt_feature_module_begin)
     qt_parse_all_arguments(arg "qt_feature_module_begin"
         "NO_MODULE;ONLY_EVALUATE_FEATURES"
@@ -33,16 +36,6 @@ function(qt_feature_module_begin)
     set(__QtFeature_config_definitions "" PARENT_SCOPE)
 
     set(__QtFeature_define_definitions "" PARENT_SCOPE)
-endfunction()
-
-function(qt_feature_normalize_name name out_var)
-    # Normalize the feature name to something CMake can deal with.
-    if(name MATCHES "c\\+\\+")
-        string(REGEX REPLACE "[^a-zA-Z0-9_]" "x" name "${name}")
-    else()
-        string(REGEX REPLACE "[^a-zA-Z0-9_]" "_" name "${name}")
-    endif()
-    set(${out_var} "${name}" PARENT_SCOPE)
 endfunction()
 
 function(qt_feature feature)
@@ -260,9 +253,10 @@ function(qt_evaluate_feature feature)
 
     qt_evaluate_config_expression(disable_result ${arg_DISABLE})
     qt_evaluate_config_expression(enable_result ${arg_ENABLE})
+    qt_evaluate_config_expression(auto_detect ${arg_AUTODETECT})
     if(${disable_result})
         set(result OFF)
-    elseif((${enable_result}) OR (${arg_AUTODETECT}))
+    elseif((${enable_result}) OR (${auto_detect}))
         set(result ${condition})
     else()
         # feature not auto-detected and not explicitly enabled
@@ -876,6 +870,44 @@ function(qt_config_compile_test_machine_tuple label)
     endif()
     message(STATUS "Performing Test ${label} - ${status_label}")
     set(TEST_machine_tuple "${output}" CACHE INTERNAL "${label}")
+endfunction()
+
+function(qt_config_compiler_supports_flag_test name)
+    if(DEFINED "TEST_${name}")
+        return()
+    endif()
+
+    cmake_parse_arguments(arg "" "LABEL;FLAG" "" ${ARGN})
+    check_cxx_compiler_flag("${arg_FLAG}" TEST_${name})
+    set(TEST_${name} "${TEST_${name}}" CACHE INTERNAL "${label}")
+endfunction()
+
+function(qt_config_linker_supports_flag_test name)
+    if(DEFINED "TEST_${name}")
+        return()
+    endif()
+
+    cmake_parse_arguments(arg "" "LABEL;FLAG" "" ${ARGN})
+    set(flags "-Wl,${arg_FLAG}")
+
+    # Select the right linker.
+    if(GCC OR CLANG)
+        # TODO: This works for now but is... suboptimal. Once
+        # QTBUG-86186 is resolved, we should check the *features*
+        # QT_FEATURE_use_gold_linker etc. instead of trying to
+        # replicate the feature conditions.
+        if(QT_FEATURE_use_gold_linker_alias OR INPUT_linker STREQUAL "gold")
+            list(PREPEND flags "-fuse-ld=gold")
+        elseif(INPUT_linker STREQUAL "bfd")
+            list(PREPEND flags "-fuse-ld=bfd")
+        elseif(INPUT_linker STREQUAL "lld")
+            list(PREPEND flags "-fuse-ld=lld")
+        endif()
+    endif()
+
+    set(CMAKE_REQUIRED_LINK_OPTIONS ${flags})
+    check_cxx_source_compiles("int main() { return 0; }" TEST_${name})
+    set(TEST_${name} "${TEST_${name}}" CACHE INTERNAL "${label}")
 endfunction()
 
 function(qt_make_features_available target)

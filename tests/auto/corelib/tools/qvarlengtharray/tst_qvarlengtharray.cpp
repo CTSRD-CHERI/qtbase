@@ -528,11 +528,11 @@ void reallocTest()
 
     typedef QVarLengthArray<T, 16> Container;
     enum {
-        isStatic = QTypeInfo<T>::isStatic,
+        isRelocatable = QTypeInfo<T>::isRelocatable,
         isComplex = QTypeInfo<T>::isComplex,
 
-        isPrimitive = !isComplex && !isStatic,
-        isMovable = !isStatic
+        isPrimitive = !isComplex && isRelocatable,
+        isMovable = isRelocatable
     };
 
     // Constructors
@@ -785,7 +785,7 @@ void tst_QVarLengthArray::cpp17ctad()
 #ifdef __cpp_deduction_guides
 #define QVERIFY_IS_VLA_OF(obj, Type) \
     QVERIFY2((std::is_same<decltype(obj), QVarLengthArray<Type>>::value), \
-             QMetaType::typeName(qMetaTypeId<decltype(obj)::value_type>()))
+             QMetaType::fromType<decltype(obj)::value_type>().name())
 #define CHECK(Type, One, Two, Three) \
     do { \
         const Type v[] = {One, Two, Three}; \

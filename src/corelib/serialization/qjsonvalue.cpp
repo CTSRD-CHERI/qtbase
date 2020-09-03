@@ -101,7 +101,7 @@ QT_BEGIN_NAMESPACE
 
     The following methods return QJsonValueRef:
     \list
-    \li \l {QJsonArray}::operator[](int i)
+    \li \l {QJsonArray}::operator[](qsizetype i)
     \li \l {QJsonObject}::operator[](const QString & key) const
     \endlist
 
@@ -114,26 +114,25 @@ QT_BEGIN_NAMESPACE
     The default is to create a Null value.
  */
 QJsonValue::QJsonValue(Type type)
-    : d(nullptr), t(QCborValue::Undefined)
 {
     switch (type) {
     case Null:
-        t = QCborValue::Null;
+        value = QCborValue::Null;
         break;
     case Bool:
-        t = QCborValue::False;
+        value = QCborValue::False;
         break;
     case Double:
-        t = QCborValue::Double;
+        value = QCborValue::Double;
         break;
     case String:
-        t = QCborValue::String;
+        value = QCborValue::String;
         break;
     case Array:
-        t = QCborValue::Array;
+        value = QCborValue::Array;
         break;
     case Object:
-        t = QCborValue::Map;
+        value = QCborValue::Map;
         break;
     case Undefined:
         break;
@@ -144,24 +143,27 @@ QJsonValue::QJsonValue(Type type)
     Creates a value of type Bool, with value \a b.
  */
 QJsonValue::QJsonValue(bool b)
-    : t(b ? QCborValue::True : QCborValue::False)
+    : value(b)
 {
+}
+
+static inline QCborValue doubleValueHelper(double v)
+{
+    qint64 n = 0;
+    // Convert to integer if the number is an integer and changing wouldn't
+    // introduce additional digit precision not present in the double.
+    if (convertDoubleTo<qint64>(v, &n, false /* allow_precision_upgrade */))
+        return n;
+    else
+        return v;
 }
 
 /*!
     Creates a value of type Double, with value \a v.
  */
 QJsonValue::QJsonValue(double v)
-    : d(nullptr)
+    : value(doubleValueHelper(v))
 {
-    // Convert to integer if the number is an integer and changing wouldn't
-    // introduce additional digit precision not present in the double.
-    if (convertDoubleTo<qint64>(v, &n, false /* allow_precision_upgrade */)) {
-        t = QCborValue::Integer;
-    } else {
-        memcpy(&n, &v, sizeof(n));
-        t = QCborValue::Double;
-    }
 }
 
 /*!
@@ -169,7 +171,7 @@ QJsonValue::QJsonValue(double v)
     Creates a value of type Double, with value \a v.
  */
 QJsonValue::QJsonValue(int v)
-    : n(v), t(QCborValue::Integer)
+    : value(v)
 {
 }
 
@@ -180,7 +182,7 @@ QJsonValue::QJsonValue(int v)
     If you pass in values outside this range expect a loss of precision to occur.
  */
 QJsonValue::QJsonValue(qint64 v)
-    : n(v), t(QCborValue::Integer)
+    : value(v)
 {
 }
 
@@ -188,7 +190,7 @@ QJsonValue::QJsonValue(qint64 v)
     Creates a value of type String, with value \a s.
  */
 QJsonValue::QJsonValue(const QString &s)
-    : QJsonValue(QJsonPrivate::Value::fromTrustedCbor(s))
+    : value(s)
 {
 }
 
@@ -204,17 +206,11 @@ QJsonValue::QJsonValue(const QString &s)
     \since 5.3
  */
 
-// ### Qt6: remove
-void QJsonValue::stringDataFromQStringHelper(const QString &string)
-{
-    *this = QJsonValue(string);
-}
-
 /*!
     Creates a value of type String, with value \a s.
  */
 QJsonValue::QJsonValue(QLatin1String s)
-    : QJsonValue(QJsonPrivate::Value::fromTrustedCbor(s))
+    : value(s)
 {
 }
 
@@ -222,7 +218,7 @@ QJsonValue::QJsonValue(QLatin1String s)
     Creates a value of type Array, with value \a a.
  */
 QJsonValue::QJsonValue(const QJsonArray &a)
-    : n(-1), d(a.a), t(QCborValue::Array)
+    : value(QCborArray::fromJsonArray(a))
 {
 }
 
@@ -230,7 +226,7 @@ QJsonValue::QJsonValue(const QJsonArray &a)
     Creates a value of type Object, with value \a o.
  */
 QJsonValue::QJsonValue(const QJsonObject &o)
-    : n(-1), d(o.o), t(QCborValue::Map)
+    : value(QCborMap::fromJsonObject(o))
 {
 }
 
@@ -244,10 +240,8 @@ QJsonValue::~QJsonValue() = default;
     Creates a copy of \a other.
  */
 QJsonValue::QJsonValue(const QJsonValue &other)
+    : value(other.value)
 {
-    n = other.n;
-    t = other.t;
-    d = other.d;
 }
 
 /*!
@@ -260,21 +254,15 @@ QJsonValue &QJsonValue::operator =(const QJsonValue &other)
     return *this;
 }
 
-QJsonValue::QJsonValue(QJsonValue &&other) noexcept :
-    n(other.n),
-    d(other.d),
-    t(other.t)
+QJsonValue::QJsonValue(QJsonValue &&other) noexcept
+    : value(std::move(other.value))
 {
-    other.n = 0;
-    other.d = nullptr;
-    other.t = QCborValue::Null;
+    other.value = QCborValue(nullptr);
 }
 
 void QJsonValue::swap(QJsonValue &other) noexcept
 {
-    qSwap(n, other.n);
-    qSwap(d, other.d);
-    qSwap(t, other.t);
+    value.swap(other.value);
 }
 
 /*!
@@ -350,7 +338,6 @@ void QJsonValue::swap(QJsonValue &other) noexcept
     Returns \c true if the value is undefined. This can happen in certain
     error cases as e.g. accessing a non existing key in a QJsonObject.
  */
-
 
 /*!
     Converts \a variant to a QJsonValue and returns it.
@@ -461,7 +448,11 @@ void QJsonValue::swap(QJsonValue &other) noexcept
     For other types not listed above, a conversion to string will be attempted,
     usually but not always by calling QVariant::toString(). If the conversion
     fails the value is replaced by a null JSON value. Note that
-    QVariant::toString() is also lossy for the majority of types.
+    QVariant::toString() is also lossy for the majority of types. For example,
+    if the passed QVariant is representing raw byte array data, it is recommended
+    to pre-encode it to \l {https://www.ietf.org/rfc/rfc4648.txt}{Base64} (or
+    another lossless encoding), otherwise a lossy conversion using QString::fromUtf8()
+    will be used.
 
     Please note that the conversions via QVariant::toString() are subject to
     change at any time. Both QVariant and QJsonValue may be extended in the
@@ -488,8 +479,10 @@ QJsonValue QJsonValue::fromVariant(const QVariant &variant)
             return QJsonValue(variant.toLongLong());
         Q_FALLTHROUGH();
     case QMetaType::Float:
-    case QMetaType::Double:
-        return QJsonValue(variant.toDouble());
+    case QMetaType::Double: {
+        double v = variant.toDouble();
+        return qt_is_finite(v) ? QJsonValue(v) : QJsonValue();
+    }
     case QMetaType::QString:
         return QJsonValue(variant.toString());
     case QMetaType::QStringList:
@@ -548,7 +541,7 @@ QJsonValue QJsonValue::fromVariant(const QVariant &variant)
  */
 QVariant QJsonValue::toVariant() const
 {
-    switch (t) {
+    switch (value.type()) {
     case QCborValue::True:
         return true;
     case QCborValue::False:
@@ -560,13 +553,9 @@ QVariant QJsonValue::toVariant() const
     case QCborValue::String:
         return toString();
     case QCborValue::Array:
-        return d ?
-               QJsonArray(d.data()).toVariantList() :
-               QVariantList();
+        return toArray().toVariantList();
     case QCborValue::Map:
-        return d ?
-               QJsonObject(d.data()).toVariantMap() :
-               QVariantMap();
+        return toObject().toVariantMap();
     case QCborValue::Null:
         return QVariant::fromValue(nullptr);
     case QCborValue::Undefined:
@@ -600,7 +589,7 @@ QVariant QJsonValue::toVariant() const
  */
 QJsonValue::Type QJsonValue::type() const
 {
-    switch (t) {
+    switch (value.type()) {
     case QCborValue::Null:
         return QJsonValue::Null;
     case QCborValue::True:
@@ -628,7 +617,7 @@ QJsonValue::Type QJsonValue::type() const
  */
 bool QJsonValue::toBool(bool defaultValue) const
 {
-    switch (t) {
+    switch (value.type()) {
     case QCborValue::True:
         return true;
     case QCborValue::False:
@@ -647,17 +636,19 @@ bool QJsonValue::toBool(bool defaultValue) const
  */
 int QJsonValue::toInt(int defaultValue) const
 {
-    switch (t) {
+    switch (value.type()) {
     case QCborValue::Double: {
         int dblInt;
         if (convertDoubleTo<int>(toDouble(), &dblInt))
             return dblInt;
         break;
     }
-    case QCborValue::Integer:
+    case QCborValue::Integer: {
+        const auto n = value.toInteger();
         if (qint64(int(n)) == n)
             return int(n);
         break;
+    }
     default:
         break;
     }
@@ -673,9 +664,9 @@ int QJsonValue::toInt(int defaultValue) const
  */
 qint64 QJsonValue::toInteger(qint64 defaultValue) const
 {
-    switch (t) {
+    switch (value.type()) {
     case QCborValue::Integer:
-        return n;
+        return value.toInteger();
     case QCborValue::Double: {
         qint64 dblInt;
         if (convertDoubleTo<qint64>(toDouble(), &dblInt))
@@ -695,17 +686,7 @@ qint64 QJsonValue::toInteger(qint64 defaultValue) const
  */
 double QJsonValue::toDouble(double defaultValue) const
 {
-    switch (t) {
-    case QCborValue::Double: {
-        double d;
-        memcpy(&d, &n, sizeof(d));
-        return d;
-    }
-    case QCborValue::Integer:
-        return double(n);
-    default:
-        return defaultValue;
-    }
+    return value.toDouble(defaultValue);
 }
 
 /*!
@@ -715,7 +696,7 @@ double QJsonValue::toDouble(double defaultValue) const
  */
 QString QJsonValue::toString(const QString &defaultValue) const
 {
-    return (t == QCborValue::String && d) ? d->stringAt(n) : defaultValue;
+    return value.toString(defaultValue);
 }
 
 /*!
@@ -727,7 +708,7 @@ QString QJsonValue::toString(const QString &defaultValue) const
  */
 QString QJsonValue::toString() const
 {
-    return (t == QCborValue::String && d) ? d->stringAt(n) : QString();
+    return value.toString();
 }
 
 /*!
@@ -737,10 +718,12 @@ QString QJsonValue::toString() const
  */
 QJsonArray QJsonValue::toArray(const QJsonArray &defaultValue) const
 {
-    if (t != QCborValue::Array || n >= 0 || !d)
+    const auto dd = QJsonPrivate::Value::container(value);
+    const auto n = QJsonPrivate::Value::valueHelper(value);
+    if (value.type() != QCborValue::Array || n >= 0 || !dd)
         return defaultValue;
 
-    return QJsonArray(d.data());
+    return QJsonArray(dd);
 }
 
 /*!
@@ -762,10 +745,12 @@ QJsonArray QJsonValue::toArray() const
  */
 QJsonObject QJsonValue::toObject(const QJsonObject &defaultValue) const
 {
-    if (t != QCborValue::Map || n >= 0 || !d)
+    const auto dd = QJsonPrivate::Value::container(value);
+    const auto n = QJsonPrivate::Value::valueHelper(value);
+    if (value.type() != QCborValue::Map || n >= 0 || !dd)
         return defaultValue;
 
-    return QJsonObject(d.data());
+    return QJsonObject(dd);
 }
 
 /*!
@@ -835,7 +820,7 @@ const QJsonValue QJsonValue::operator[](QLatin1String key) const
 
     \sa QJsonValue, QJsonValue::isUndefined(), QJsonArray
  */
-const QJsonValue QJsonValue::operator[](int i) const
+const QJsonValue QJsonValue::operator[](qsizetype i) const
 {
     if (!isArray())
         return QJsonValue(QJsonValue::Undefined);
@@ -848,7 +833,7 @@ const QJsonValue QJsonValue::operator[](int i) const
  */
 bool QJsonValue::operator==(const QJsonValue &other) const
 {
-    if (t != other.t) {
+    if (value.type() != other.value.type()) {
         if (isDouble() && other.isDouble()) {
             // One value Cbor integer, one Cbor double, should interact as doubles.
             return toDouble() == other.toDouble();
@@ -856,7 +841,7 @@ bool QJsonValue::operator==(const QJsonValue &other) const
         return false;
     }
 
-    switch (t) {
+    switch (value.type()) {
     case QCborValue::Undefined:
     case QCborValue::Null:
     case QCborValue::True:
@@ -865,21 +850,14 @@ bool QJsonValue::operator==(const QJsonValue &other) const
     case QCborValue::Double:
         return toDouble() == other.toDouble();
     case QCborValue::Integer:
-        return n == other.n;
+        return QJsonPrivate::Value::valueHelper(value)
+                == QJsonPrivate::Value::valueHelper(other.value);
     case QCborValue::String:
         return toString() == other.toString();
     case QCborValue::Array:
-        if (!d)
-            return !other.d || other.d->elements.length() == 0;
-        if (!other.d)
-            return d->elements.length() == 0;
-        return QJsonArray(d.data()) == QJsonArray(other.d.data());
+        return toArray() == other.toArray();
     case QCborValue::Map:
-        if (!d)
-            return !other.d || other.d->elements.length() == 0;
-        if (!other.d)
-            return d->elements.length() == 0;
-        return QJsonObject(d.data()) == QJsonObject(other.d.data());
+        return toObject() == other.toObject();
     default:
         return false;
     }
@@ -893,15 +871,6 @@ bool QJsonValue::operator!=(const QJsonValue &other) const
 {
     return !(*this == other);
 }
-
-/*!
-    \internal
- */
-void QJsonValue::detach()
-{
-    d.detach();
-}
-
 
 /*!
     \class QJsonValueRef
@@ -995,7 +964,7 @@ size_t qHash(const QJsonValue &value, size_t seed)
 QDebug operator<<(QDebug dbg, const QJsonValue &o)
 {
     QDebugStateSaver saver(dbg);
-    switch (o.t) {
+    switch (o.value.type()) {
     case QCborValue::Undefined:
         dbg << "QJsonValue(undefined)";
         break;

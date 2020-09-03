@@ -184,11 +184,11 @@ inline size_t qHash(const Custom &key, size_t seed = 0) { return qHash(key.i, se
 Q_DECLARE_METATYPE(Custom);
 
 // tests depends on the fact that:
-static_assert(!QTypeInfo<int>::isStatic);
+static_assert(QTypeInfo<int>::isRelocatable);
 static_assert(!QTypeInfo<int>::isComplex);
-static_assert(!QTypeInfo<Movable>::isStatic);
+static_assert(QTypeInfo<Movable>::isRelocatable);
 static_assert(QTypeInfo<Movable>::isComplex);
-static_assert(QTypeInfo<Custom>::isStatic);
+static_assert(!QTypeInfo<Custom>::isRelocatable);
 static_assert(QTypeInfo<Custom>::isComplex);
 
 
@@ -332,6 +332,7 @@ private slots:
     void emplaceConsistentWithStdVectorInt();
     void emplaceConsistentWithStdVectorCustom();
     void emplaceConsistentWithStdVectorMovable();
+    void emplaceConsistentWithStdVectorQString();
     void emplaceReturnsIterator();
     void emplaceBack();
     void emplaceBackReturnsRef();
@@ -874,7 +875,7 @@ void tst_QList::appendList() const
         v6 << (QList<ConstructionCounted>() << 3 << 4);
         QCOMPARE(v6, expectedFour);
         QCOMPARE(v6.at(0).copies, 2);
-        QCOMPARE(v6.at(0).moves, 1);
+        QCOMPARE(v6.at(0).moves, 2);
 
         // +=
         QList<ConstructionCounted> v7;
@@ -1086,7 +1087,7 @@ void tst_QList::cpp17ctad() const
 #ifdef __cpp_deduction_guides
 #define QVERIFY_IS_VECTOR_OF(obj, Type) \
     QVERIFY2((std::is_same<decltype(obj), QList<Type>>::value), \
-             QMetaType::typeName(qMetaTypeId<decltype(obj)::value_type>()))
+             QMetaType::fromType<decltype(obj)::value_type>().name())
 #define CHECK(Type, One, Two, Three) \
     do { \
         const Type v[] = {One, Two, Three}; \
@@ -2144,7 +2145,7 @@ void tst_QList::resizePOD_data() const
     QTest::addColumn<int>("size");
 
     QVERIFY(!QTypeInfo<int>::isComplex);
-    QVERIFY(!QTypeInfo<int>::isStatic);
+    QVERIFY(QTypeInfo<int>::isRelocatable);
 
     QList<int> null;
     QList<int> empty(0, 5);
@@ -2192,7 +2193,7 @@ void tst_QList::resizeComplexMovable_data() const
     QTest::addColumn<int>("size");
 
     QVERIFY(QTypeInfo<Movable>::isComplex);
-    QVERIFY(!QTypeInfo<Movable>::isStatic);
+    QVERIFY(QTypeInfo<Movable>::isRelocatable);
 
     QList<Movable> null;
     QList<Movable> empty(0, 'Q');
@@ -2244,7 +2245,7 @@ void tst_QList::resizeComplex_data() const
     QTest::addColumn<int>("size");
 
     QVERIFY(QTypeInfo<Custom>::isComplex);
-    QVERIFY(QTypeInfo<Custom>::isStatic);
+    QVERIFY(!QTypeInfo<Custom>::isRelocatable);
 
     QList<Custom> null;
     QList<Custom> empty(0, '0');
@@ -2916,6 +2917,11 @@ void tst_QList::emplaceConsistentWithStdVectorMovable()
     emplaceConsistentWithStdVectorImpl<Movable>();
 }
 
+void tst_QList::emplaceConsistentWithStdVectorQString()
+{
+    emplaceConsistentWithStdVectorImpl<QString>();
+}
+
 void tst_QList::emplaceReturnsIterator()
 {
     QList<Movable> vec;
@@ -3008,20 +3014,29 @@ static void squeezeVec(QList<T> &qVec, std::vector<T> &stdVec)
 template<typename T>
 void tst_QList::emplaceConsistentWithStdVectorImpl() const
 {
-    QList<T> qVec {'a', 'b', 'c', 'd', 'e'};
-    std::vector<T> stdVec {'a', 'b', 'c', 'd', 'e'};
+    // fast-patch to make QString work with the old logic
+    const auto convert = [] (char i) {
+        if constexpr (std::is_same_v<QString, T>) {
+            return QChar(i);
+        } else {
+            return i;
+        }
+    };
+
+    QList<T> qVec {convert('a'), convert('b'), convert('c'), convert('d'), convert('e')};
+    std::vector<T> stdVec {convert('a'), convert('b'), convert('c'), convert('d'), convert('e')};
     vecEq(qVec, stdVec);
 
-    qVec.emplaceBack('f');
-    stdVec.emplace_back('f');
+    qVec.emplaceBack(convert('f'));
+    stdVec.emplace_back(convert('f'));
     vecEq(qVec, stdVec);
 
-    qVec.emplace(3, 'g');
-    stdVec.emplace(stdVec.begin() + 3, 'g');
+    qVec.emplace(3, convert('g'));
+    stdVec.emplace(stdVec.begin() + 3, convert('g'));
     vecEq(qVec, stdVec);
 
     T t;
-    // while QList is safe with regards to emplacing elements moved form itself, it's UB
+    // while QList is safe with regards to emplacing elements moved from itself, it's UB
     // for std::vector, so do the moving in two steps there.
     qVec.emplaceBack(std::move(qVec[0]));
     stdVec.emplace_back(std::move(t = std::move(stdVec[0])));
@@ -3094,7 +3109,7 @@ void tst_QList::fromReadOnlyData() const
     {
         struct LiteralType {
             int value;
-            Q_DECL_CONSTEXPR LiteralType(int v = 0) : value(v) {}
+            constexpr LiteralType(int v = 0) : value(v) {}
         };
         const LiteralType literal[] = {LiteralType(0), LiteralType(1), LiteralType(2)};
 

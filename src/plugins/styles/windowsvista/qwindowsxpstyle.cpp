@@ -370,17 +370,24 @@ bool QWindowsXPStylePrivate::isItemViewDelegateLineEdit(const QWidget *widget)
 // Returns whether base color is set for this widget
 bool QWindowsXPStylePrivate::isLineEditBaseColorSet(const QStyleOption *option, const QWidget *widget)
 {
-    uint resolveMask = option->palette.resolve();
+    uint resolveMask = option->palette.resolveMask();
     if (widget) {
         // Since spin box includes a line edit we need to resolve the palette mask also from
         // the parent, as while the color is always correct on the palette supplied by panel,
         // the mask can still be empty. If either mask specifies custom base color, use that.
 #if QT_CONFIG(spinbox)
         if (const QAbstractSpinBox *spinbox = qobject_cast<QAbstractSpinBox*>(widget->parentWidget()))
-            resolveMask |= spinbox->palette().resolve();
+            resolveMask |= spinbox->palette().resolveMask();
 #endif // QT_CONFIG(spinbox)
     }
     return (resolveMask & (1 << QPalette::Base)) != 0;
+}
+
+static inline Qt::Orientation progressBarOrientation(const QStyleOption *option = nullptr)
+{
+    if (const QStyleOptionProgressBar *pb = qstyleoption_cast<const QStyleOptionProgressBar *>(option))
+        return pb->state & QStyle::State_Horizontal ? Qt::Horizontal : Qt::Vertical;
+    return Qt::Horizontal;
 }
 
 /*! \internal
@@ -1155,9 +1162,6 @@ void QWindowsXPStyle::polish(QWidget *widget)
         widget->setWindowOpacity(0.6);
     }
 #endif
-    if (qobject_cast<QStackedWidget*>(widget) &&
-               qobject_cast<QTabWidget*>(widget->parent()))
-        widget->parentWidget()->setAttribute(Qt::WA_ContentsPropagated);
 
     Q_D(QWindowsXPStyle);
     if (!d->hasInitColors) {
@@ -1742,10 +1746,10 @@ case PE_Frame:
         Qt::Orientation orient = Qt::Horizontal;
         bool inverted = false;
         if (const QStyleOptionProgressBar *pb = qstyleoption_cast<const QStyleOptionProgressBar *>(option)) {
-            orient = pb->orientation;
+            orient = pb->state & QStyle::State_Horizontal ? Qt::Horizontal : Qt::Vertical;
             inverted = pb->invertedAppearance;
         }
-        if (orient == Qt::Horizontal) {
+        if (orient & Qt::Horizontal) {
             partId = PP_CHUNK;
             rect = QRect(option->rect.x(), option->rect.y(), option->rect.width(), option->rect.height() );
             if (inverted && option->direction == Qt::LeftToRight)
@@ -2120,9 +2124,7 @@ void QWindowsXPStyle::drawControl(ControlElement element, const QStyleOption *op
 
     case CE_ProgressBarGroove:
         {
-        Qt::Orientation orient = Qt::Horizontal;
-        if (const QStyleOptionProgressBar *pb = qstyleoption_cast<const QStyleOptionProgressBar *>(option))
-            orient = pb->orientation;
+        Qt::Orientation orient = progressBarOrientation(option);
         partId = (orient == Qt::Horizontal) ? PP_BAR : PP_BARVERT;
         themeNumber = QWindowsXPStylePrivate::ProgressTheme;
         stateId = 1;
@@ -2133,7 +2135,7 @@ void QWindowsXPStyle::drawControl(ControlElement element, const QStyleOption *op
     case CE_MenuItem:
         if (const QStyleOptionMenuItem *menuitem = qstyleoption_cast<const QStyleOptionMenuItem *>(option))
         {
-            int tab = menuitem->tabWidth;
+            int tab = menuitem->reservedShortcutWidth;
             bool dis = !(menuitem->state & State_Enabled);
             bool act = menuitem->state & State_Selected;
             bool checkable = menuitem->menuHasCheckableItems;
@@ -3156,13 +3158,6 @@ void QWindowsXPStyle::drawComplexControl(ComplexControl cc, const QStyleOptionCo
         QWindowsStyle::drawComplexControl(cc, option, p, widget);
         break;
     }
-}
-
-static inline Qt::Orientation progressBarOrientation(const QStyleOption *option = nullptr)
-{
-    if (const QStyleOptionProgressBar *pb = qstyleoption_cast<const QStyleOptionProgressBar *>(option))
-        return pb->orientation;
-    return Qt::Horizontal;
 }
 
 int QWindowsXPStylePrivate::pixelMetricFromSystemDp(QStyle::PixelMetric pm, const QStyleOption *option, const QWidget *widget)

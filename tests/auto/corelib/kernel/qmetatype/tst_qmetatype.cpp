@@ -203,8 +203,8 @@ private slots:
     void flags();
     void flagsStaticLess_data();
     void flagsStaticLess();
-    void flagsBinaryCompatibility5_0_data();
-    void flagsBinaryCompatibility5_0();
+    void flagsBinaryCompatibility6_0_data();
+    void flagsBinaryCompatibility6_0();
     void construct_data();
     void construct();
     void typedConstruct();
@@ -217,7 +217,6 @@ private slots:
     void isRegisteredStaticLess_data();
     void isRegisteredStaticLess();
     void isEnum();
-    void registerStreamBuiltin();
     void automaticTemplateRegistration();
     void saveAndLoadBuiltin_data();
     void saveAndLoadBuiltin();
@@ -269,13 +268,13 @@ struct GenericGadgetType : BaseGenericType
         if (_c == QMetaObject::ReadProperty) {
             if (_id < properties.size()) {
                 const auto &prop = properties.at(_id);
-                QMetaType::destruct(int(prop.userType()), _a[0]);
-                QMetaType::construct(int(prop.userType()), _a[0], prop.constData());
+                prop.metaType().destruct(_a[0]);
+                prop.metaType().construct(_a[0], prop.constData());
             }
         } else if (_c == QMetaObject::WriteProperty) {
             if (_id < properties.size()) {
                 auto & prop = properties[_id];
-                prop = QVariant(prop.userType(), _a[0]);
+                prop = QVariant(prop.metaType(), _a[0]);
             }
         }
     }
@@ -351,12 +350,12 @@ static void *GadgetTypedConstructor(int type, void *where, const void *copy)
     return it->first->constructor(type, where, copy);
 }
 
-static void GadgetSaveOperator(QDataStream & out, const void *data)
+static void GadgetSaveOperator(const QtPrivate::QMetaTypeInterface *, QDataStream & out, const void *data)
 {
     reinterpret_cast<const BaseGenericType *>(data)->saveOperator(out);
 }
 
-static void GadgetLoadOperator(QDataStream &in, void *data)
+static void GadgetLoadOperator(const QtPrivate::QMetaTypeInterface *, QDataStream &in, void *data)
 {
     reinterpret_cast<BaseGenericType *>(data)->loadOperator(in);
 }
@@ -403,8 +402,8 @@ void tst_QMetaType::registerGadget(const char *name, const QList<GadgetPropertyT
     gadgetBuilder.setFlags(metaObjectflags);
     auto dynamicGadgetProperties = std::make_shared<GenericGadgetType>();
     for (const auto &prop : gadgetProperties) {
-        int propertyType = QMetaType::type(prop.type);
-        dynamicGadgetProperties->properties.push_back(QVariant(QVariant::Type(propertyType)));
+        int propertyType = QMetaType::fromName(prop.type).id();
+        dynamicGadgetProperties->properties.push_back(QVariant(QMetaType(propertyType)));
         auto dynamicPropery = gadgetBuilder.addProperty(prop.name, prop.type);
         dynamicPropery.setWritable(true);
         dynamicPropery.setReadable(true);
@@ -412,24 +411,25 @@ void tst_QMetaType::registerGadget(const char *name, const QList<GadgetPropertyT
     auto meta = gadgetBuilder.toMetaObject();
     meta->d.static_metacall = &GadgetsStaticMetacallFunction;
     meta->d.superdata = nullptr;
-    const auto flags = QMetaType::WasDeclaredAsMetaType | QMetaType::IsGadget | QMetaType::NeedsConstruction | QMetaType::NeedsDestruction;
+    const auto flags = QMetaType::IsGadget | QMetaType::NeedsConstruction | QMetaType::NeedsDestruction;
     using TypeInfo = QtPrivate::QMetaTypeInterface;
     auto typeInfo = new TypeInfo {
-        0, sizeof(GenericGadgetType), alignof(GenericGadgetType), uint(flags), meta, name, 0,
-        QtPrivate::RefCount{ 0 },
-        [](TypeInfo *self) { delete self; },
+        0, alignof(GenericGadgetType), sizeof(GenericGadgetType), uint(flags), 0, meta, name,
         [](const TypeInfo *self, void *where) { GadgetTypedConstructor(self->typeId, where, nullptr); },
         [](const TypeInfo *self, void *where, const void *copy) { GadgetTypedConstructor(self->typeId, where, copy); },
         [](const TypeInfo *self, void *where, void *copy) { GadgetTypedConstructor(self->typeId, where, copy); },
         [](const TypeInfo *self, void *ptr) { GadgetTypedDestructor(self->typeId, ptr); },
         nullptr,
         nullptr,
-        nullptr };
+        nullptr,
+        GadgetSaveOperator,
+        GadgetLoadOperator,
+        nullptr
+    };
     QMetaType gadgetMetaType(typeInfo);
     dynamicGadgetProperties->m_metatype = gadgetMetaType;
     int gadgetTypeId = QMetaType(typeInfo).id();
     QVERIFY(gadgetTypeId > 0);
-    QMetaType::registerStreamOperators(gadgetTypeId, &GadgetSaveOperator, &GadgetLoadOperator);
     s_managedTypes[gadgetTypeId] = qMakePair(dynamicGadgetProperties, std::shared_ptr<QMetaObject>{meta, [](QMetaObject *ptr){ ::free(ptr); }});
 }
 
@@ -715,6 +715,9 @@ void tst_QMetaType::typeName()
     QFETCH(int, aType);
     QFETCH(QString, aTypeName);
 
+    if (aType >= QMetaType::FirstWidgetsType)
+        QSKIP("The test doesn't link against QtWidgets.");
+
     const char *rawname = QMetaType::typeName(aType);
     QString name = QString::fromLatin1(rawname);
 
@@ -753,6 +756,8 @@ void tst_QMetaType::type()
     QFETCH(int, aType);
     QFETCH(QByteArray, aTypeName);
 
+    if (aType >= QMetaType::FirstWidgetsType)
+        QSKIP("The test doesn't link against QtWidgets.");
     // QMetaType::type(QByteArray)
     QCOMPARE(QMetaType::type(aTypeName), aType);
     // QMetaType::type(const char *)
@@ -914,6 +919,11 @@ FOR_EACH_CORE_METATYPE(RETURN_CREATE_COPY_FUNCTION)
     TypeTestFunctionGetter::get(type)();
 }
 
+template<typename T>
+constexpr size_t getSize = sizeof(T);
+template<>
+constexpr size_t getSize<void> = 0;
+
 void tst_QMetaType::sizeOf_data()
 {
     QTest::addColumn<int>("type");
@@ -921,7 +931,7 @@ void tst_QMetaType::sizeOf_data()
 
     QTest::newRow("QMetaType::UnknownType") << int(QMetaType::UnknownType) << size_t(0);
 #define ADD_METATYPE_TEST_ROW(MetaTypeName, MetaTypeId, RealType) \
-    QTest::newRow(#RealType) << int(QMetaType::MetaTypeName) << size_t(QTypeInfo<RealType>::sizeOf);
+    QTest::newRow(#RealType) << int(QMetaType::MetaTypeName) << getSize<RealType>;
 FOR_EACH_CORE_METATYPE(ADD_METATYPE_TEST_ROW)
 #undef ADD_METATYPE_TEST_ROW
 
@@ -1069,8 +1079,8 @@ void tst_QMetaType::flags_data()
 
 #define ADD_METATYPE_TEST_ROW(MetaTypeName, MetaTypeId, RealType) \
     QTest::newRow(#RealType) << MetaTypeId \
-        << bool(QTypeInfoQuery<RealType>::isRelocatable) \
-        << bool(QTypeInfoQuery<RealType>::isComplex) \
+        << bool(QTypeInfo<RealType>::isRelocatable) \
+        << bool(QTypeInfo<RealType>::isComplex) \
         << bool(QtPrivate::IsPointerToTypeDerivedFromQObject<RealType>::Value) \
         << bool(std::is_enum<RealType>::value);
 QT_FOR_EACH_STATIC_CORE_CLASS(ADD_METATYPE_TEST_ROW)
@@ -1131,46 +1141,47 @@ void tst_QMetaType::flagsStaticLess()
     QCOMPARE(bool(flags & QMetaType::MovableType), isMovable);
 }
 
-void tst_QMetaType::flagsBinaryCompatibility5_0_data()
+void tst_QMetaType::flagsBinaryCompatibility6_0_data()
 {
-    // Changing traits of a built-in type is illegal from BC point of view.
-    // Traits are saved in code of an application and in the Qt library which means
-    // that there may be a mismatch.
-    // The test is loading data generated by this code:
-    //
-    //        QByteArray buffer;
-    //        buffer.reserve(2 * QMetaType::User);
-    //        for (quint32 i = 0; i < QMetaType::User; ++i) {
-    //            if (QMetaType::isRegistered(i)) {
-    //                buffer.append(i);
-    //                buffer.append(quint32(QMetaType::typeFlags(i)));
-    //            }
-    //        }
-    //        QFile file("/tmp/typeFlags.bin");
-    //        file.open(QIODevice::WriteOnly);
-    //        file.write(buffer);
-    //        file.close();
+//     Changing traits of a built-in type is illegal from BC point of view.
+//     Traits are saved in code of an application and in the Qt library which means
+//     that there may be a mismatch.
+//     The test is loading data generated by this code:
+//
+//            QList<quint32> buffer;
+//            buffer.reserve(2 * QMetaType::User);
+//            for (quint32 i = 0; i < QMetaType::LastCoreType; ++i) {
+//                if (QMetaType::isRegistered(i)) {
+//                    buffer.append(i);
+//                    buffer.append(quint32(QMetaType::typeFlags(i)));
+//                }
+//            }
+//            QFile file("/tmp/typeFlags.bin");
+//            file.open(QIODevice::WriteOnly);
+//            QDataStream ds(&file);
+//            ds << buffer;
+//            file.close();
 
     QTest::addColumn<quint32>("id");
     QTest::addColumn<quint32>("flags");
 
     QFile file(QFINDTESTDATA("typeFlags.bin"));
     file.open(QIODevice::ReadOnly);
-    QByteArray buffer = file.readAll();
+    QList<quint32> buffer;
+    QDataStream ds(&file);
+    ds >> buffer;
 
     for (int i = 0; i < buffer.size(); i+=2) {
         const quint32 id = buffer.at(i);
         const quint32 flags = buffer.at(i + 1);
         if (id > QMetaType::LastCoreType)
             continue; // We do not link against QtGui, so we do longer consider such type as registered
-        if (id == QMetaType::Void)
-            continue; // The meaning of QMetaType::Void has changed in Qt6
         QVERIFY2(QMetaType::isRegistered(id), "A type could not be removed in BC way");
         QTest::newRow(QMetaType::typeName(id)) << id << flags;
     }
 }
 
-void tst_QMetaType::flagsBinaryCompatibility5_0()
+void tst_QMetaType::flagsBinaryCompatibility6_0()
 {
     QFETCH(quint32, id);
     QFETCH(quint32, flags);
@@ -1291,7 +1302,7 @@ void tst_QMetaType::typedConstruct()
     };
     registerGadget("DynamicGadget1", dynamicGadget1);
 
-    QVariant testGadget1(QVariant::Type(QMetaType::type("DynamicGadget1")));
+    QVariant testGadget1(QMetaType(QMetaType::type("DynamicGadget1")));
     testMetaObjectWriteOnGadget(testGadget1, dynamicGadget1);
     testMetaObjectReadOnGadget(testGadget1, dynamicGadget1);
 
@@ -1303,7 +1314,7 @@ void tst_QMetaType::typedConstruct()
         {"DynamicGadget1", "dynamicGadget1_prop", testGadget1}
     };
     registerGadget("DynamicGadget2", dynamicGadget2);
-    QVariant testGadget2(QVariant::Type(QMetaType::type("DynamicGadget2")));
+    QVariant testGadget2(QMetaType(QMetaType::type("DynamicGadget2")));
     testMetaObjectWriteOnGadget(testGadget2, dynamicGadget2);
     testMetaObjectReadOnGadget(testGadget2, dynamicGadget2);
     auto g2mo = QMetaType::metaObjectForType(testGadget2.userType());
@@ -1319,24 +1330,27 @@ void tst_QMetaType::typedConstruct()
     const auto flags = QMetaType::NeedsConstruction | QMetaType::NeedsDestruction;
     using TypeInfo = QtPrivate::QMetaTypeInterface;
     auto typeInfo = new TypeInfo {
-        0, sizeof(GenericGadgetType), alignof(GenericGadgetType), uint(flags), nullptr, podTypeName,
-        0, QtPrivate::RefCount{0},
-        [](TypeInfo *self) { delete self; },
+        0, alignof(GenericGadgetType), sizeof(GenericGadgetType), uint(flags), 0, nullptr, podTypeName,
         [](const TypeInfo *self, void *where) { GadgetTypedConstructor(self->typeId, where, nullptr); },
         [](const TypeInfo *self, void *where, const void *copy) { GadgetTypedConstructor(self->typeId, where, copy); },
         [](const TypeInfo *self, void *where, void *copy) { GadgetTypedConstructor(self->typeId, where, copy); },
         [](const TypeInfo *self, void *ptr) { GadgetTypedDestructor(self->typeId, ptr); },
-        nullptr, nullptr, nullptr };
+        nullptr,
+        nullptr,
+        nullptr,
+        GadgetSaveOperator,
+        GadgetLoadOperator,
+        nullptr
+    };
     QMetaType metatype(typeInfo);
     dynamicGadgetProperties->m_metatype = metatype;
     int podTypeId = metatype.id();
     QVERIFY(podTypeId > 0);
-    QMetaType::registerStreamOperators(podTypeId, &GadgetSaveOperator, &GadgetLoadOperator);
     s_managedTypes[podTypeId] = qMakePair(dynamicGadgetProperties, std::shared_ptr<QMetaObject>{});
 
     // Test POD
     QCOMPARE(podTypeId, QMetaType::type(podTypeName));
-    QVariant podVariant{QVariant::Type(podTypeId)};
+    QVariant podVariant{QMetaType(podTypeId)};
     QCOMPARE(myPodTesData, static_cast<const GenericPODType *>(reinterpret_cast<const BaseGenericType *>(podVariant.constData()))->podData);
 
     QVariant podVariant1{podVariant};
@@ -1550,13 +1564,6 @@ void tst_QMetaType::isRegisteredStaticLess()
     QFETCH(int, typeId);
     QFETCH(bool, registered);
     QCOMPARE(QMetaType(typeId).isRegistered(), registered);
-}
-
-void tst_QMetaType::registerStreamBuiltin()
-{
-    //should not crash;
-    qRegisterMetaTypeStreamOperators<QString>("QString");
-    qRegisterMetaTypeStreamOperators<QVariant>("QVariant");
 }
 
 typedef QHash<int, uint> IntUIntHash;
@@ -1931,13 +1938,6 @@ void tst_QMetaType::automaticTemplateRegistration()
         QCOMPARE(extractedPtr.data()->objectName(), sp.data()->objectName()); \
     }
 
-#if QT_DEPRECATED_SINCE(5, 0)
-    TEST_NONOWNING_SMARTPOINTER(QWeakPointer, QObject, WeakPointerToQObject, qWeakPointerFromVariant)
-    TEST_NONOWNING_SMARTPOINTER(QWeakPointer, QFile, WeakPointerToQObject, qWeakPointerFromVariant)
-    TEST_NONOWNING_SMARTPOINTER(QWeakPointer, QTemporaryFile, WeakPointerToQObject, qWeakPointerFromVariant)
-    TEST_NONOWNING_SMARTPOINTER(QWeakPointer, MyObject, WeakPointerToQObject, qWeakPointerFromVariant)
-#endif
-
     TEST_NONOWNING_SMARTPOINTER(QPointer, QObject, TrackingPointerToQObject, qPointerFromVariant)
     TEST_NONOWNING_SMARTPOINTER(QPointer, QFile, TrackingPointerToQObject, qPointerFromVariant)
     TEST_NONOWNING_SMARTPOINTER(QPointer, QTemporaryFile, TrackingPointerToQObject, qPointerFromVariant)
@@ -1980,11 +1980,6 @@ DECLARE_NONSTREAMABLE(QModelIndex)
 DECLARE_NONSTREAMABLE(QPersistentModelIndex)
 DECLARE_NONSTREAMABLE(QObject*)
 DECLARE_NONSTREAMABLE(QWidget*)
-
-#define DECLARE_GUI_CLASS_NONSTREAMABLE(MetaTypeName, MetaTypeId, RealType) \
-    DECLARE_NONSTREAMABLE(RealType)
-QT_FOR_EACH_STATIC_GUI_CLASS(DECLARE_GUI_CLASS_NONSTREAMABLE)
-#undef DECLARE_GUI_CLASS_NONSTREAMABLE
 
 #define DECLARE_WIDGETS_CLASS_NONSTREAMABLE(MetaTypeName, MetaTypeId, RealType) \
     DECLARE_NONSTREAMABLE(RealType)
@@ -2044,7 +2039,6 @@ struct CustomStreamableType
 {
     int a;
 };
-Q_DECLARE_METATYPE(CustomStreamableType)
 
 QDataStream &operator<<(QDataStream &out, const CustomStreamableType &t)
 {
@@ -2059,6 +2053,7 @@ QDataStream &operator>>(QDataStream &in, CustomStreamableType &t)
         t.a = a;
     return in;
 }
+Q_DECLARE_METATYPE(CustomStreamableType)
 
 void tst_QMetaType::saveAndLoadCustom()
 {
@@ -2068,12 +2063,7 @@ void tst_QMetaType::saveAndLoadCustom()
     int id = ::qMetaTypeId<CustomStreamableType>();
     QByteArray ba;
     QDataStream stream(&ba, QIODevice::ReadWrite);
-    QVERIFY(!QMetaType::save(stream, id, &t));
-    QCOMPARE(stream.status(), QDataStream::Ok);
-    QVERIFY(!QMetaType::load(stream, id, &t));
-    QCOMPARE(stream.status(), QDataStream::Ok);
 
-    qRegisterMetaTypeStreamOperators<CustomStreamableType>("CustomStreamableType");
     QVERIFY(QMetaType::save(stream, id, &t));
     QCOMPARE(stream.status(), QDataStream::Ok);
 
@@ -2278,6 +2268,11 @@ struct CustomDebugStreamableType
     QString toString() const { return "test"; }
 };
 
+struct CustomDebugStreamableType2
+{
+    QString toString() const { return "test"; }
+};
+
 QDebug operator<<(QDebug dbg, const CustomDebugStreamableType&)
 {
     return dbg << "string-content";
@@ -2334,14 +2329,14 @@ template<typename From, typename To>
 void testCustomTypeNotYetConvertible()
 {
     QVERIFY((!hasRegisteredConverterFunction<From, To>()));
-    QVERIFY((!QVariant::fromValue<From>(From()).canConvert(qMetaTypeId<To>())));
+    QVERIFY((!QVariant::fromValue<From>(From()).template canConvert<To>()));
 }
 
 template<typename From, typename To>
 void testCustomTypeConvertible()
 {
     QVERIFY((hasRegisteredConverterFunction<From, To>()));
-    QVERIFY((QVariant::fromValue<From>(From()).canConvert(qMetaTypeId<To>())));
+    QVERIFY((QVariant::fromValue<From>(From()).template canConvert<To>()));
 }
 
 void customTypeNotYetConvertible()
@@ -2607,16 +2602,14 @@ void tst_QMetaType::customDebugStream()
 {
     MessageHandlerCustom handler(::qMetaTypeId<CustomDebugStreamableType>());
     QVariant v1 = QVariant::fromValue(CustomDebugStreamableType());
-    handler.expectedMessage = "QVariant(CustomDebugStreamableType, )";
-    qDebug() << v1;
-
-    QMetaType::registerConverter<CustomDebugStreamableType, QString>(&CustomDebugStreamableType::toString);
-    handler.expectedMessage = "QVariant(CustomDebugStreamableType, \"test\")";
-    qDebug() << v1;
-
-    QMetaType::registerDebugStreamOperator<CustomDebugStreamableType>();
     handler.expectedMessage = "QVariant(CustomDebugStreamableType, string-content)";
     qDebug() << v1;
+
+    MessageHandlerCustom handler2(::qMetaTypeId<CustomDebugStreamableType2>());
+    QMetaType::registerConverter<CustomDebugStreamableType2, QString>(&CustomDebugStreamableType2::toString);
+    handler2.expectedMessage = "QVariant(CustomDebugStreamableType2, \"test\")";
+    QVariant v2 = QVariant::fromValue(CustomDebugStreamableType2());
+    qDebug() << v2;
 }
 
 void tst_QMetaType::unknownType()

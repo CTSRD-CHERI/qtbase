@@ -368,7 +368,7 @@ void QTextStreamPrivate::reset()
     deleteDevice = false;
     string = nullptr;
     stringOffset = 0;
-    stringOpenMode = QIODevice::NotOpen;
+    stringOpenMode = QTextStream::NotOpen;
 
     readBufferOffset = 0;
     readBufferStartDevicePos = 0;
@@ -983,7 +983,7 @@ QTextStream::QTextStream(QIODevice *device)
     Constructs a QTextStream that operates on \a string, using \a
     openMode to define the open mode.
 */
-QTextStream::QTextStream(QString *string, QIODevice::OpenMode openMode)
+QTextStream::QTextStream(QString *string, OpenMode openMode)
     : d_ptr(new QTextStreamPrivate(this))
 {
 #if defined (QTEXTSTREAM_DEBUG)
@@ -1001,7 +1001,7 @@ QTextStream::QTextStream(QString *string, QIODevice::OpenMode openMode)
     openMode to define the open mode. Internally, the array is wrapped
     by a QBuffer.
 */
-QTextStream::QTextStream(QByteArray *array, QIODevice::OpenMode openMode)
+QTextStream::QTextStream(QByteArray *array, OpenMode openMode)
     : d_ptr(new QTextStreamPrivate(this))
 {
 #if defined (QTEXTSTREAM_DEBUG)
@@ -1028,7 +1028,7 @@ QTextStream::QTextStream(QByteArray *array, QIODevice::OpenMode openMode)
 
     \snippet code/src_corelib_io_qtextstream.cpp 3
 */
-QTextStream::QTextStream(const QByteArray &array, QIODevice::OpenMode openMode)
+QTextStream::QTextStream(const QByteArray &array, OpenMode openMode)
     : d_ptr(new QTextStreamPrivate(this))
 {
 #if defined (QTEXTSTREAM_DEBUG)
@@ -1059,7 +1059,7 @@ QTextStream::QTextStream(const QByteArray &array, QIODevice::OpenMode openMode)
     \snippet code/src_corelib_io_qtextstream.cpp 4
 */
 
-QTextStream::QTextStream(FILE *fileHandle, QIODevice::OpenMode openMode)
+QTextStream::QTextStream(FILE *fileHandle, OpenMode openMode)
     : d_ptr(new QTextStreamPrivate(this))
 {
 #if defined (QTEXTSTREAM_DEBUG)
@@ -1272,7 +1272,7 @@ QIODevice *QTextStream::device() const
 
     \sa string(), setDevice()
 */
-void QTextStream::setString(QString *string, QIODevice::OpenMode openMode)
+void QTextStream::setString(QString *string, OpenMode openMode)
 {
     Q_D(QTextStream);
     flush();
@@ -3153,43 +3153,6 @@ QLocale QTextStream::locale() const
     Q_D(const QTextStream);
     return d->locale;
 }
-
-#if QT_DEPRECATED_SINCE(5, 15) && !defined(Q_QDOC)
-// Deprecated source compatible migration versions:
-namespace QTextStreamFunctions {
-QTextStream &bin(QTextStream &s) { return Qt::bin(s); }
-QTextStream &oct(QTextStream &s) { return Qt::oct(s); }
-QTextStream &dec(QTextStream &s) { return Qt::dec(s); }
-QTextStream &hex(QTextStream &s) { return Qt::hex(s); }
-
-QTextStream &showbase(QTextStream &s) { return Qt::showbase(s); }
-QTextStream &forcesign(QTextStream &s) { return Qt::forcesign(s); }
-QTextStream &forcepoint(QTextStream &s) { return Qt::forcepoint(s); }
-QTextStream &noshowbase(QTextStream &s) { return Qt::noshowbase(s); }
-QTextStream &noforcesign(QTextStream &s) { return Qt::noforcesign(s); }
-QTextStream &noforcepoint(QTextStream &s) { return Qt::noforcepoint(s); }
-
-QTextStream &uppercasebase(QTextStream &s) { return Qt::uppercasebase(s); }
-QTextStream &uppercasedigits(QTextStream &s) { return Qt::uppercasedigits(s); }
-QTextStream &lowercasebase(QTextStream &s) { return Qt::lowercasebase(s); }
-QTextStream &lowercasedigits(QTextStream &s) { return Qt::lowercasedigits(s); }
-
-QTextStream &fixed(QTextStream &s) { return Qt::fixed(s); }
-QTextStream &scientific(QTextStream &s) { return Qt::scientific(s); }
-
-QTextStream &left(QTextStream &s) { return Qt::left(s); }
-QTextStream &right(QTextStream &s) { return Qt::right(s); }
-QTextStream &center(QTextStream &s) { return Qt::center(s); }
-
-QTextStream &endl(QTextStream &s) { return Qt::endl(s); }
-QTextStream &flush(QTextStream &s) { return Qt::flush(s); }
-QTextStream &reset(QTextStream &s) { return Qt::reset(s); }
-
-QTextStream &ws(QTextStream &s) { return Qt::ws(s); }
-
-QTextStream &bom(QTextStream &s) { return Qt::bom(s); }
-} // namespace QTextStreamFunctions
-#endif
 
 QT_END_NAMESPACE
 

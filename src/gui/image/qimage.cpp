@@ -1083,7 +1083,7 @@ int QImage::devType() const
 */
 QImage::operator QVariant() const
 {
-    return QVariant(QMetaType::QImage, this);
+    return QVariant::fromValue(*this);
 }
 
 /*!
@@ -1362,15 +1362,6 @@ int QImage::depth() const
 }
 
 /*!
-    \obsolete
-    \fn int QImage::numColors() const
-
-    Returns the size of the color table for the image.
-
-    \sa setColorCount()
-*/
-
-/*!
     \since 4.6
     \fn int QImage::colorCount() const
 
@@ -1485,7 +1476,7 @@ void QImage::setDevicePixelRatio(qreal scaleFactor)
     \since 5.10
     Returns the image data size in bytes.
 
-    \sa byteCount(), bytesPerLine(), bits(), {QImage#Image Information}{Image
+    \sa bytesPerLine(), bits(), {QImage#Image Information}{Image
     Information}
 */
 qsizetype QImage::sizeInBytes() const
@@ -2061,7 +2052,7 @@ QImage QImage::convertToFormat_helper(Format format, Qt::ImageConversionFlags fl
     if (!converter && format > QImage::Format_Indexed8 && d->format > QImage::Format_Indexed8) {
         if (qt_highColorPrecision(d->format, !destLayout->hasAlphaChannel)
                 && qt_highColorPrecision(format, !hasAlphaChannel())) {
-            converter = convert_generic_to_rgb64;
+            converter = convert_generic_over_rgb64;
         } else
             converter = convert_generic;
     }
@@ -4287,7 +4278,7 @@ bool QImage::isDetached() const
     The operation is similar to painting \a alphaChannel as an alpha image
     over this image using \c QPainter::CompositionMode_DestinationIn.
 
-    \sa hasAlphaChannel(), alphaChannel(),
+    \sa hasAlphaChannel(),
         {QImage#Image Transformations}{Image Transformations},
         {QImage#Image Formats}{Image Formats}
 */
@@ -4838,12 +4829,16 @@ bool QImageData::convertInPlace(QImage::Format newFormat, Qt::ImageConversionFla
     InPlace_Image_Converter converter = qimage_inplace_converter_map[format][newFormat];
     if (converter)
         return converter(this, flags);
-    else if (format > QImage::Format_Indexed8 && newFormat > QImage::Format_Indexed8 && !qimage_converter_map[format][newFormat])
+    if (format > QImage::Format_Indexed8 && newFormat > QImage::Format_Indexed8 && !qimage_converter_map[format][newFormat]) {
         // Convert inplace generic, but only if there are no direct converters,
         // any direct ones are probably better even if not inplace.
+        if (qt_highColorPrecision(newFormat, !qPixelLayouts[newFormat].hasAlphaChannel)
+                && qt_highColorPrecision(format, !qPixelLayouts[format].hasAlphaChannel)) {
+            return convert_generic_inplace_over_rgb64(this, newFormat, flags);
+        }
         return convert_generic_inplace(this, newFormat, flags);
-    else
-        return false;
+    }
+    return false;
 }
 
 /*!
@@ -4884,7 +4879,7 @@ QDebug operator<<(QDebug dbg, const QImage &i)
 }
 #endif
 
-static Q_CONSTEXPR QPixelFormat pixelformats[] = {
+static constexpr QPixelFormat pixelformats[] = {
         //QImage::Format_Invalid:
         QPixelFormat(),
         //QImage::Format_Mono:

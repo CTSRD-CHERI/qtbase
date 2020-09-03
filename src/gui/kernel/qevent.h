@@ -82,6 +82,8 @@ public:
     inline void setTimestamp(ulong timestamp) { m_timeStamp = timestamp; }
 
 protected:
+    QInputEvent(Type type, PointerEventTag, const QInputDevice *m_dev, Qt::KeyboardModifiers modifiers = Qt::NoModifier);
+
     const QInputDevice *m_dev = nullptr;
     Qt::KeyboardModifiers m_modState = Qt::NoModifier;
     ulong m_timeStamp = 0;
@@ -106,10 +108,9 @@ public:
     Q_DECLARE_FLAGS(States, State)
     Q_FLAG(States)
 
-    QEventPoint(int id = -1, const QPointerEvent *parent = nullptr);
+    QEventPoint(int id = -1, const QPointingDevice *device = nullptr);
     QEventPoint(int pointId, State state, const QPointF &scenePosition, const QPointF &globalPosition);
 
-    const QPointerEvent *event() const { return m_parent; }
     QPointF position() const { return m_pos; }
     QPointF pressPosition() const { return m_globalPressPos - m_globalPos + m_pos; }
     QPointF grabPosition() const { return m_globalGrabPos - m_globalPos + m_pos; }
@@ -152,6 +153,7 @@ public:
 #endif // QT_DEPRECATED_SINCE(6, 0)
     QVector2D velocity() const { return m_velocity; }
     State state() const { return m_state; }
+    const QPointingDevice *device() const { return m_device; }
     int id() const { return m_pointId; }
     QPointingDeviceUniqueId uniqueId() const { return m_uniqueId; }
     ulong pressTimestamp() const { return m_pressTimestamp; }
@@ -169,7 +171,7 @@ public:
     void clearPassiveGrabbers();
 
 protected:
-    const QPointerEvent *m_parent = nullptr;
+    const QPointingDevice *m_device = nullptr;
     QPointF m_pos, m_scenePos, m_globalPos,
             m_globalPressPos, m_globalGrabPos, m_globalLastPos;
     qreal m_pressure = 1;
@@ -178,7 +180,7 @@ protected:
     QVector2D m_velocity;
     QPointer<QObject> m_exclusiveGrabber;
     QList<QPointer <QObject> > m_passiveGrabbers;
-    ulong m_timestamp = 0; // redundant with m_parent->timestamp(), but keeps timeHeld() working in a saved copy
+    ulong m_timestamp = 0;
     ulong m_pressTimestamp = 0;
     QPointingDeviceUniqueId m_uniqueId;
     int m_pointId = -1;
@@ -416,14 +418,14 @@ public:
 #endif
     inline qreal pressure() const { return point(0).pressure(); }
     inline qreal rotation() const { return point(0).rotation(); }
-    inline int z() const { return m_zTilt; }
+    inline int z() const { return m_z; }
     inline qreal tangentialPressure() const { return m_tangential; }
     inline int xTilt() const { return m_xTilt; }
     inline int yTilt() const { return m_yTilt; }
 
 protected:
     quint32 m_reserved : 16;
-    int m_xTilt, m_yTilt, m_zTilt;
+    int m_xTilt, m_yTilt, m_z;
     qreal m_tangential;
 };
 #endif // QT_CONFIG(tabletevent)
@@ -478,6 +480,10 @@ public:
     bool matches(QKeySequence::StandardKey key) const;
 #endif
     Qt::KeyboardModifiers modifiers() const;
+    QKeyCombination keyCombination() const
+    {
+        return QKeyCombination(modifiers(), Qt::Key(m_key));
+    }
     inline QString text() const { return m_text; }
     inline bool isAutoRepeat() const { return m_autoRepeat; }
     inline int count() const { return int(m_count); }
@@ -549,7 +555,10 @@ public:
     explicit QExposeEvent(const QRegion &m_region);
     ~QExposeEvent();
 
+#if QT_DEPRECATED_SINCE(6, 0)
+    QT_DEPRECATED_VERSION_X_6_0("Handle QPaintEvent instead")
     inline const QRegion &region() const { return m_region; }
+#endif
 
 protected:
     QRegion m_region;

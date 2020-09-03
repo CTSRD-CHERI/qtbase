@@ -1382,11 +1382,7 @@ void tst_QMetaObject::normalizedType_data()
     QTest::newRow("template7") << "QList<QList<int> >" << "QList<QList<int>>";
     QTest::newRow("template8") << "QMap<const int, const short*>" << "QMap<const int,const short*>";
     QTest::newRow("template9") << "QPair<const QPair<int, int const *> , QPair<QHash<int, const char*>  >  >"
-#ifdef _LIBCPP_VERSION
-                               << "std::__1::pair<const std::__1::pair<int,const int*>,std::__1::pair<QHash<int,const char*>>>";
-#else
                                << "std::pair<const std::pair<int,const int*>,std::pair<QHash<int,const char*>>>";
-#endif
     QTest::newRow("template10") << "QVector<int const * const> const" << "QList<const int*const>";
     QTest::newRow("template11") << " QSharedPointer<QVarLengthArray< QString const, ( 16>> 2 )> > const & "
         << "QSharedPointer<QVarLengthArray<const QString,(16>>2)>>";
@@ -1456,7 +1452,7 @@ void tst_QMetaObject::customPropertyType()
     QCOMPARE(prop.metaType(), QMetaType::fromType<MyStruct>());
 
     qRegisterMetaType<MyStruct>("MyStruct");
-    QCOMPARE(prop.userType(), QMetaType::type("MyStruct"));
+    QCOMPARE(prop.userType(), QMetaType::fromName("MyStruct").id());
 
     prop = metaObject()->property(metaObject()->indexOfProperty("value4"));
     QCOMPARE(prop.type(), QVariant::List);

@@ -888,7 +888,7 @@ static QtFontStyle *bestStyle(QtFontFoundry *foundry, const QtFontStyle::Key &st
             break;
         }
 
-        int d = qAbs( styleKey.weight - style->key.weight );
+        int d = qAbs( (int(styleKey.weight) - int(style->key.weight)) / 10 );
 
         if ( styleKey.stretch != 0 && style->key.stretch != 0 ) {
             d += qAbs( styleKey.stretch - style->key.stretch );
@@ -1237,8 +1237,7 @@ QString QFontDatabase::styleString(const QFontInfo &fontInfo)
 
     Example:
 
-    \snippet qfontdatabase/main.cpp 0
-    \snippet qfontdatabase/main.cpp 1
+    \snippet qfontdatabase/qfontdatabase_snippets.cpp 0
 
     This example gets the list of font families, the list of
     styles for each family, and the point sizes that are available for

@@ -347,7 +347,7 @@ void QOpenGLContextPrivate::_q_screenDestroyed(QObject *object)
 }
 
 /*!
-    \fn template<typename T> T *QOpenGLContext::platformInterface<T>()
+    \fn template <typename T> T *QOpenGLContext::platformInterface() const
 
     Returns a platform interface of type T for the context.
 
@@ -775,12 +775,6 @@ void QOpenGLContext::swapBuffers(QSurface *surface)
     if (!surface->supportsOpenGL()) {
         qWarning("QOpenGLContext::swapBuffers() called with non-opengl surface");
         return;
-    }
-
-    if (surface->surfaceClass() == QSurface::Window
-        && !qt_window_private(static_cast<QWindow *>(surface))->receivedExpose)
-    {
-        qWarning("QOpenGLContext::swapBuffers() called with non-exposed window, behavior is undefined");
     }
 
     QPlatformSurface *surfaceHandle = surface->surfaceHandle();

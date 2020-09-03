@@ -50,9 +50,6 @@
 #include "qlayout.h"
 #include "qpainter.h"
 #include <qpa/qplatformtheme.h>
-#ifdef Q_OS_MACOS
-#include "qmacnativewidget_mac.h"
-#endif
 #include "qapplication.h"
 #ifndef QT_NO_ACCESSIBILITY
 # include "qaccessible.h"
@@ -961,7 +958,7 @@ void QMenuPrivate::drawScroller(QPainter *painter, QMenuPrivate::ScrollerTearOff
     menuOpt.state = QStyle::State_None;
     menuOpt.checkType = QStyleOptionMenuItem::NotCheckable;
     menuOpt.maxIconWidth = 0;
-    menuOpt.tabWidth = 0;
+    menuOpt.reservedShortcutWidth = 0;
     menuOpt.rect = rect;
     menuOpt.menuItemType = QStyleOptionMenuItem::Scroller;
     menuOpt.state |= QStyle::State_Enabled;
@@ -986,7 +983,7 @@ void QMenuPrivate::drawTearOff(QPainter *painter, const QRect &rect)
     menuOpt.state = QStyle::State_None;
     menuOpt.checkType = QStyleOptionMenuItem::NotCheckable;
     menuOpt.maxIconWidth = 0;
-    menuOpt.tabWidth = 0;
+    menuOpt.reservedShortcutWidth = 0;
     menuOpt.rect = rect;
     menuOpt.menuItemType = QStyleOptionMenuItem::TearOff;
     if (tearoffHighlighted)
@@ -1613,7 +1610,7 @@ void QMenu::initStyleOption(QStyleOptionMenuItem *option, const QAction *action)
     }
 #endif
     option->text = textAndAccel;
-    option->tabWidth = d->tabWidth;
+    option->reservedShortcutWidth = d->tabWidth;
     option->maxIconWidth = d->maxIconWidth;
     option->menuRect = rect();
 }
@@ -2377,7 +2374,7 @@ void QMenuPrivate::popup(const QPoint &p, QAction *atAction, PositionFunction po
     updateLayoutDirection();
 
     // Ensure that we get correct sizeHints by placing this window on the correct screen.
-    // However if the QMenu was constructed with a QDesktopScreenWidget as its parent,
+    // However if the QMenu was constructed with a Qt::Desktop widget as its parent,
     // then initialScreenIndex was set, so we should respect that for the lifetime of this menu.
     // However if eventLoop exists, then exec() already did this by calling createWinId(); so leave it alone. (QTBUG-76162)
     if (!eventLoop) {
@@ -2784,7 +2781,7 @@ void QMenu::paintEvent(QPaintEvent *e)
     menuOpt.state = QStyle::State_None;
     menuOpt.checkType = QStyleOptionMenuItem::NotCheckable;
     menuOpt.maxIconWidth = 0;
-    menuOpt.tabWidth = 0;
+    menuOpt.reservedShortcutWidth = 0;
     style()->drawPrimitive(QStyle::PE_PanelMenu, &menuOpt, &p, this);
 
     //calculate the scroll up / down rect
@@ -3409,7 +3406,7 @@ void QMenu::keyPressEvent(QKeyEvent *e)
                         continue;
                     QAction *act = d->actions.at(i);
                     QKeySequence sequence = QKeySequence::mnemonic(act->text());
-                    int key = sequence[0] & 0xffff;
+                    int key = sequence[0].toCombined() & 0xffff; // suspicious
                     if (key == c.unicode()) {
                         clashCount++;
                         if (!first)
@@ -3473,7 +3470,7 @@ void QMenu::mouseMoveEvent(QMouseEvent *e)
         return;
 
     d->motions++;
-    if (d->motions == 0)
+    if (!d->hasMouseMoved(e->globalPosition().toPoint()))
         return;
 
     d->hasHadMouse = d->hasHadMouse || rect().contains(e->position().toPoint());
@@ -3592,8 +3589,8 @@ void QMenu::actionEvent(QActionEvent *e)
             if (QWidget *widget = d->widgetItems.value(wa)) {
 #ifdef Q_OS_MACOS
                 QWidget *p = widget->parentWidget();
-                if (p != this && QT_IGNORE_DEPRECATIONS(qobject_cast<QMacNativeWidget *>(p))) {
-                    // This widget was reparented into a native Mac view
+                if (p != this) {
+                    // This widget was reparented into a container widget
                     // (see QMenuPrivate::moveWidgetToPlatformItem).
                     // Reset the parent and delete the native widget.
                     widget->setParent(this);

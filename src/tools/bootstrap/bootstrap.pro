@@ -62,6 +62,7 @@ SOURCES += \
            ../../corelib/io/qurlrecode.cpp \
            ../../corelib/kernel/qcoreapplication.cpp \
            ../../corelib/kernel/qcoreglobaldata.cpp \
+           ../../corelib/kernel/qmetacontainer.cpp \
            ../../corelib/kernel/qmetatype.cpp \
            ../../corelib/kernel/qvariant.cpp \
            ../../corelib/kernel/qsystemerror.cpp \
@@ -82,6 +83,7 @@ SOURCES += \
            ../../corelib/serialization/qtextstream.cpp \
            ../../corelib/serialization/qxmlutils.cpp \
            ../../corelib/serialization/qxmlstream.cpp \
+           ../../corelib/serialization/qxmlstreamgrammar.cpp \
            ../../corelib/text/qbytearray.cpp \
            ../../corelib/text/qbytearraylist.cpp \
            ../../corelib/text/qbytearraymatcher.cpp \
@@ -91,7 +93,6 @@ SOURCES += \
            ../../corelib/text/qstring.cpp \
            ../../corelib/text/qstringbuilder.cpp \
            ../../corelib/text/qstringconverter.cpp \
-           ../../corelib/text/qstring_compat.cpp \
            ../../corelib/text/qstringlist.cpp \
            ../../corelib/text/qvsnprintf.cpp \
            ../../corelib/time/qcalendar.cpp \

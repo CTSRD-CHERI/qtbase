@@ -46,16 +46,6 @@ SOURCES += \
     access/qhsts.cpp \
     access/qhstspolicy.cpp
 
-qtConfig(ftp) {
-    HEADERS += \
-        access/qftp_p.h \
-        access/qnetworkaccessftpbackend_p.h
-
-    SOURCES += \
-        access/qftp.cpp \
-        access/qnetworkaccessftpbackend.cpp
-}
-
 qtConfig(networkdiskcache) {
     HEADERS += \
         access/qnetworkdiskcache_p.h \
@@ -119,5 +109,9 @@ qtConfig(http) {
 
     qtConfig(brotli) {
         QMAKE_USE_PRIVATE += brotli
+    }
+
+    qtConfig(zstd) {
+        QMAKE_USE_PRIVATE += zstd
     }
 }

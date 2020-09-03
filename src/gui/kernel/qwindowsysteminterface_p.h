@@ -76,7 +76,6 @@ public:
         ActivatedWindow = 0x05,
         WindowStateChanged = 0x06,
         Mouse = UserInputEvent | 0x07,
-        FrameStrutMouse = UserInputEvent | 0x08,  // ### Qt6 remove
         Wheel = UserInputEvent | 0x09,
         Key = UserInputEvent | 0x0a,
         Touch = UserInputEvent | 0x0b,
@@ -101,7 +100,8 @@ public:
         FlushEvents = 0x20,
         WindowScreenChanged = 0x21,
         SafeAreaMarginsChanged = 0x22,
-        ApplicationTermination = 0x23
+        ApplicationTermination = 0x23,
+        Paint = 0x24
     };
 
     class WindowSystemEvent {
@@ -364,6 +364,14 @@ public:
         ExposeEvent(QWindow *window, const QRegion &region);
         QPointer<QWindow> window;
         bool isExposed;
+        QRegion region;
+    };
+
+    class PaintEvent : public WindowSystemEvent {
+    public:
+        PaintEvent(QWindow *window, const QRegion &region)
+            :  WindowSystemEvent(Paint), window(window), region(region) {}
+        QPointer<QWindow> window;
         QRegion region;
     };
 

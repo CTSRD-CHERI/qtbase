@@ -1240,6 +1240,22 @@ void QTreeView::scrollTo(const QModelIndex &index, ScrollHint hint)
 /*!
   \reimp
 */
+void QTreeView::changeEvent(QEvent *event)
+{
+    Q_D(QTreeView);
+    if (event->type() == QEvent::StyleChange) {
+        if (!d->customIndent) {
+            // QAbstractItemView calls this method in case of a style change,
+            // so update the indentation here if it wasn't set manually.
+            d->updateIndentationFromStyle();
+        }
+    }
+    QAbstractItemView::changeEvent(event);
+}
+
+/*!
+  \reimp
+*/
 void QTreeView::timerEvent(QTimerEvent *event)
 {
     Q_D(QTreeView);
@@ -1472,7 +1488,8 @@ void QTreeView::drawTree(QPainter *painter, const QRegion &region) const
     Q_D(const QTreeView);
     const QList<QTreeViewItem> viewItems = d->viewItems;
 
-    QStyleOptionViewItem option = d->viewOptionsV1();
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
     const QStyle::State state = option.state;
     d->current = 0;
 
@@ -1834,7 +1851,8 @@ void QTreeView::drawBranches(QPainter *painter, const QRect &rect,
     QModelIndex current = parent;
     QModelIndex ancestor = current.parent();
 
-    QStyleOptionViewItem opt = viewOptions();
+    QStyleOptionViewItem opt;
+    initViewItemOption(&opt);
     QStyle::State extraFlags = QStyle::State_None;
     if (isEnabled())
         extraFlags |= QStyle::State_Enabled;
@@ -2095,12 +2113,6 @@ QModelIndex QTreeView::indexBelow(const QModelIndex &index) const
 void QTreeView::doItemsLayout()
 {
     Q_D(QTreeView);
-    if (!d->customIndent) {
-        // ### Qt 6: move to event()
-        // QAbstractItemView calls this method in case of a style change,
-        // so update the indentation here if it wasn't set manually.
-        d->updateIndentationFromStyle();
-    }
     if (d->hasRemovedItems) {
         //clean the QSet that may contains old (and this invalid) indexes
         d->hasRemovedItems = false;
@@ -2617,11 +2629,11 @@ void QTreeView::sortByColumn(int column, Qt::SortOrder order)
     Q_D(QTreeView);
     if (column < -1)
         return;
-    // If sorting is enabled it will emit a signal connected to
-    // _q_sortIndicatorChanged, which then actually sorts
     d->header->setSortIndicator(column, order);
-    // If sorting is not enabled, force to sort now
-    if (!d->sortingEnabled)
+    // If sorting is not enabled or has the same order as before, force to sort now
+    // else sorting will be trigger through sortIndicatorChanged()
+    if (!d->sortingEnabled ||
+        (d->header->sortIndicatorSection() == column && d->header->sortIndicatorOrder() == order))
         d->model->sort(column, order);
 }
 
@@ -2868,7 +2880,8 @@ int QTreeView::sizeHintForColumn(int column) const
         return -1;
     ensurePolished();
     int w = 0;
-    QStyleOptionViewItem option = d->viewOptionsV1();
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
     const QList<QTreeViewItem> viewItems = d->viewItems;
 
     const int maximumProcessRows = d->header->resizeContentsPrecision(); // To avoid this to take forever.
@@ -2980,8 +2993,9 @@ int QTreeView::indexRowSizeHint(const QModelIndex &index) const
         qSwap(end, start);
 
     int height = -1;
-    QStyleOptionViewItem option = d->viewOptionsV1();
-    // ### If we want word wrapping in the items,
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
+   // ### If we want word wrapping in the items,
     // ### we need to go through all the columns
     // ### and set the width of the column
 
@@ -3252,7 +3266,8 @@ QPixmap QTreeViewPrivate::renderTreeToPixmapForAnimation(const QRect &rect) cons
     painter.end();
 
     //and now let's render the editors the editors
-    QStyleOptionViewItem option = viewOptionsV1();
+    QStyleOptionViewItem option;
+    q->initViewItemOption(&option);
     for (QEditorIndexHash::const_iterator it = editorIndexHash.constBegin(); it != editorIndexHash.constEnd(); ++it) {
         QWidget *editor = it.key();
         const QModelIndex &index = it.value();

@@ -295,7 +295,7 @@ QT_BEGIN_NAMESPACE
     Contructs an event object of type \a type.
 */
 QEvent::QEvent(Type type)
-    : d(nullptr), t(type), posted(false), spont(false), m_accept(true)
+    : d(nullptr), t(type), posted(false), spont(false), m_accept(true), m_inputEvent(false), m_pointerEvent(false)
 {
     Q_TRACE(QEvent_ctor, this, t);
 }
@@ -316,6 +316,23 @@ QEvent::QEvent(const QEvent &other)
     // virtual QEventPrivate *clone() const; function so we can copy here
     Q_ASSERT_X(!d, "QEvent", "Impossible, this can't happen: QEventPrivate isn't defined anywhere");
 }
+
+/*!
+    \internal
+    \since 6.0
+    \fn QEvent::QEvent(Type type, QEvent::InputEventTag)
+
+    Constructs an event object of type \a type, setting the inputEvent flag to \c true.
+*/
+
+/*!
+    \internal
+    \since 6.0
+    \fn QEvent::QEvent(Type type, QEvent::PointerEventTag)
+
+    Constructs an event object of type \a type, setting the pointerEvent and
+    inputEvent flags to \c true.
+*/
 
 /*!
     \internal
@@ -403,8 +420,22 @@ QEvent::~QEvent()
 
     Returns \c true if the event originated outside the application (a
     system event); otherwise returns \c false.
+*/
 
-    The return value of this function is not defined for paint events.
+/*!
+    \fn bool QEvent::isInputEvent() const
+    \since 6.0
+
+    Returns \c true if the event object is a QInputEvent or one of its
+    subclasses.
+*/
+
+/*!
+    \fn bool QEvent::isPointerEvent() const
+    \since 6.0
+
+    Returns \c true if the event object is a QPointerEvent or one of its
+    subclasses.
 */
 
 namespace {

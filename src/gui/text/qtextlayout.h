@@ -151,11 +151,6 @@ public:
         friend bool operator!=(const FormatRange &lhs, const FormatRange &rhs)
         { return !operator==(lhs, rhs); }
     };
-#if QT_DEPRECATED_SINCE(5, 6)
-    QT_DEPRECATED_X("Use setFormats()") void setAdditionalFormats(const QList<FormatRange> &overrides);
-    QT_DEPRECATED_X("Use formats()") QList<FormatRange> additionalFormats() const;
-    QT_DEPRECATED_X("Use clearFormats()") void clearAdditionalFormats();
-#endif
     void setFormats(const QList<FormatRange> &overrides);
     QList<FormatRange> formats() const;
     void clearFormats();
@@ -269,7 +264,7 @@ public:
 
     int lineNumber() const { return index; }
 
-    void draw(QPainter *p, const QPointF &point, const QTextLayout::FormatRange *selection = nullptr) const;
+    void draw(QPainter *painter, const QPointF &position) const;
 
 #if !defined(QT_NO_RAWFONT)
     QList<QGlyphRun> glyphRuns(int from = -1, int length = -1) const;
@@ -278,6 +273,8 @@ public:
 private:
     QTextLine(int line, QTextEngine *e) : index(line), eng(e) {}
     void layout_helper(int numGlyphs);
+    void draw_internal(QPainter *p, const QPointF &pos,
+                       const QTextLayout::FormatRange *selection) const;
 
     friend class QTextLayout;
     friend class QTextFragment;

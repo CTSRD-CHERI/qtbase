@@ -394,7 +394,7 @@ static uint siphash(const uint8_t *in, uint inlen, const uint seed)
 #  define AESHASH
 
 QT_FUNCTION_TARGET(AES)
-static size_t aeshash(const uchar *p, size_t len, size_t seed) Q_DECL_NOTHROW
+static size_t aeshash(const uchar *p, size_t len, size_t seed) noexcept
 {
     __m128i key;
     if (sizeof(size_t) == 8) {
@@ -450,8 +450,8 @@ static size_t aeshash(const uchar *p, size_t len, size_t seed) Q_DECL_NOTHROW
         while (src < srcend) {
             __m128i data0 = _mm_loadu_si128(src);
             __m128i data1 = _mm_loadu_si128(src + 1);
-            data0 = _mm_xor_si128(data0, state0);
-            data1 = _mm_xor_si128(data1, state1);
+            state0 = _mm_xor_si128(data0, state0);
+            state1 = _mm_xor_si128(data1, state1);
             state0 = _mm_aesenc_si128(state0, state0);
             state1 = _mm_aesenc_si128(state1, state1);
             state0 = _mm_aesenc_si128(state0, state0);
@@ -1044,13 +1044,6 @@ size_t qHash(long double key, size_t seed) noexcept
 */
 
 /*! \fn size_t qHash(const QString &key, size_t seed = 0)
-    \relates QHash
-    \since 5.0
-
-    Returns the hash value for the \a key, using \a seed to seed the calculation.
-*/
-
-/*! \fn size_t qHash(const QStringRef &key, size_t seed = 0)
     \relates QHash
     \since 5.0
 

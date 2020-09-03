@@ -196,9 +196,6 @@ void tst_languageChange::retranslatability_data()
                     << "QFileDialog::Back"
                     << "QFileDialog::Create New Folder"
                     << "QFileDialog::Detail View"
-#if !defined(Q_OS_MAC)
-                    << "QFileDialog::File"
-#endif
                     << "QFileDialog::Files of type:"
                     << "QFileDialog::Forward"
                     << "QFileDialog::List View"
@@ -259,9 +256,6 @@ void tst_languageChange::retranslatability()
 #endif
         break;
     case FileDialog: {
-#ifdef Q_OS_MAC
-        QSKIP("The native file dialog is used on Mac OS");
-#endif
         QFileDialog dlg;
         dlg.setOption(QFileDialog::DontUseNativeDialog);
         QString tempDirPattern = QDir::tempPath();

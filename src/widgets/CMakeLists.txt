@@ -27,6 +27,7 @@ qt_add_module(Widgets
         kernel/qtwidgetsglobal.h kernel/qtwidgetsglobal_p.h
         kernel/qwidget.cpp kernel/qwidget.h kernel/qwidget_p.h
         kernel/qwidgetrepaintmanager.cpp kernel/qwidgetrepaintmanager_p.h
+        kernel/qwidgetstatemachine.cpp
         kernel/qwidgetsvariant.cpp
         kernel/qwidgetwindow.cpp kernel/qwidgetwindow_p.h
         kernel/qwindowcontainer.cpp kernel/qwindowcontainer_p.h
@@ -301,8 +302,6 @@ qt_extend_target(Widgets CONDITION MSVC AND (TEST_architecture_arch STREQUAL "i3
 qt_extend_target(Widgets CONDITION MACOS
     SOURCES
         kernel/qmacgesturerecognizer.cpp kernel/qmacgesturerecognizer_p.h
-        widgets/qmaccocoaviewcontainer_mac.h widgets/qmaccocoaviewcontainer_mac.mm
-        widgets/qmacnativewidget_mac.h widgets/qmacnativewidget_mac.mm
     LIBRARIES
         ${FWAppKit}
         z
@@ -623,12 +622,6 @@ qt_extend_target(Widgets CONDITION QT_FEATURE_filedialog
         uic
 )
 
-qt_extend_target(Widgets CONDITION QT_FEATURE_filesystemmodel
-    SOURCES
-        dialogs/qfileinfogatherer.cpp dialogs/qfileinfogatherer_p.h
-        dialogs/qfilesystemmodel.cpp dialogs/qfilesystemmodel.h dialogs/qfilesystemmodel_p.h
-)
-
 qt_extend_target(Widgets CONDITION QT_FEATURE_fontdialog
     SOURCES
         dialogs/qfontdialog.cpp dialogs/qfontdialog.h dialogs/qfontdialog_p.h
@@ -804,19 +797,6 @@ qt_extend_target(Widgets CONDITION QT_FEATURE_xcb
 qt_extend_target(Widgets CONDITION NOT QT_FEATURE_xcb
     SOURCES
         util/qsystemtrayicon_qpa.cpp
-)
-
-qt_extend_target(Widgets CONDITION QT_FEATURE_statemachine
-    SOURCES
-        statemachine/qguistatemachine.cpp
-)
-
-qt_extend_target(Widgets CONDITION QT_FEATURE_qeventtransition
-    SOURCES
-        statemachine/qbasickeyeventtransition.cpp statemachine/qbasickeyeventtransition_p.h
-        statemachine/qbasicmouseeventtransition.cpp statemachine/qbasicmouseeventtransition_p.h
-        statemachine/qkeyeventtransition.cpp statemachine/qkeyeventtransition.h
-        statemachine/qmouseeventtransition.cpp statemachine/qmouseeventtransition.h
 )
 
 

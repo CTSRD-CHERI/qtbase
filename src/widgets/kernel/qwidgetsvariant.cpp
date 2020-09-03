@@ -49,58 +49,6 @@ QT_BEGIN_NAMESPACE
 
 namespace {
 
-static bool isNull(const QVariant::Private *)
-{
-    return false;
-}
-
-static bool compare(const QVariant::Private *a, const QVariant::Private *b)
-{
-    Q_ASSERT(a->type() == b->type());
-    switch (a->type().id()) {
-    case QMetaType::QSizePolicy:
-        return *v_cast<QSizePolicy>(a) == *v_cast<QSizePolicy>(b);
-    default:
-        Q_ASSERT(false);
-    }
-    return false;
-}
-
-static bool convert(const QVariant::Private *d, int type, void *result, bool *ok)
-{
-    Q_UNUSED(d);
-    Q_UNUSED(type);
-    Q_UNUSED(result);
-    if (ok)
-        *ok = false;
-    return false;
-}
-
-#if !defined(QT_NO_DEBUG_STREAM)
-static void streamDebug(QDebug dbg, const QVariant &v)
-{
-    QVariant::Private *d = const_cast<QVariant::Private *>(&v.data_ptr());
-    switch (d->type().id()) {
-    case QMetaType::QSizePolicy:
-        dbg.nospace() << *v_cast<QSizePolicy>(d);
-        break;
-    default:
-        dbg.nospace() << "QMetaType::Type(" << d->type().id() << ')';
-    }
-}
-#endif
-
-static const QVariant::Handler widgets_handler = {
-    isNull,
-    compare,
-    convert,
-#if !defined(QT_NO_DEBUG_STREAM)
-    streamDebug
-#else
-    nullptr
-#endif
-};
-
 static const struct : QMetaTypeModuleHelper
 {
     QtPrivate::QMetaTypeInterface *interfaceForType(int type) const override {
@@ -109,21 +57,6 @@ static const struct : QMetaTypeModuleHelper
             default: return nullptr;
         }
     }
-#ifndef QT_NO_DATASTREAM
-    bool save(QDataStream &stream, int type, const void *data) const override {
-        switch (type) {
-            QT_FOR_EACH_STATIC_WIDGETS_CLASS(QT_METATYPE_DATASTREAM_SAVE)
-            default: return false;
-        }
-    }
-    bool load(QDataStream &stream, int type, void *data) const override {
-        switch (type) {
-            QT_FOR_EACH_STATIC_WIDGETS_CLASS(QT_METATYPE_DATASTREAM_LOAD)
-            default: return false;
-        }
-    }
-#endif
-
 }  qVariantWidgetsHelper;
 
 
@@ -131,13 +64,9 @@ static const struct : QMetaTypeModuleHelper
 
 }  // namespace
 
-extern Q_CORE_EXPORT const QMetaTypeModuleHelper *qMetaTypeWidgetsHelper;
-
 void qRegisterWidgetsVariant()
 {
-    qRegisterMetaType<QWidget*>();
     qMetaTypeWidgetsHelper = &qVariantWidgetsHelper;
-    QVariantPrivate::registerHandler(QModulesPrivate::Widgets, &widgets_handler);
 }
 Q_CONSTRUCTOR_FUNCTION(qRegisterWidgetsVariant)
 

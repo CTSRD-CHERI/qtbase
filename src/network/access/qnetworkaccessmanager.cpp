@@ -54,14 +54,14 @@
 #include "qhstsstore_p.h"
 #endif // QT_CONFIG(settings)
 
-#if QT_CONFIG(ftp)
-#include "qnetworkaccessftpbackend_p.h"
-#endif
 #include "qnetworkaccessfilebackend_p.h"
 #include "qnetworkaccessdebugpipebackend_p.h"
 #include "qnetworkaccesscachebackend_p.h"
 #include "qnetworkreplydataimpl_p.h"
 #include "qnetworkreplyfileimpl_p.h"
+
+#include "qnetworkaccessbackend_p.h"
+#include "qnetworkreplyimpl_p.h"
 
 #include "QtCore/qbuffer.h"
 #include "QtCore/qlist.h"
@@ -80,6 +80,8 @@
 
 #include <QHostInfo>
 
+#include <QtCore/private/qfactoryloader_p.h>
+
 #if defined(Q_OS_MACOS)
 #include <CoreServices/CoreServices.h>
 #include <SystemConfiguration/SystemConfiguration.h>
@@ -94,14 +96,14 @@
 QT_BEGIN_NAMESPACE
 
 Q_GLOBAL_STATIC(QNetworkAccessFileBackendFactory, fileBackend)
-#if QT_CONFIG(ftp)
-Q_GLOBAL_STATIC(QNetworkAccessFtpBackendFactory, ftpBackend)
-#endif // QT_CONFIG(ftp)
 
 #ifdef QT_BUILD_INTERNAL
 Q_GLOBAL_STATIC(QNetworkAccessDebugPipeBackendFactory, debugpipeBackend)
 #endif
 
+Q_GLOBAL_STATIC_WITH_ARGS(QFactoryLoader, loader,
+                          (QNetworkAccessBackendFactory_iid,
+                           QLatin1String("/networkaccessbackends")))
 #if defined(Q_OS_MACOS)
 bool getProxyAuth(const QString& proxyHostname, const QString &scheme, QString& username, QString& password)
 {
@@ -159,10 +161,6 @@ bool getProxyAuth(const QString& proxyHostname, const QString &scheme, QString& 
 
 static void ensureInitialized()
 {
-#if QT_CONFIG(ftp)
-    (void) ftpBackend();
-#endif
-
 #ifdef QT_BUILD_INTERNAL
     (void) debugpipeBackend();
 #endif
@@ -406,6 +404,7 @@ QNetworkAccessManager::QNetworkAccessManager(QObject *parent)
     : QObject(*new QNetworkAccessManagerPrivate, parent)
 {
     ensureInitialized();
+    d_func()->ensureBackendPluginsLoaded();
 
     qRegisterMetaType<QNetworkReply::NetworkError>();
 #ifndef QT_NO_NETWORKPROXY
@@ -1019,16 +1018,13 @@ void QNetworkAccessManager::connectToHost(const QString &hostName, quint16 port)
     Use this function to enable or disable HTTP redirects on the manager's level.
 
     \note When creating a request QNetworkRequest::RedirectAttributePolicy has
-    the highest priority, next by priority is QNetworkRequest::FollowRedirectsAttribute.
-    Finally, the manager's policy has the lowest priority.
+    the highest priority, next by priority the manager's policy.
 
-    For backwards compatibility the default value is QNetworkRequest::ManualRedirectPolicy.
-    This may change in the future and some type of auto-redirect policy will become
-    the default; clients relying on manual redirect handling are encouraged to set
+    The default value is QNetworkRequest::NoLessSafeRedirectPolicy.
+    Clients relying on manual redirect handling are encouraged to set
     this policy explicitly in their code.
 
-    \sa redirectPolicy(), QNetworkRequest::RedirectPolicy,
-    QNetworkRequest::FollowRedirectsAttribute
+    \sa redirectPolicy(), QNetworkRequest::RedirectPolicy
 */
 void QNetworkAccessManager::setRedirectPolicy(QNetworkRequest::RedirectPolicy policy)
 {
@@ -1138,9 +1134,8 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
     Q_D(QNetworkAccessManager);
 
     QNetworkRequest req(originalReq);
-    if (redirectPolicy() != QNetworkRequest::ManualRedirectPolicy
-        && req.attribute(QNetworkRequest::RedirectPolicyAttribute).isNull()
-        && req.attribute(QNetworkRequest::FollowRedirectsAttribute).isNull()) {
+    if (redirectPolicy() != QNetworkRequest::NoLessSafeRedirectPolicy
+        && req.attribute(QNetworkRequest::RedirectPolicyAttribute).isNull()) {
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, redirectPolicy());
     }
 
@@ -1185,9 +1180,9 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
             QNetworkReplyImplPrivate *priv = reply->d_func();
             priv->manager = this;
             priv->backend = new QNetworkAccessCacheBackend();
-            priv->backend->manager = this->d_func();
+            priv->backend->setManagerPrivate(this->d_func());
             priv->backend->setParent(reply);
-            priv->backend->reply = priv;
+            priv->backend->setReplyPrivate(priv);
             priv->setup(op, req, outgoingData);
             return reply;
         }
@@ -1265,7 +1260,7 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
 
     if (priv->backend) {
         priv->backend->setParent(reply);
-        priv->backend->reply = priv;
+        priv->backend->setReplyPrivate(priv);
     }
 
 #ifndef QT_NO_SSL
@@ -1283,7 +1278,9 @@ QNetworkReply *QNetworkAccessManager::createRequest(QNetworkAccessManager::Opera
 
     Lists all the URL schemes supported by the access manager.
 
-    \sa supportedSchemesImplementation()
+    Reimplement this method to provide your own supported schemes
+    in a QNetworkAccessManager subclass. It is for instance necessary
+    when your subclass provides support for new protocols.
 */
 QStringList QNetworkAccessManager::supportedSchemes() const
 {
@@ -1297,19 +1294,16 @@ QStringList QNetworkAccessManager::supportedSchemes() const
 
 /*!
     \since 5.2
+    \obsolete
 
     Lists all the URL schemes supported by the access manager.
 
     You should not call this function directly; use
     QNetworkAccessManager::supportedSchemes() instead.
 
-    Reimplement this slot to provide your own supported schemes
-    in a QNetworkAccessManager subclass. It is for instance necessary
-    when your subclass provides support for new protocols.
-
     Because of binary compatibility constraints, the supportedSchemes()
-    method (introduced in Qt 5.2) is not virtual. Instead, supportedSchemes()
-    will dynamically detect and call this slot.
+    method (introduced in Qt 5.2) was not virtual in Qt 5, but now it
+    is. Override the supportedSchemes method rather than this one.
 
     \sa supportedSchemes()
 */
@@ -1699,6 +1693,25 @@ QNetworkRequest QNetworkAccessManagerPrivate::prepareMultipart(const QNetworkReq
     return newRequest;
 }
 #endif // QT_CONFIG(http)
+
+/*!
+    \internal
+    Go through the instances so the factories will be created and
+    register themselves to QNetworkAccessBackendFactoryData
+*/
+void QNetworkAccessManagerPrivate::ensureBackendPluginsLoaded()
+{
+    static QBasicMutex mutex;
+    std::unique_lock locker(mutex);
+    if (!loader())
+        return;
+#if QT_CONFIG(library)
+    loader->update();
+#endif
+    int index = 0;
+    while (loader->instance(index))
+        ++index;
+}
 
 QT_END_NAMESPACE
 

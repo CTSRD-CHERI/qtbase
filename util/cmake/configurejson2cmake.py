@@ -768,6 +768,23 @@ def write_compile_test(
 #                "qmake": "unix:LIBS += -lpthread"
 #            }
 #        },
+
+def write_compiler_supports_flag_test(
+    ctx, name, details, data, cm_fh, manual_library_list=None, is_library_test=False
+):
+    cm_fh.write(f"qt_config_compiler_supports_flag_test({featureName(name)}\n")
+    cm_fh.write(lineify("LABEL", data.get("label", "")))
+    cm_fh.write(lineify("FLAG", data.get("flag", "")))
+    cm_fh.write(")\n\n")
+
+def write_linker_supports_flag_test(
+    ctx, name, details, data, cm_fh, manual_library_list=None, is_library_test=False
+):
+    cm_fh.write(f"qt_config_linker_supports_flag_test({featureName(name)}\n")
+    cm_fh.write(lineify("LABEL", data.get("label", "")))
+    cm_fh.write(lineify("FLAG", data.get("flag", "")))
+    cm_fh.write(")\n\n")
+
 def parseTest(ctx, test, data, cm_fh):
     skip_tests = {
         "c11",
@@ -794,6 +811,26 @@ def parseTest(ctx, test, data, cm_fh):
             details = test
 
         write_compile_test(ctx, test, details, data, cm_fh)
+
+    if data["type"] == "compilerSupportsFlag":
+        knownTests.add(test)
+
+        if "test" in data:
+            details = data["test"]
+        else:
+            details = test
+
+        write_compiler_supports_flag_test(ctx, test, details, data, cm_fh)
+
+    if data["type"] == "linkerSupportsFlag":
+        knownTests.add(test)
+
+        if "test" in data:
+            details = data["test"]
+        else:
+            details = test
+
+        write_linker_supports_flag_test(ctx, test, details, data, cm_fh)
 
     elif data["type"] == "libclang":
         knownTests.add(test)
@@ -856,10 +893,10 @@ def get_feature_mapping():
             "condition": "QT_GENERATOR_IS_MULTI_CONFIG",
         },
         "debug": {
+            "autoDetect": "ON",
             "condition": "CMAKE_BUILD_TYPE STREQUAL Debug OR Debug IN_LIST CMAKE_CONFIGURATION_TYPES"
         },
         "dlopen": {"condition": "UNIX"},
-        "enable_gdb_index": None,
         "enable_new_dtags": None,
         "force_debug_info": {
             "autoDetect": "CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo OR RelWithDebInfo IN_LIST CMAKE_CONFIGURATION_TYPES"
@@ -878,14 +915,27 @@ def get_feature_mapping():
         "incredibuild_xge": None,
         "ltcg": {"autoDetect": "1", "condition": "CMAKE_INTERPROCEDURAL_OPTIMIZATION"},
         "msvc_mp": None,
-        "optimize_debug": None,
-        "optimize_size": None,
         "simulator_and_device": {"condition": "UIKIT AND NOT QT_UIKIT_SDK"},
         "pkg-config": {"condition": "PKG_CONFIG_FOUND"},
         "precompile_header": {"condition": "BUILD_WITH_PCH"},
         "profile": None,
         "qmakeargs": None,
         "qpa_default_platform": None,  # Not a bool!
+        "qreal" : {
+            "condition": "DEFINED QT_COORD_TYPE AND NOT QT_COORD_TYPE STREQUAL \"double\"",
+            "output": [
+                {
+                    "type": "define",
+                    "name": "QT_COORD_TYPE",
+                    "value": "${QT_COORD_TYPE}",
+                },
+                {
+                    "type": "define",
+                    "name": "QT_COORD_TYPE_STRING",
+                    "value": "\\\"${QT_COORD_TYPE}\\\"",
+                },
+            ],
+        },
         "release": None,
         "release_tools": None,
         "rpath": {
@@ -911,7 +961,6 @@ def get_feature_mapping():
         "stl": None,  # Do we really need to test for this in 2018?!
         "strip": None,
         "tiff": {"condition": "QT_FEATURE_imageformatplugin AND TIFF_FOUND"},
-        "use_gold_linker": None,
         "verifyspec": None,  # qmake specific...
         "warnings_are_errors": None,  # FIXME: Do we need these?
         "webp": {"condition": "QT_FEATURE_imageformatplugin AND WrapWebP_FOUND"},
@@ -973,7 +1022,8 @@ def parseFeature(ctx, feature, data, cm_fh):
         if isinstance(o, dict):
             outputType = o["type"]
 
-        if outputType in ["varAssign", "varAppend", "varRemove"]:
+        if outputType in ["varAssign", "varAppend", "varRemove",
+                          "useBFDLinker", "useGoldLinker", "useLLDLinker"]:
             continue
         elif outputType == "define":
             publicDefine = True
@@ -1284,6 +1334,64 @@ def processReportHelper(ctx, entries, cm_fh):
         else:
             print(f"    XXXX UNHANDLED REPORT TYPE {entry}.")
 
+def parseCommandLineCustomHandler(ctx, data, cm_fh):
+    cm_fh.write(f"qt_commandline_custom({data})\n")
+
+def parseCommandLineOptions(ctx, data, cm_fh):
+    for key in data:
+        args = [key]
+        option = data[key]
+        if isinstance(option, str):
+            args += ["TYPE", option]
+        else:
+            if "type" in option:
+                args += ["TYPE", option["type"]]
+            if "name" in option:
+                args += ["NAME", option["name"]]
+            if "value" in option:
+                args += ["VALUE", option["value"]]
+            if "values" in option:
+                values = option["values"]
+                if isinstance(values, list):
+                    args += ["VALUES", ' '.join(option["values"])]
+                else:
+                    args += ["MAPPING"]
+                    for lhs in values:
+                        args += [lhs, values[lhs]]
+
+        cm_fh.write(f"qt_commandline_option({' '.join(args)})\n")
+
+def parseCommandLinePrefixes(ctx, data, cm_fh):
+    for key in data:
+        cm_fh.write(f"qt_commandline_prefix({key} {data[key]})\n")
+
+def parseCommandLineAssignments(ctx, data, cm_fh):
+    for key in data:
+        cm_fh.write(f"qt_commandline_assignment({key} {data[key]})\n")
+
+def processCommandLine(ctx, data, cm_fh):
+    print("  commandline:")
+
+    if "subconfigs" in data:
+        for subconf in data["subconfigs"]:
+            cm_fh.write(f"qt_commandline_subconfig({subconf})\n")
+
+    if "commandline" not in data:
+        return
+
+    commandLine = data["commandline"]
+    if "custom" in commandLine:
+        print("    custom:")
+        parseCommandLineCustomHandler(ctx, commandLine["custom"], cm_fh)
+    if "options" in commandLine:
+        print("    options:")
+        parseCommandLineOptions(ctx, commandLine["options"], cm_fh)
+    if "prefix" in commandLine:
+        print("    prefix:")
+        parseCommandLinePrefixes(ctx, commandLine["prefix"], cm_fh)
+    if "assignments" in commandLine:
+        print("    assignments:")
+        parseCommandLineAssignments(ctx, commandLine["assignments"], cm_fh)
 
 def processInputs(ctx, data, cm_fh):
     print("  inputs:")
@@ -1376,6 +1484,9 @@ def processJson(path, ctx, data):
     ctx["test_dir"] = data.get("testDir", "config.tests")
 
     ctx = processFiles(ctx, data)
+
+    with special_cased_file(path, "qt_cmdline.cmake") as cm_fh:
+        processCommandLine(ctx, data, cm_fh)
 
     with special_cased_file(path, "configure.cmake") as cm_fh:
         cm_fh.write("\n\n#### Inputs\n\n")

@@ -94,13 +94,12 @@ protected:
         QListView::resizeEvent(event);
     }
 
-    QStyleOptionViewItem viewOptions() const override
+    void initViewItemOption(QStyleOptionViewItem *option) const override
     {
-        QStyleOptionViewItem option = QListView::viewOptions();
-        option.showDecorationSelected = true;
+        QListView::initViewItemOption(option);
+        option->showDecorationSelected = true;
         if (combo)
-            option.font = combo->font();
-        return option;
+            option->font = combo->font();
     }
 
     void paintEvent(QPaintEvent *e) override
@@ -118,7 +117,7 @@ protected:
                 menuOpt.checkType = QStyleOptionMenuItem::NotCheckable;
                 menuOpt.menuRect = e->rect();
                 menuOpt.maxIconWidth = 0;
-                menuOpt.tabWidth = 0;
+                menuOpt.reservedShortcutWidth = 0;
                 QPainter p(viewport());
                 combo->style()->drawControl(QStyle::CE_MenuEmptyArea, &menuOpt, &p, this);
             }
@@ -194,7 +193,7 @@ protected:
         menuOpt.checkType = QStyleOptionMenuItem::NotCheckable;
         menuOpt.menuRect = rect();
         menuOpt.maxIconWidth = 0;
-        menuOpt.tabWidth = 0;
+        menuOpt.reservedShortcutWidth = 0;
         menuOpt.menuItemType = QStyleOptionMenuItem::Scroller;
         if (sliderAction == QAbstractSlider::SliderSingleStepAdd)
             menuOpt.state |= QStyle::State_DownArrow;
@@ -372,7 +371,7 @@ public:
     void updateArrow(QStyle::StateFlag state);
     bool updateHoverControl(const QPoint &pos);
     void trySetValidIndex();
-    QRect popupGeometry() const;
+    QRect popupGeometry(const QPoint &globalPos) const;
     QStyle::SubControl newHoverControl(const QPoint &pos);
     int computeWidthHint() const;
     QSize recomputeSizeHint(QSize &sh) const;

@@ -63,9 +63,6 @@ QT_END_NAMESPACE
 #include <new>
 #include <QtCore/qatomic.h>
 #include <QtCore/qobject.h>    // for qobject_cast
-#if QT_DEPRECATED_SINCE(5, 6)
-#include <QtCore/qhash.h>
-#endif
 #include <QtCore/qhashfunctions.h>
 
 #include <memory>
@@ -283,7 +280,6 @@ namespace QtSharedPointer {
 
 template <class T> class QSharedPointer
 {
-    typedef T *QSharedPointer:: *RestrictedBool;
     typedef QtSharedPointer::ExternalRefCountData Data;
     template <typename X>
     using IfCompatible = typename std::enable_if<std::is_convertible<X*, T*>::value, bool>::type;
@@ -301,15 +297,15 @@ public:
     T *data() const noexcept { return value; }
     T *get() const noexcept { return value; }
     bool isNull() const noexcept { return !data(); }
-    operator RestrictedBool() const noexcept { return isNull() ? nullptr : &QSharedPointer::value; }
+    explicit operator bool() const noexcept { return !isNull(); }
     bool operator !() const noexcept { return isNull(); }
     T &operator*() const { return *data(); }
     T *operator->() const noexcept { return data(); }
 
-    Q_DECL_CONSTEXPR QSharedPointer() noexcept : value(nullptr), d(nullptr) { }
+    constexpr QSharedPointer() noexcept : value(nullptr), d(nullptr) { }
     ~QSharedPointer() { deref(); }
 
-    Q_DECL_CONSTEXPR QSharedPointer(std::nullptr_t) noexcept : value(nullptr), d(nullptr) { }
+    constexpr QSharedPointer(std::nullptr_t) noexcept : value(nullptr), d(nullptr) { }
 
     template <class X, IfCompatible<X> = true>
     inline explicit QSharedPointer(X *ptr) : value(ptr) // noexcept
@@ -539,7 +535,6 @@ public:
 template <class T>
 class QWeakPointer
 {
-    typedef T *QWeakPointer:: *RestrictedBool;
     typedef QtSharedPointer::ExternalRefCountData Data;
     template <typename X>
     using IfCompatible = typename std::enable_if<std::is_convertible<X*, T*>::value, bool>::type;
@@ -554,31 +549,11 @@ public:
     typedef qptrdiff difference_type;
 
     bool isNull() const noexcept { return d == nullptr || d->strongref.loadRelaxed() == 0 || value == nullptr; }
-    operator RestrictedBool() const noexcept { return isNull() ? nullptr : &QWeakPointer::value; }
+    explicit operator bool() const noexcept { return !isNull(); }
     bool operator !() const noexcept { return isNull(); }
-
-#if QT_DEPRECATED_SINCE(5, 14)
-    QT_DEPRECATED_X("Use toStrongRef() instead, and data() on the returned QSharedPointer")
-    T *data() const noexcept { return internalData(); }
-#endif
 
     inline QWeakPointer() noexcept : d(nullptr), value(nullptr) { }
     inline ~QWeakPointer() { if (d && !d->weakref.deref()) delete d; }
-
-#ifndef QT_NO_QOBJECT
-    // special constructor that is enabled only if X derives from QObject
-#if QT_DEPRECATED_SINCE(5, 0)
-    template <class X, IfCompatible<X> = true>
-    QT_DEPRECATED inline QWeakPointer(X *ptr) : d(ptr ? Data::getAndRef(ptr) : nullptr), value(ptr)
-    { }
-#endif
-#endif
-
-#if QT_DEPRECATED_SINCE(5, 0)
-    template <class X, IfCompatible<X> = true>
-    QT_DEPRECATED inline QWeakPointer &operator=(X *ptr)
-    { return *this = QWeakPointer(ptr); }
-#endif
 
     QWeakPointer(const QWeakPointer &other) noexcept : d(other.d), value(other.value)
     { if (d) d->weakref.ref(); }

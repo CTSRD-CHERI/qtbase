@@ -60,7 +60,6 @@ Q_LOGGING_CATEGORY(lcQpaInputDevices, "qt.qpa.input.devices")
 
 QElapsedTimer QWindowSystemInterfacePrivate::eventTime;
 bool QWindowSystemInterfacePrivate::synchronousWindowSystemEvents = false;
-bool QWindowSystemInterfacePrivate::platformFiltersEvents = false;
 bool QWindowSystemInterfacePrivate::TabletEvent::platformSynthesizesMouse = true;
 QWaitCondition QWindowSystemInterfacePrivate::eventsFlushed;
 QMutex QWindowSystemInterfacePrivate::flushEventMutex;
@@ -349,12 +348,20 @@ QWindowSystemInterfacePrivate::ExposeEvent::ExposeEvent(QWindow *window, const Q
     This is required behavior on platforms where OpenGL swapbuffers stops
     blocking for obscured windows (like macOS).
 */
-QT_DEFINE_QPA_EVENT_HANDLER(void, handleExposeEvent, QWindow *window, const QRegion &region)
+QT_DEFINE_QPA_EVENT_HANDLER(bool, handleExposeEvent, QWindow *window, const QRegion &region)
 {
     QWindowSystemInterfacePrivate::ExposeEvent *e =
         new QWindowSystemInterfacePrivate::ExposeEvent(window, QHighDpi::fromNativeLocalExposedRegion(region, window));
-    QWindowSystemInterfacePrivate::handleWindowSystemEvent<Delivery>(e);
+    return QWindowSystemInterfacePrivate::handleWindowSystemEvent<Delivery>(e);
 }
+
+QT_DEFINE_QPA_EVENT_HANDLER(bool, handlePaintEvent, QWindow *window, const QRegion &region)
+{
+    QWindowSystemInterfacePrivate::PaintEvent *e =
+        new QWindowSystemInterfacePrivate::PaintEvent(window, QHighDpi::fromNativeLocalExposedRegion(region, window));
+    return QWindowSystemInterfacePrivate::handleWindowSystemEvent<Delivery>(e);
+}
+
 
 QT_DEFINE_QPA_EVENT_HANDLER(bool, handleCloseEvent, QWindow *window)
 {
@@ -1080,15 +1087,10 @@ bool QWindowSystemInterface::sendWindowSystemEvents(QEventLoop::ProcessEventsFla
     int nevents = 0;
 
     while (QWindowSystemInterfacePrivate::windowSystemEventsQueued()) {
-        QWindowSystemInterfacePrivate::WindowSystemEvent *event = nullptr;
-
-        if (QWindowSystemInterfacePrivate::platformFiltersEvents) {
-            event = QWindowSystemInterfacePrivate::getWindowSystemEvent();
-        } else {
-            event = flags & QEventLoop::ExcludeUserInputEvents ?
+        QWindowSystemInterfacePrivate::WindowSystemEvent *event =
+                flags & QEventLoop::ExcludeUserInputEvents ?
                         QWindowSystemInterfacePrivate::getNonUserInputWindowSystemEvent() :
                         QWindowSystemInterfacePrivate::getWindowSystemEvent();
-        }
         if (!event)
             break;
 
@@ -1127,21 +1129,6 @@ bool QWindowSystemInterface::nonUserInputEventsQueued()
     return QWindowSystemInterfacePrivate::nonUserInputEventsQueued();
 }
 
-/*!
-    Platforms that implement UserInputEvent filtering at native event level must
-    set this property to \c true. The default is \c false, which means that event
-    filtering logic is handled by QWindowSystemInterface. Doing the filtering in
-    platform plugins is necessary when supporting AbstractEventDispatcher::filterNativeEvent(),
-    which should respect flags that were passed to event dispatcher's processEvents()
-    call.
-
-    \since 5.12
-*/
-void QWindowSystemInterface::setPlatformFiltersEvents(bool enable)
-{
-    QWindowSystemInterfacePrivate::platformFiltersEvents = enable;
-}
-
 // --------------------- QtTestLib support ---------------------
 
 // The following functions are used by testlib, and need to be synchronous to avoid
@@ -1156,23 +1143,6 @@ Q_GUI_EXPORT void qt_handleMouseEvent(QWindow *window, const QPointF &local, con
     const qreal factor = QHighDpiScaling::factor(window);
     QWindowSystemInterface::handleMouseEvent<QWindowSystemInterface::SynchronousDelivery>(window,
                 timestamp, local * factor, global * factor, state, button, type, mods);
-}
-
-// Wrapper for compatibility with Qt < 5.11
-// ### Qt6: Remove
-Q_GUI_EXPORT void qt_handleMouseEvent(QWindow *window, const QPointF &local, const QPointF &global,
-                                      Qt::MouseButtons b, Qt::KeyboardModifiers mods, int timestamp)
-{
-    const qreal factor = QHighDpiScaling::factor(window);
-    QWindowSystemInterface::handleMouseEvent<QWindowSystemInterface::SynchronousDelivery>(window,
-                timestamp, local * factor, global * factor, b, Qt::NoButton, QEvent::None, mods);
-}
-
-// Wrapper for compatibility with Qt < 5.6
-// ### Qt6: Remove
-Q_GUI_EXPORT void qt_handleMouseEvent(QWindow *w, const QPointF &local, const QPointF &global, Qt::MouseButtons b, Qt::KeyboardModifiers mods = Qt::NoModifier)
-{
-    qt_handleMouseEvent(w, local, global, b, mods, QWindowSystemInterfacePrivate::eventTime.elapsed());
 }
 
 Q_GUI_EXPORT void qt_handleKeyEvent(QWindow *window, QEvent::Type t, int k, Qt::KeyboardModifiers mods, const QString & text = QString(), bool autorep = false, ushort count = 1)

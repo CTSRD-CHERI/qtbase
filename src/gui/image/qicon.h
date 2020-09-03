@@ -72,6 +72,8 @@ public:
     { swap(other); return *this; }
     inline void swap(QIcon &other) noexcept
     { qSwap(d, other.d); }
+    bool operator==(const QIcon &) const = delete;
+    bool operator!=(const QIcon &) const = delete;
 
     operator QVariant() const;
 
@@ -80,10 +82,17 @@ public:
         { return pixmap(QSize(w, h), mode, state); }
     inline QPixmap pixmap(int extent, Mode mode = Normal, State state = Off) const
         { return pixmap(QSize(extent, extent), mode, state); }
+    QPixmap pixmap(const QSize &size, qreal devicePixelRatio, Mode mode = Normal, State state = Off) const;
+#if QT_DEPRECATED_SINCE(6, 0)
+    QT_DEPRECATED_VERSION_X_6_0("Use pixmap(size, devicePixelRatio) instead")
     QPixmap pixmap(QWindow *window, const QSize &size, Mode mode = Normal, State state = Off) const;
+#endif
 
     QSize actualSize(const QSize &size, Mode mode = Normal, State state = Off) const;
+#if QT_DEPRECATED_SINCE(6, 0)
+    QT_DEPRECATED_VERSION_X_6_0("Use actualSize(size) instead")
     QSize actualSize(QWindow *window, const QSize &size, Mode mode = Normal, State state = Off) const;
+#endif
 
     QString name() const;
 

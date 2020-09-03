@@ -144,7 +144,7 @@ QT_BEGIN_NAMESPACE
 */
 QTextLength::operator QVariant() const
 {
-    return QVariant(QMetaType::QTextLength, this);
+    return QVariant::fromValue(*this);
 }
 
 #ifndef QT_NO_DATASTREAM
@@ -287,13 +287,13 @@ static inline size_t variantHash(const QVariant &variant)
     switch (variant.userType()) { // sorted by occurrence frequency
     case QMetaType::QString: return qHash(variant.toString());
     case QMetaType::Double: return qHash(variant.toDouble());
-    case QMetaType::Int: return 0x811890 + variant.toInt();
+    case QMetaType::Int: return 0x811890U + variant.toInt();
     case QMetaType::QBrush:
         return 0x01010101 + hash(qvariant_cast<QBrush>(variant));
     case QMetaType::Bool: return 0x371818 + variant.toBool();
     case QMetaType::QPen: return 0x02020202 + hash(qvariant_cast<QPen>(variant));
     case QMetaType::QVariantList:
-        return 0x8377 + qvariant_cast<QVariantList>(variant).count();
+        return 0x8377U + qvariant_cast<QVariantList>(variant).count();
     case QMetaType::QColor: return hash(qvariant_cast<QColor>(variant));
       case QMetaType::QTextLength:
         return 0x377 + hash(qvariant_cast<QTextLength>(variant).rawValue());
@@ -324,7 +324,7 @@ size_t QTextFormatPrivate::recalcHash() const
 void QTextFormatPrivate::resolveFont(const QFont &defaultFont)
 {
     recalcFont();
-    const uint oldMask = fnt.resolve();
+    const uint oldMask = fnt.resolveMask();
     fnt = fnt.resolve(defaultFont);
 
     if (hasProperty(QTextFormat::FontSizeAdjustment)) {
@@ -342,7 +342,7 @@ void QTextFormatPrivate::resolveFont(const QFont &defaultFont)
         }
     }
 
-    fnt.resolve(oldMask);
+    fnt.setResolveMask(oldMask);
 }
 
 void QTextFormatPrivate::recalcFont() const
@@ -375,7 +375,7 @@ void QTextFormatPrivate::recalcFont() const
                 const QVariant weightValue = props.at(i).value;
                 int weight = weightValue.toInt();
                 if (weight >= 0 && weightValue.isValid())
-                    f.setWeight(weight);
+                    f.setWeight(QFont::Weight(weight));
                 break; }
             case QTextFormat::FontItalic:
                 f.setItalic(props.at(i).value.toBool());
@@ -635,6 +635,10 @@ Q_GUI_EXPORT QDataStream &operator>>(QDataStream &stream, QTextFormat &fmt)
     \value TextOutline
     \value TextUnderlineStyle
     \value TextToolTip Specifies the (optional) tool tip to be displayed for a fragment of text.
+    \value TextSuperScriptBaseline Specifies the baseline (in % of height) of superscript texts.
+    \value TextSubScriptBaseline   Specifies the baseline (in % of height) of subscript texts.
+    \value TextBaselineOffset      Specifies the baseline (in % of height) of text. A positive value moves up the text,
+                                   by the corresponding %; a negative value moves it down.
 
     \value IsAnchor
     \value AnchorHref
@@ -895,7 +899,7 @@ QTextFormat::~QTextFormat()
 */
 QTextFormat::operator QVariant() const
 {
-    return QVariant(QMetaType::QTextFormat, this);
+    return QVariant::fromValue(*this);
 }
 
 /*!
@@ -1795,6 +1799,60 @@ void QTextCharFormat::setUnderlineStyle(UnderlineStyle style)
     \sa foreground(), setForeground(), clearBackground()
 */
 
+/*!
+    \fn void QTextCharFormat::setSuperScriptBaseline(qreal baseline)
+    \since 6.0
+
+    Sets the superscript's base line as a % of font height. The default value is 50% (1/2 of height)
+
+    \sa superScriptBaseline(), setSubScriptBaseline(), subScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+
+/*!
+    \fn qreal QTextCharFormat::superScriptBaseline() const
+    \since 6.0
+
+    Returns the superscript's base line as a % of font height.
+
+    \sa setSuperScriptBaseline(), setSubScriptBaseline(), subScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+
+/*!
+    \fn void QTextCharFormat::setSubScriptBaseline(qreal baseline)
+    \since 6.0
+
+    Sets the subscript's base line as a % of font height. The default value is 16.67% (1/6 of height)
+
+    \sa subScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+
+/*!
+    \fn qreal QTextCharFormat::subScriptBaseline() const
+    \since 6.0
+
+    Returns the subscript's base line as a % of font height.
+
+    \sa setSubScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+
+/*!
+    \fn void QTextCharFormat::setBaselineOffset(qreal baseline)
+    \since 6.0
+
+    Sets the baseline (in % of height) of text. A positive value moves up the text, by the corresponding %;
+    a negative value moves it down. The default value is 0.
+
+    \sa baselineOffset(), setSubScriptBaseline(), subScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline()
+*/
+
+/*!
+    \fn qreal QTextCharFormat::baselineOffset() const
+    \since 6.0
+
+    Returns the the baseline offset in %.
+
+    \sa setBaselineOffset(), setSubScriptBaseline(), subScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline()
+*/
 
 /*!
     \fn void QTextCharFormat::setAnchor(bool anchor)
@@ -1971,7 +2029,7 @@ QStringList QTextCharFormat::anchorNames() const
 void QTextCharFormat::setFont(const QFont &font, FontPropertiesInheritanceBehavior behavior)
 {
     const uint mask = behavior == FontPropertiesAll ? uint(QFont::AllPropertiesResolved)
-                                                    : font.resolve();
+                                                    : font.resolveMask();
 
     if (mask & QFont::FamilyResolved)
         setFontFamily(font.family());

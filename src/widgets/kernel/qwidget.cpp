@@ -42,7 +42,6 @@
 #include "qapplication_p.h"
 #include "qbrush.h"
 #include "qcursor.h"
-#include "qdesktopwidget_p.h"
 #include "qevent.h"
 #include "qlayout.h"
 #if QT_CONFIG(menu)
@@ -716,8 +715,7 @@ void QWidget::setAutoFillBackground(bool enabled)
     is no need to write double-buffering code in paintEvent() to avoid
     flicker.
 
-    Since Qt 4.1, the Qt::WA_ContentsPropagated widget attribute has been
-    deprecated. Instead, the contents of parent widgets are propagated by
+    Since Qt 4.1, the contents of parent widgets are propagated by
     default to each of their children as long as Qt::WA_PaintOnScreen is not
     set. Custom widgets can be written to take advantage of this feature by
     updating irregular regions (to create non-rectangular child widgets), or
@@ -845,7 +843,6 @@ QWidgetSet *QWidgetPrivate::allWidgets = nullptr;         // widgets with no wid
   \li Qt::WA_WState_InPaintEvent Currently processing a paint event.
   \li Qt::WA_WState_Reparented The widget has been reparented.
   \li Qt::WA_WState_ConfigPending A configuration (resize/move) event is pending.
-  \li Qt::WA_WState_DND (Deprecated) The widget supports drag and drop, see setAcceptDrops().
   \endlist
 */
 
@@ -990,13 +987,6 @@ void QWidgetPrivate::init(QWidget *parentWidget, Qt::WindowFlags f)
     if (allWidgets)
         allWidgets->insert(q);
 
-    QScreen *targetScreen = nullptr;
-    if (parentWidget && parentWidget->windowType() == Qt::Desktop) {
-        const QDesktopScreenWidget *sw = qobject_cast<const QDesktopScreenWidget *>(parentWidget);
-        targetScreen = sw ? sw->screen() : nullptr;
-        parentWidget = nullptr;
-    }
-
     q->data = &data;
 
 #if QT_CONFIG(thread)
@@ -1005,12 +995,6 @@ void QWidgetPrivate::init(QWidget *parentWidget, Qt::WindowFlags f)
                    "Widgets must be created in the GUI thread.");
     }
 #endif
-
-    if (targetScreen) {
-        topData()->initialScreen = targetScreen;
-        if (QWindow *window = q->windowHandle())
-            window->setScreen(targetScreen);
-    }
 
     data.fstrut_dirty = true;
 
@@ -1845,14 +1829,14 @@ void QWidgetPrivate::propagatePaletteChange()
 #if QT_CONFIG(graphicsview)
     if (!q->parentWidget() && extra && extra->proxyWidget) {
         QGraphicsProxyWidget *p = extra->proxyWidget;
-        inheritedPaletteResolveMask = p->d_func()->inheritedPaletteResolveMask | p->palette().resolve();
+        inheritedPaletteResolveMask = p->d_func()->inheritedPaletteResolveMask | p->palette().resolveMask();
     } else
 #endif // QT_CONFIG(graphicsview)
         if (q->isWindow() && !q->testAttribute(Qt::WA_WindowPropagation)) {
         inheritedPaletteResolveMask = 0;
     }
 
-    directPaletteResolveMask = data.pal.resolve();
+    directPaletteResolveMask = data.pal.resolveMask();
     auto mask = directPaletteResolveMask | inheritedPaletteResolveMask;
 
     const bool useStyleSheetPropagationInWidgetStyles =
@@ -2424,8 +2408,7 @@ bool QWidgetPrivate::setScreen(QScreen *screen)
         return false;
     const QScreen *currentScreen = windowHandle() ? windowHandle()->screen() : nullptr;
     if (currentScreen != screen) {
-        if (!windowHandle()) // Try to create a window handle if not created.
-            createWinId();
+        topData()->initialScreen = screen;
         if (windowHandle())
             windowHandle()->setScreen(screen);
         return true;
@@ -2512,6 +2495,24 @@ QScreen *QWidget::screen() const
             return screenByPos;
     }
     return QGuiApplication::primaryScreen();
+}
+
+/*!
+    Sets the screen on which the widget should be shown to \a screen.
+
+    Setting the screen only makes sense for windows. If necessary, the widget's
+    window will get recreated on \a screen.
+
+    \note If the screen is part of a virtual desktop of multiple screens,
+    the window will not move automatically to \a screen. To place the
+    window relative to the screen, use the screen's topLeft() position.
+
+    \sa QWindow::setScreen()
+*/
+void QWidget::setScreen(QScreen *screen)
+{
+    Q_D(QWidget);
+    d->setScreen(screen);
 }
 
 #ifndef QT_NO_STYLE_STYLESHEET
@@ -4373,7 +4374,7 @@ const QPalette &QWidget::palette() const
 void QWidget::setPalette(const QPalette &palette)
 {
     Q_D(QWidget);
-    setAttribute(Qt::WA_SetPalette, palette.resolve() != 0);
+    setAttribute(Qt::WA_SetPalette, palette.resolveMask() != 0);
 
     // Determine which palette is inherited from this widget's ancestors and
     // QApplication::palette, resolve this against \a palette (attributes from
@@ -4411,7 +4412,7 @@ QPalette QWidgetPrivate::naturalWidgetPalette(QPalette::ResolveMask inheritedMas
             if (!p->testAttribute(Qt::WA_StyleSheet) || useStyleSheetPropagationInWidgetStyles) {
                 if (!naturalPalette.isCopyOf(QGuiApplication::palette())) {
                     QPalette inheritedPalette = p->palette();
-                    inheritedPalette.resolve(inheritedMask);
+                    inheritedPalette.setResolveMask(inheritedMask);
                     naturalPalette = inheritedPalette.resolve(naturalPalette);
                 } else {
                     naturalPalette = p->palette();
@@ -4421,12 +4422,12 @@ QPalette QWidgetPrivate::naturalWidgetPalette(QPalette::ResolveMask inheritedMas
 #if QT_CONFIG(graphicsview)
         else if (extra && extra->proxyWidget) {
             QPalette inheritedPalette = extra->proxyWidget->palette();
-            inheritedPalette.resolve(inheritedMask);
+            inheritedPalette.setResolveMask(inheritedMask);
             naturalPalette = inheritedPalette.resolve(naturalPalette);
         }
 #endif // QT_CONFIG(graphicsview)
     }
-    naturalPalette.resolve(0);
+    naturalPalette.setResolveMask(0);
     return naturalPalette;
 }
 /*!
@@ -4447,7 +4448,7 @@ void QWidgetPrivate::resolvePalette()
 void QWidgetPrivate::setPalette_helper(const QPalette &palette)
 {
     Q_Q(QWidget);
-    if (data.pal == palette && data.pal.resolve() == palette.resolve())
+    if (data.pal == palette && data.pal.resolveMask() == palette.resolveMask())
         return;
     data.pal = palette;
     updateSystemBackground();
@@ -4517,7 +4518,7 @@ void QWidget::setFont(const QFont &font)
         style->saveWidgetFont(this, font);
 #endif
 
-    setAttribute(Qt::WA_SetFont, font.resolve() != 0);
+    setAttribute(Qt::WA_SetFont, font.resolveMask() != 0);
 
     // Determine which font is inherited from this widget's ancestors and
     // QApplication::font, resolve this against \a font (attributes from the
@@ -4559,7 +4560,7 @@ QFont QWidgetPrivate::naturalWidgetFont(uint inheritedMask) const
                 if (!naturalFont.isCopyOf(QApplication::font())) {
                     if (inheritedMask != 0) {
                         QFont inheritedFont = p->font();
-                        inheritedFont.resolve(inheritedMask);
+                        inheritedFont.setResolveMask(inheritedMask);
                         naturalFont = inheritedFont.resolve(naturalFont);
                     } // else nothing to do (naturalFont = naturalFont)
                 } else {
@@ -4571,13 +4572,13 @@ QFont QWidgetPrivate::naturalWidgetFont(uint inheritedMask) const
         else if (extra && extra->proxyWidget) {
             if (inheritedMask != 0) {
                 QFont inheritedFont = extra->proxyWidget->font();
-                inheritedFont.resolve(inheritedMask);
+                inheritedFont.setResolveMask(inheritedMask);
                 naturalFont = inheritedFont.resolve(naturalFont);
             } // else nothing to do (naturalFont = naturalFont)
         }
 #endif // QT_CONFIG(graphicsview)
     }
-    naturalFont.resolve(0);
+    naturalFont.setResolveMask(0);
     return naturalFont;
 }
 
@@ -4589,7 +4590,7 @@ QFont QWidgetPrivate::naturalWidgetFont(uint inheritedMask) const
 QFont QWidgetPrivate::localFont() const
 {
     QFont localfont = data.fnt;
-    localfont.resolve(directFontResolveMask);
+    localfont.setResolveMask(directFontResolveMask);
     return localfont;
 }
 
@@ -4633,18 +4634,18 @@ void QWidgetPrivate::updateFont(const QFont &font)
 #if QT_CONFIG(graphicsview)
     if (!q->parentWidget() && extra && extra->proxyWidget) {
         QGraphicsProxyWidget *p = extra->proxyWidget;
-        inheritedFontResolveMask = p->d_func()->inheritedFontResolveMask | p->font().resolve();
+        inheritedFontResolveMask = p->d_func()->inheritedFontResolveMask | p->font().resolveMask();
     } else
 #endif // QT_CONFIG(graphicsview)
     if (q->isWindow() && !q->testAttribute(Qt::WA_WindowPropagation)) {
         inheritedFontResolveMask = 0;
     }
-    uint newMask = data.fnt.resolve() | inheritedFontResolveMask;
+    uint newMask = data.fnt.resolveMask() | inheritedFontResolveMask;
     // Set the font as also having resolved inherited traits, so the result of reading QWidget::font()
     // isn't all weak information, but save the original mask to be able to let new changes on the
     // parent widget font propagate correctly.
-    directFontResolveMask = data.fnt.resolve();
-    data.fnt.resolve(newMask);
+    directFontResolveMask = data.fnt.resolveMask();
+    data.fnt.setResolveMask(newMask);
 
     for (int i = 0; i < children.size(); ++i) {
         QWidget *w = qobject_cast<QWidget*>(children.at(i));
@@ -7477,7 +7478,7 @@ QMargins QWidgetPrivate::safeAreaMargins() const
             if (layout->geometry().isNull())
                 continue; // Layout hasn't been activated yet
 
-            if (layout->indexOf(const_cast<QWidget *>(w)) < 0)
+            if (layout->indexOf(w) < 0)
                 continue; // Widget is not in layout
 
             assumedSafeWidget = w;
@@ -10508,8 +10509,7 @@ void QWidgetPrivate::setParent_sys(QWidget *newparent, Qt::WindowFlags f)
     if (newparent && newparent->windowType() == Qt::Desktop) {
         // make sure the widget is created on the same screen as the
         // programmer specified desktop widget
-        const QDesktopScreenWidget *sw = qobject_cast<const QDesktopScreenWidget *>(newparent);
-        targetScreen = sw ? sw->screen() : nullptr;
+        targetScreen = newparent->screen();
         newparent = nullptr;
     }
 
@@ -10539,10 +10539,8 @@ void QWidgetPrivate::setParent_sys(QWidget *newparent, Qt::WindowFlags f)
 
     if (!newparent) {
         f |= Qt::Window;
-        if (!targetScreen) {
-            if (parent)
-                targetScreen = q->parentWidget()->window()->screen();
-        }
+        if (parent)
+            targetScreen = q->parentWidget()->window()->screen();
     }
 
     bool explicitlyHidden = q->testAttribute(Qt::WA_WState_Hidden) && q->testAttribute(Qt::WA_WState_ExplicitShowHide);
@@ -11122,7 +11120,7 @@ bool QWidget::testAttribute_helper(Qt::WidgetAttribute attribute) const
 
   \warning Changing this property from opaque to transparent might issue a
   paint event that needs to be processed before the window is displayed
-  correctly. This affects mainly the use of QPixmap::grabWindow(). Also note
+  correctly. This affects mainly the use of QScreen::grabWindow(). Also note
   that semi-transparent windows update and resize significantly slower than
   opaque windows.
 

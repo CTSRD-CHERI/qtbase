@@ -110,6 +110,36 @@ int main(int argc, char **argv)
 "# FIXME: qmake: ['CONFIG += precompile_header', 'PRECOMPILED_DIR = .pch', 'PRECOMPILED_HEADER = header.h']
 )
 
+qt_config_compiler_supports_flag_test(use_bfd_linker
+    LABEL "bfd linker"
+    FLAG "-fuse-ld=bfd"
+)
+
+qt_config_compiler_supports_flag_test(use_gold_linker
+    LABEL "gold linker"
+    FLAG "-fuse-ld=gold"
+)
+
+qt_config_compiler_supports_flag_test(use_lld_linker
+    LABEL "lld linker"
+    FLAG "-fuse-ld=lld"
+)
+
+qt_config_compiler_supports_flag_test(optimize_debug
+    LABEL "-Og support"
+    FLAG "-Og"
+)
+
+qt_config_linker_supports_flag_test(enable_new_dtags
+    LABEL "new dtags support"
+    FLAG "--enable-new-dtags"
+)
+
+qt_config_linker_supports_flag_test(gdb_index
+    LABEL "gdb index support"
+    FLAG "--gdb-index"
+)
+
 # reduce_relocations
 qt_config_compile_test(reduce_relocations
     LABEL "-Bsymbolic-functions support"
@@ -364,23 +394,43 @@ qt_feature("gc_binaries" PRIVATE
 qt_feature("use_bfd_linker"
     LABEL "bfd"
     AUTODETECT false
-    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND tests.use_bfd_linker OR FIXME
+    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND TEST_use_bfd_linker
     ENABLE INPUT_linker STREQUAL 'bfd'
     DISABLE INPUT_linker STREQUAL 'gold' OR INPUT_linker STREQUAL 'lld'
 )
 qt_feature_config("use_bfd_linker" QMAKE_PRIVATE_CONFIG)
 qt_feature("use_gold_linker_alias"
     AUTODETECT false
-    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND tests.use_gold_linker OR FIXME
+    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND TEST_use_gold_linker
 )
+qt_feature("use_gold_linker"
+    LABEL "gold"
+    AUTODETECT false
+    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND NOT rtems AND TEST_use_gold_linker
+    ENABLE INPUT_linker STREQUAL 'gold' OR QT_FEATURE_use_gold_linker_alias
+    DISABLE INPUT_linker STREQUAL 'bfd' OR INPUT_linker STREQUAL 'lld'
+)
+qt_feature_config("use_gold_linker" QMAKE_PRIVATE_CONFIG)
 qt_feature("use_lld_linker"
     LABEL "lld"
     AUTODETECT false
-    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND tests.use_lld_linker OR FIXME
+    CONDITION NOT WIN32 AND NOT INTEGRITY AND NOT WASM AND TEST_use_lld_linker
     ENABLE INPUT_linker STREQUAL 'lld'
     DISABLE INPUT_linker STREQUAL 'bfd' OR INPUT_linker STREQUAL 'gold'
 )
 qt_feature_config("use_lld_linker" QMAKE_PRIVATE_CONFIG)
+qt_feature("optimize_debug"
+    LABEL "Optimize debug build"
+    AUTODETECT NOT QT_FEATURE_developer_build
+    CONDITION NOT MSVC AND NOT CLANG AND ( QT_FEATURE_debug OR QT_FEATURE_debug_and_release ) AND TEST_optimize_debug
+)
+qt_feature_config("optimize_debug" QMAKE_PRIVATE_CONFIG)
+qt_feature("optimize_size"
+    LABEL "Optimize release build for size"
+    AUTODETECT OFF
+    CONDITION NOT QT_FEATURE_debug OR QT_FEATURE_debug_and_release
+)
+qt_feature_config("optimize_size" QMAKE_PRIVATE_CONFIG)
 qt_feature("pkg-config" PUBLIC
     LABEL "Using pkg-config"
     AUTODETECT NOT APPLE AND NOT WIN32
@@ -402,7 +452,7 @@ qt_feature_config("developer-build" QMAKE_PUBLIC_QT_CONFIG
 )
 qt_feature("debug"
     LABEL "Build for debugging"
-    AUTODETECT QT_FEATURE_developer_build OR ( WIN32 AND NOT GCC ) OR APPLE
+    AUTODETECT ON
     CONDITION CMAKE_BUILD_TYPE STREQUAL Debug OR Debug IN_LIST CMAKE_CONFIGURATION_TYPES
 )
 qt_feature("debug_and_release" PUBLIC
@@ -572,6 +622,12 @@ qt_feature("ltcg"
     CONDITION CMAKE_INTERPROCEDURAL_OPTIMIZATION
 )
 qt_feature_config("ltcg" QMAKE_PRIVATE_CONFIG)
+qt_feature("enable_gdb_index"
+    LABEL "Generating GDB index"
+    AUTODETECT QT_FEATURE_developer_build
+    CONDITION GCC AND NOT CLANG AND ( QT_FEATURE_debug OR QT_FEATURE_force_debug_info OR QT_FEATURE_debug_and_release ) AND TEST_gdb_index
+)
+qt_feature_config("enable_gdb_index" QMAKE_PRIVATE_CONFIG)
 qt_feature("reduce_exports" PRIVATE
     LABEL "Reduce amount of exported symbols"
     CONDITION NOT WIN32 AND CMAKE_CXX_COMPILE_OPTIONS_VISIBILITY
@@ -820,6 +876,12 @@ qt_feature("dbus-linked" PRIVATE
     ENABLE INPUT_dbus STREQUAL 'linked'
     DISABLE INPUT_dbus STREQUAL 'runtime'
 )
+qt_feature("qreal"
+    LABEL "Type for qreal"
+    CONDITION DEFINED QT_COORD_TYPE AND NOT QT_COORD_TYPE STREQUAL "double"
+)
+qt_feature_definition("qreal" "QT_COORD_TYPE" VALUE "${QT_COORD_TYPE}")
+qt_feature_definition("qreal" "QT_COORD_TYPE_STRING" VALUE "\"${QT_COORD_TYPE}\"")
 qt_feature("gui" PRIVATE
     LABEL "Qt Gui"
 )
@@ -908,6 +970,12 @@ qt_configure_add_summary_entry(
 qt_configure_add_summary_entry(
     ARGS "ccache"
     CONDITION UNIX
+)
+qt_configure_add_summary_entry(
+    TYPE "firstAvailableFeature"
+    ARGS "use_bfd_linker use_gold_linker use_lld_linker"
+    MESSAGE "Linker"
+    CONDITION QT_FEATURE_use_bfd_linker OR QT_FEATURE_use_gold_linker OR QT_FEATURE_use_lld_linker
 )
 qt_configure_add_summary_entry(
     ARGS "enable_new_dtags"
@@ -1017,11 +1085,6 @@ qt_configure_add_report_entry(
     TYPE NOTE
     MESSAGE "Using static linking will disable the use of dynamically loaded plugins. Make sure to import all needed static plugins, or compile needed modules into the library."
     CONDITION NOT QT_FEATURE_shared
-)
-qt_configure_add_report_entry(
-    TYPE NOTE
-    MESSAGE "Qt is using double for qreal on this system. This is binary-incompatible against Qt 5.1.  Configure with '-qreal float' to create a build that is binary-compatible with 5.1."
-    CONDITION INPUT_qreal STREQUAL 'double' AND ( TEST_architecture_arch STREQUAL arm )
 )
 qt_configure_add_report_entry(
     TYPE ERROR

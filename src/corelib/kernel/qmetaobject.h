@@ -46,12 +46,14 @@
 
 QT_BEGIN_NAMESPACE
 
+class QUntypedBindable;
+
 #define Q_METAMETHOD_INVOKE_MAX_ARGS 10
 
 class Q_CORE_EXPORT QMetaMethod
 {
 public:
-    Q_DECL_CONSTEXPR inline QMetaMethod() : mobj(nullptr), data({ nullptr }) {}
+    constexpr inline QMetaMethod() : mobj(nullptr), data({ nullptr }) {}
 
     QByteArray methodSignature() const;
     QByteArray name() const;
@@ -63,6 +65,7 @@ public:
     QMetaType parameterMetaType(int index) const;
     void getParameterTypes(int *types) const;
     QList<QByteArray> parameterTypes() const;
+    QByteArray parameterTypeName(int index) const;
     QList<QByteArray> parameterNames() const;
     const char *tag() const;
     enum Access { Private, Protected, Public };
@@ -218,7 +221,7 @@ inline bool operator!=(const QMetaMethod &m1, const QMetaMethod &m2)
 class Q_CORE_EXPORT QMetaEnum
 {
 public:
-    Q_DECL_CONSTEXPR inline QMetaEnum() : mobj(nullptr), data({ nullptr }) {}
+    constexpr inline QMetaEnum() : mobj(nullptr), data({ nullptr }) {}
 
     const char *name() const;
     const char *enumName() const;
@@ -293,7 +296,7 @@ public:
     bool isConstant() const;
     bool isFinal() const;
     bool isRequired() const;
-    bool isQProperty() const;
+    bool isBindable() const;
 
     bool isFlagType() const;
     bool isEnumType() const;
@@ -308,6 +311,8 @@ public:
     QVariant read(const QObject *obj) const;
     bool write(QObject *obj, const QVariant &value) const;
     bool reset(QObject *obj) const;
+
+    QUntypedBindable bindable(QObject *object) const;
 
     QVariant readOnGadget(const void *gadget) const;
     bool writeOnGadget(void *gadget, const QVariant &value) const;
@@ -347,7 +352,7 @@ private:
 class Q_CORE_EXPORT QMetaClassInfo
 {
 public:
-    Q_DECL_CONSTEXPR inline QMetaClassInfo() : mobj(nullptr), data({ nullptr }) {}
+    constexpr inline QMetaClassInfo() : mobj(nullptr), data({ nullptr }) {}
     const char *name() const;
     const char *value() const;
     inline const QMetaObject *enclosingMetaObject() const { return mobj; }

@@ -322,22 +322,22 @@ void tst_QFont::resetFont()
     QWidget secondChild(&parent);
     secondChild.setFont(childFont);
 
-    QVERIFY(parentFont.resolve() != 0);
-    QVERIFY(childFont.resolve() != 0);
+    QVERIFY(parentFont.resolveMask() != 0);
+    QVERIFY(childFont.resolveMask() != 0);
     QVERIFY(childFont != parentFont);
 
     // reset font on both children
     firstChild.setFont(QFont());
     secondChild.setFont(QFont());
 
-    QCOMPARE(firstChild.font().resolve(), QFont::SizeResolved);
-    QCOMPARE(secondChild.font().resolve(), QFont::SizeResolved);
+    QCOMPARE(firstChild.font().resolveMask(), QFont::SizeResolved);
+    QCOMPARE(secondChild.font().resolveMask(), QFont::SizeResolved);
 #ifdef Q_OS_ANDROID
     QEXPECT_FAIL("", "QTBUG-69214", Continue);
 #endif
     QCOMPARE(firstChild.font().pointSize(), parent.font().pointSize());
     QCOMPARE(secondChild.font().pointSize(), parent.font().pointSize());
-    QVERIFY(parent.font().resolve() != 0);
+    QVERIFY(parent.font().resolveMask() != 0);
 }
 #endif
 
@@ -425,7 +425,7 @@ void tst_QFont::serialize_data()
     QTest::newRow("stretch") << font << QDataStream::Qt_4_3;
 
     font = basicFont;
-    font.setWeight(99);
+    font.setWeight(QFont::Light);
     QTest::newRow("weight") << font << QDataStream::Qt_1_0;
 
     font = basicFont;
@@ -588,18 +588,51 @@ void tst_QFont::toAndFromString()
 
         QCOMPARE(result, initial);
     }
+
+    // Since Qt 6.0 it was changed to include more information in the description, so
+    // this checks for compatibility
+    const QString fontStringFrom515(QLatin1String("Times New Roman,18,-1,5,700,1,0,0,1,0,Regular"));
+    QFont fontFrom515("Times New Roman", 18);
+    fontFrom515.setBold(true);
+    fontFrom515.setItalic(true);
+    fontFrom515.setFixedPitch(true);
+    fontFrom515.setStyleName("Regular");
+    QFont from515String;
+    from515String.fromString(fontStringFrom515);
+    QCOMPARE(from515String, fontFrom515);
+
+    const QString fontStringFrom60(
+            QLatin1String("Times New Roman,18,-1,5,700,1,0,0,1,0,1,0,150.5,2.5,50,2,Regular"));
+    QFont fontFrom60 = fontFrom515;
+    fontFrom60.setStyleStrategy(QFont::PreferBitmap);
+    fontFrom60.setCapitalization(QFont::AllUppercase);
+    fontFrom60.setLetterSpacing(QFont::PercentageSpacing, 150.5);
+    fontFrom60.setWordSpacing(2.5);
+    fontFrom60.setStretch(50);
+    QFont from60String;
+    from60String.fromString(fontStringFrom60);
+    QCOMPARE(fontFrom60.toString(), fontStringFrom60);
+    QCOMPARE(from60String, fontFrom60);
 }
 
 void tst_QFont::fromStringWithoutStyleName()
 {
     QFont font1;
-    font1.fromString("Noto Sans,12,-1,5,50,0,0,0,0,0,Regular");
+    font1.fromString("Noto Sans,12,-1,5,400,0,0,0,0,0,Regular");
 
     QFont font2 = font1;
-    const QString str = "Times,16,-1,5,50,0,0,0,0,0";
+    const QString str = "Times,16,-1,5,400,0,0,0,0,0,0,0,0,0,0,1";
     font2.fromString(str);
 
     QCOMPARE(font2.toString(), str);
+
+    const QString fontStringFrom60(
+            QLatin1String("Times New Roman,18,-1,5,700,1,0,0,1,0,1,0,150.5,2.5,50,2"));
+    QFont font3;
+    font3.fromString("Noto Sans,12,-1,5,400,0,0,0,0,0,Regular");
+    QFont font4 = font3;
+    font4.fromString(fontStringFrom60);
+    QCOMPARE(font4.toString(), fontStringFrom60);
 }
 
 void tst_QFont::fromDegenerateString_data()

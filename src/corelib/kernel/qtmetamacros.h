@@ -91,41 +91,6 @@ QT_BEGIN_NAMESPACE
 #define Q_INTERFACES(x) QT_ANNOTATE_CLASS(qt_interfaces, x)
 #define Q_PROPERTY(...) QT_ANNOTATE_CLASS(qt_property, __VA_ARGS__)
 #define Q_PRIVATE_PROPERTY(d, text) QT_ANNOTATE_CLASS2(qt_private_property, d, text)
-#define Q_PRIVATE_QPROPERTY(accessor, type, name, setter, ...) \
-            struct _qt_property_api_##name { \
-                type value() const; \
-                type operator()() const { return value(); } \
-                void setValue(type &&); \
-                void setValue(type const &); \
-                void operator=(type const &v) { setValue(v); } \
-                void operator=(type &&v) { setValue(std::move(v)); } \
-                QPropertyBinding<type> setBinding(const QPropertyBinding<type> &); \
-                QPropertyBinding<type> setBinding(QPropertyBinding<type> &&); \
-                QPropertyBinding<type> operator=(const QPropertyBinding<type> &b) { return setBinding(b); } \
-                QPropertyBinding<type> operator=(QPropertyBinding<type> &&b) { return setBinding(std::move(b)); } \
-                bool setBinding(const QUntypedPropertyBinding &); \
-                template <typename Functor> \
-                QPropertyBinding<type> setBinding(Functor f, \
-                                                  const QPropertyBindingSourceLocation &location = QT_PROPERTY_DEFAULT_BINDING_LOCATION) \
-                { \
-                    return setBinding(Qt::makePropertyBinding(f, location)); \
-                } \
-                bool hasBinding() const; \
-                QPropertyBinding<type> binding() const; \
-                QPropertyBinding<type> takeBinding(); \
-            }; \
-            void setter(type const& value);
-#if __has_cpp_attribute(no_unique_address)
-#define Q_PRIVATE_QPROPERTIES_BEGIN
-#define QT_PRIVATE_QPROPERTY_PREFIX [[no_unique_address]]
-#define Q_PRIVATE_QPROPERTIES_END
-#else
-#define Q_PRIVATE_QPROPERTIES_BEGIN union {
-#define QT_PRIVATE_QPROPERTY_PREFIX
-#define Q_PRIVATE_QPROPERTIES_END };
-#endif
-#define Q_PRIVATE_QPROPERTY_IMPL(name) \
-        QT_PRIVATE_QPROPERTY_PREFIX _qt_property_api_##name name;
 #ifndef Q_REVISION
 # define Q_REVISION(...)
 #endif
@@ -134,13 +99,13 @@ QT_BEGIN_NAMESPACE
 #define Q_ENUMS(x) QT_ANNOTATE_CLASS(qt_enums, x)
 #define Q_FLAGS(x) QT_ANNOTATE_CLASS(qt_enums, x)
 #define Q_ENUM_IMPL(ENUM) \
-    friend Q_DECL_CONSTEXPR const QMetaObject *qt_getEnumMetaObject(ENUM) noexcept { return &staticMetaObject; } \
-    friend Q_DECL_CONSTEXPR const char *qt_getEnumName(ENUM) noexcept { return #ENUM; }
+    friend constexpr const QMetaObject *qt_getEnumMetaObject(ENUM) noexcept { return &staticMetaObject; } \
+    friend constexpr const char *qt_getEnumName(ENUM) noexcept { return #ENUM; }
 #define Q_ENUM(x) Q_ENUMS(x) Q_ENUM_IMPL(x)
 #define Q_FLAG(x) Q_FLAGS(x) Q_ENUM_IMPL(x)
 #define Q_ENUM_NS_IMPL(ENUM) \
-    inline Q_DECL_CONSTEXPR const QMetaObject *qt_getEnumMetaObject(ENUM) noexcept { return &staticMetaObject; } \
-    inline Q_DECL_CONSTEXPR const char *qt_getEnumName(ENUM) noexcept { return #ENUM; }
+    inline constexpr const QMetaObject *qt_getEnumMetaObject(ENUM) noexcept { return &staticMetaObject; } \
+    inline constexpr const char *qt_getEnumName(ENUM) noexcept { return #ENUM; }
 #define Q_ENUM_NS(x) Q_ENUMS(x) Q_ENUM_NS_IMPL(x)
 #define Q_FLAG_NS(x) Q_FLAGS(x) Q_ENUM_NS_IMPL(x)
 #define Q_SCRIPTABLE QT_ANNOTATE_FUNCTION(qt_scriptable)
@@ -154,8 +119,6 @@ QT_BEGIN_NAMESPACE
 // full set of tr functions
 #  define QT_TR_FUNCTIONS \
     static inline QString tr(const char *s, const char *c = nullptr, int n = -1) \
-        { return staticMetaObject.tr(s, c, n); } \
-    QT_DEPRECATED static inline QString trUtf8(const char *s, const char *c = nullptr, int n = -1) \
         { return staticMetaObject.tr(s, c, n); }
 #else
 // inherit the ones from QObject

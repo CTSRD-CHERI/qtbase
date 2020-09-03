@@ -576,7 +576,7 @@ void QBrush::cleanUp(QBrushData *x)
     QBrushDataPointerDeleter::deleteData(x);
 }
 
-static Q_DECL_CONSTEXPR inline bool use_same_brushdata(Qt::BrushStyle lhs, Qt::BrushStyle rhs)
+static constexpr inline bool use_same_brushdata(Qt::BrushStyle lhs, Qt::BrushStyle rhs)
 {
     return lhs == rhs // includes Qt::TexturePattern
         || (lhs >= Qt::NoBrush && lhs <= Qt::DiagCrossPattern && rhs >= Qt::NoBrush && rhs <= Qt::DiagCrossPattern)
@@ -672,7 +672,7 @@ QBrush &QBrush::operator=(const QBrush &b)
 */
 QBrush::operator QVariant() const
 {
-    return QVariant(QMetaType::QBrush, this);
+    return QVariant::fromValue(*this);
 }
 
 /*!

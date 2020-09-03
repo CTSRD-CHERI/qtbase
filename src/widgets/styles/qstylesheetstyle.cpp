@@ -2679,13 +2679,13 @@ void QStyleSheetStyle::setPalette(QWidget *w)
         rule.configurePalette(&p, map[i].group, ew, ew != w);
     }
 
-    if (!useStyleSheetPropagationInWidgetStyles || p.resolve() != 0) {
+    if (!useStyleSheetPropagationInWidgetStyles || p.resolveMask() != 0) {
         QPalette wp = w->palette();
-        styleSheetCaches->customPaletteWidgets.insert(w, {wp, p.resolve()});
+        styleSheetCaches->customPaletteWidgets.insert(w, {wp, p.resolveMask()});
 
         if (useStyleSheetPropagationInWidgetStyles) {
             p = p.resolve(wp);
-            p.resolve(p.resolve() | wp.resolve());
+            p.setResolveMask(p.resolveMask() | wp.resolveMask());
         }
 
         w->setPalette(p);
@@ -3789,7 +3789,7 @@ void QStyleSheetStyle::drawControl(ControlElement ce, const QStyleOption *opt, Q
 
                 QRect textRect = subRule.contentsRect(opt->rect);
                 textRect.setLeft(textRect.left() + textRectOffset);
-                textRect.setWidth(textRect.width() - mi.tabWidth);
+                textRect.setWidth(textRect.width() - mi.reservedShortcutWidth);
                 const QRect vTextRect = visualRect(opt->direction, m->rect, textRect);
 
                 QStringView s(mi.text);
@@ -3993,7 +3993,7 @@ void QStyleSheetStyle::drawControl(ControlElement ce, const QStyleOption *opt, Q
                 qint64 minimum = qint64(pb->minimum);
                 qint64 maximum = qint64(pb->maximum);
                 qint64 progress = qint64(pb->progress);
-                bool vertical = (pb->orientation == Qt::Vertical);
+                bool vertical = !(pb->state & QStyle::State_Horizontal);
                 bool inverted = pb->invertedAppearance;
 
                 QTransform m;
@@ -6109,18 +6109,18 @@ void QStyleSheetStyle::updateStyleSheetFont(QWidget* w) const
     if (useStyleSheetPropagationInWidgetStyles) {
         unsetStyleSheetFont(w);
 
-        if (rule.font.resolve()) {
+        if (rule.font.resolveMask()) {
             QFont wf = w->d_func()->localFont();
-            styleSheetCaches->customFontWidgets.insert(w, {wf, rule.font.resolve()});
+            styleSheetCaches->customFontWidgets.insert(w, {wf, rule.font.resolveMask()});
 
             QFont font = rule.font.resolve(wf);
-            font.resolve(wf.resolve() | rule.font.resolve());
+            font.setResolveMask(wf.resolveMask() | rule.font.resolveMask());
             w->setFont(font);
         }
     } else {
         QFont wf = w->d_func()->localFont();
         QFont font = rule.font.resolve(wf);
-        font.resolve(wf.resolve() | rule.font.resolve());
+        font.setResolveMask(wf.resolveMask() | rule.font.resolveMask());
 
         if ((!w->isWindow() || w->testAttribute(Qt::WA_WindowPropagation))
             && isNaturalChild(w) && qobject_cast<QWidget *>(w->parent())) {
@@ -6128,11 +6128,11 @@ void QStyleSheetStyle::updateStyleSheetFont(QWidget* w) const
             font = font.resolve(static_cast<QWidget *>(w->parent())->font());
         }
 
-        if (wf.resolve() == font.resolve() && wf == font)
+        if (wf.resolveMask() == font.resolveMask() && wf == font)
             return;
 
         w->data->fnt = font;
-        w->d_func()->directFontResolveMask = font.resolve();
+        w->d_func()->directFontResolveMask = font.resolveMask();
 
         QEvent e(QEvent::FontChange);
         QCoreApplication::sendEvent(w, &e);

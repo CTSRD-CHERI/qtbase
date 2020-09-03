@@ -11,6 +11,7 @@ qt_add_module(Core
     SOURCES
         global/archdetect.cpp
         global/qcompilerdetection.h
+        global/qcontainerinfo.h
         global/qendian.cpp global/qendian.h global/qendian_p.h
         global/qflags.h
         global/qfloat16.cpp global/qfloat16.h
@@ -80,6 +81,7 @@ qt_add_module(Core
         kernel/qeventloop.cpp kernel/qeventloop.h
         kernel/qfunctions_p.h
         kernel/qmath.cpp kernel/qmath.h
+        kernel/qmetacontainer.cpp kernel/qmetacontainer.h
         kernel/qmetaobject.cpp kernel/qmetaobject.h kernel/qmetaobject_p.h
         kernel/qmetaobject_moc_p.h
         kernel/qmetaobjectbuilder.cpp kernel/qmetaobjectbuilder_p.h
@@ -125,15 +127,9 @@ qt_add_module(Core
         serialization/qjsonwriter.cpp serialization/qjsonwriter_p.h
         serialization/qtextstream.cpp serialization/qtextstream.h serialization/qtextstream_p.h
         serialization/qxmlstream.cpp serialization/qxmlstream.h serialization/qxmlstream_p.h
+        serialization/qxmlstreamgrammar.cpp serialization/qxmlstreamgrammar_p.h
+        serialization/qxmlstreamparser_p.h
         serialization/qxmlutils.cpp serialization/qxmlutils_p.h
-        statemachine/qabstractstate.cpp statemachine/qabstractstate.h statemachine/qabstractstate_p.h
-        statemachine/qabstracttransition.cpp statemachine/qabstracttransition.h statemachine/qabstracttransition_p.h
-        statemachine/qfinalstate.cpp statemachine/qfinalstate.h statemachine/qfinalstate_p.h
-        statemachine/qhistorystate.cpp statemachine/qhistorystate.h statemachine/qhistorystate_p.h
-        statemachine/qsignaleventgenerator_p.h
-        statemachine/qsignaltransition.cpp statemachine/qsignaltransition.h statemachine/qsignaltransition_p.h
-        statemachine/qstate.cpp statemachine/qstate.h statemachine/qstate_p.h
-        statemachine/qstatemachine.cpp statemachine/qstatemachine.h statemachine/qstatemachine_p.h
         text/qbytearray.cpp text/qbytearray.h text/qbytearray_p.h
         text/qbytearrayalgorithms.h
         text/qbytearraylist.cpp text/qbytearraylist.h
@@ -997,11 +993,6 @@ qt_extend_target(Core CONDITION QT_FEATURE_cborstreamreader
 qt_extend_target(Core CONDITION QT_FEATURE_cborstreamwriter
     SOURCES
         serialization/qcborstreamwriter.cpp serialization/qcborstreamwriter.h
-)
-
-qt_extend_target(Core CONDITION QT_FEATURE_qeventtransition
-    SOURCES
-        statemachine/qeventtransition.cpp statemachine/qeventtransition.h statemachine/qeventtransition_p.h
 )
 
 qt_extend_target(Core CONDITION QT_FEATURE_mimetype

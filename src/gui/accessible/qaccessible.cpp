@@ -707,7 +707,7 @@ QAccessibleInterface *QAccessible::queryAccessibleInterface(QObject *object)
         QAccessiblePlugin *factory = qAccessiblePlugins()->value(cn);
         if (factory) {
             QAccessibleInterface *result = factory->create(cn, object);
-            if (result) {   // Need this condition because of QDesktopScreenWidget
+            if (result) {
                 QAccessibleCache::instance()->insert(object, result);
                 Q_ASSERT(QAccessibleCache::instance()->containsObject(object));
             }
@@ -1085,7 +1085,7 @@ QPair< int, int > QAccessible::qAccessibleTextBoundaryHelper(const QTextCursor &
     relations, unless they are handled in a specific way such as in tree views.
     It will typically return the labelled-by and label relations.
 
-    It is possible to filter the relations by using \a match.
+    It is possible to filter the relations by using the optional parameter.
     It should never return itself.
 
     \sa parent(), child()
@@ -1797,11 +1797,6 @@ void QAccessibleInterface::virtual_hook(int /*id*/, void * /*data*/)
     information about a widget or object through the specialized
     interfaces. For example a line edit should implement the
     QAccessibleTextInterface.
-
-    Qt's QLineEdit for example has its accessibility support
-    implemented in QAccessibleLineEdit.
-
-    \snippet code/src_gui_accessible_qaccessible.cpp 3
 
     \sa QAccessible::InterfaceType, QAccessibleTextInterface,
     QAccessibleValueInterface, QAccessibleActionInterface,

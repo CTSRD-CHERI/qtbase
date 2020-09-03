@@ -801,6 +801,11 @@ void tst_Http2::contentEncoding_data()
                                      "hello world");
 #endif
 
+#if QT_CONFIG(zstd)
+    contentEncodingData.emplace_back(
+            "zstd", QByteArray::fromBase64("KLUv/QRYWQAAaGVsbG8gd29ybGRoaR6y"), "hello world");
+#endif
+
     // Loop through and add the data...
     for (const auto &data : contentEncodingData) {
         const char *name = data.contentEncoding.data();
@@ -935,7 +940,7 @@ void tst_Http2::sendRequest(int streamNumber,
 
     QNetworkRequest request(url);
     request.setAttribute(QNetworkRequest::Http2AllowedAttribute, QVariant(true));
-    request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, QVariant(true));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     request.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("text/plain"));
     request.setPriority(priority);
     request.setHttp2Configuration(h2Config);

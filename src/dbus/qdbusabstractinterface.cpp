@@ -199,8 +199,8 @@ bool QDBusAbstractInterfacePrivate::property(const QMetaProperty &mp, void *retu
         if (type == QMetaType::QVariant) {
             *reinterpret_cast<QVariant*>(returnValuePtr) = value;
         } else {
-            QMetaType::destruct(type, returnValuePtr);
-            QMetaType::construct(type, returnValuePtr, value.constData());
+            QMetaType(type).destruct(returnValuePtr);
+            QMetaType(type).construct(returnValuePtr, value.constData());
         }
         return true;
     }
@@ -284,7 +284,7 @@ int QDBusAbstractInterfaceBase::qt_metacall(QMetaObject::Call _c, int _id, void 
             if (mp.userType() == qMetaTypeId<QDBusVariant>())
                 value = reinterpret_cast<const QDBusVariant*>(_a[0])->variant();
             else
-                value = QVariant(mp.userType(), _a[0]);
+                value = QVariant(mp.metaType(), _a[0]);
             status = d_func()->setProperty(mp, value) ? 1 : 0;
         } else {
             bool readStatus = d_func()->property(mp, _a[0]);

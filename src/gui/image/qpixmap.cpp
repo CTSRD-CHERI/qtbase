@@ -233,7 +233,7 @@ QPixmap::QPixmap(const QPixmap &pixmap)
     Note that it's possible to squeeze the XPM variable a little bit
     by using an unusual declaration:
 
-    \snippet code/src_gui_image_qpixmap.cpp 0
+    \snippet code/src_gui_image_qimage.cpp 2
 
     The extra \c const makes the entire definition read-only, which is
     slightly more efficient (for example, when the code is in a shared
@@ -404,7 +404,7 @@ QPixmap &QPixmap::operator=(const QPixmap &pixmap)
 */
 QPixmap::operator QVariant() const
 {
-    return QVariant(QMetaType::QPixmap, this);
+    return QVariant::fromValue(*this);
 }
 
 /*!

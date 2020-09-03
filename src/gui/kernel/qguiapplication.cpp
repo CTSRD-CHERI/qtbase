@@ -149,13 +149,8 @@ QString QGuiApplicationPrivate::styleOverride;
 Qt::ApplicationState QGuiApplicationPrivate::applicationState = Qt::ApplicationInactive;
 
 Qt::HighDpiScaleFactorRoundingPolicy QGuiApplicationPrivate::highDpiScaleFactorRoundingPolicy =
-#ifdef Q_OS_ANDROID
-    // On Android, Qt has newer rounded the scale factor. Preserve
-    // that behavior by disabling rounding by default.
     Qt::HighDpiScaleFactorRoundingPolicy::PassThrough;
-#else
-    Qt::HighDpiScaleFactorRoundingPolicy::Round;
-#endif
+
 bool QGuiApplicationPrivate::highDpiScalingUpdated = false;
 
 QPointer<QWindow> QGuiApplicationPrivate::currentDragWindow;
@@ -166,10 +161,6 @@ QPlatformIntegration *QGuiApplicationPrivate::platform_integration = nullptr;
 QPlatformTheme *QGuiApplicationPrivate::platform_theme = nullptr;
 
 QList<QObject *> QGuiApplicationPrivate::generic_plugin_list;
-
-#ifndef QT_NO_SESSIONMANAGER
-bool QGuiApplicationPrivate::is_fallback_session_management_enabled = true;
-#endif
 
 enum ApplicationResourceFlags
 {
@@ -726,9 +717,6 @@ QGuiApplication::~QGuiApplication()
     QGuiApplicationPrivate::highDpiScalingUpdated = false;
     QGuiApplicationPrivate::currentDragWindow = nullptr;
     QGuiApplicationPrivate::tabletDevicePoints.clear();
-#ifndef QT_NO_SESSIONMANAGER
-    QGuiApplicationPrivate::is_fallback_session_management_enabled = true;
-#endif
     QGuiApplicationPrivate::mousePressTime = 0;
     QGuiApplicationPrivate::mousePressX = QGuiApplicationPrivate::mousePressY = 0;
 }
@@ -1876,6 +1864,60 @@ int QGuiApplication::exec()
     return QCoreApplication::exec();
 }
 
+void QGuiApplicationPrivate::captureGlobalModifierState(QEvent *e)
+{
+    if (e->spontaneous()) {
+        // Capture the current mouse and keyboard states. Doing so here is
+        // required in order to support Qt Test synthesized events. Real mouse
+        // and keyboard state updates from the platform plugin are managed by
+        // QGuiApplicationPrivate::process(Mouse|Wheel|Key|Touch|Tablet)Event();
+        // ### FIXME: Qt Test should not call qapp->notify(), but rather route
+        // the events through the proper QPA interface. This is required to
+        // properly generate all other events such as enter/leave etc.
+        switch (e->type()) {
+        case QEvent::MouseButtonPress: {
+            QMouseEvent *me = static_cast<QMouseEvent *>(e);
+            QGuiApplicationPrivate::modifier_buttons = me->modifiers();
+            QGuiApplicationPrivate::mouse_buttons |= me->button();
+            break;
+        }
+        case QEvent::MouseButtonDblClick: {
+            QMouseEvent *me = static_cast<QMouseEvent *>(e);
+            QGuiApplicationPrivate::modifier_buttons = me->modifiers();
+            QGuiApplicationPrivate::mouse_buttons |= me->button();
+            break;
+        }
+        case QEvent::MouseButtonRelease: {
+            QMouseEvent *me = static_cast<QMouseEvent *>(e);
+            QGuiApplicationPrivate::modifier_buttons = me->modifiers();
+            QGuiApplicationPrivate::mouse_buttons &= ~me->button();
+            break;
+        }
+        case QEvent::KeyPress:
+        case QEvent::KeyRelease:
+        case QEvent::MouseMove:
+#if QT_CONFIG(wheelevent)
+        case QEvent::Wheel:
+#endif
+        case QEvent::TouchBegin:
+        case QEvent::TouchUpdate:
+        case QEvent::TouchEnd:
+#if QT_CONFIG(tabletevent)
+        case QEvent::TabletMove:
+        case QEvent::TabletPress:
+        case QEvent::TabletRelease:
+#endif
+        {
+            QInputEvent *ie = static_cast<QInputEvent *>(e);
+            QGuiApplicationPrivate::modifier_buttons = ie->modifiers();
+            break;
+        }
+        default:
+            break;
+        }
+    }
+}
+
 /*! \reimp
 */
 bool QGuiApplication::notify(QObject *object, QEvent *event)
@@ -1884,6 +1926,8 @@ bool QGuiApplication::notify(QObject *object, QEvent *event)
         if (QGuiApplicationPrivate::sendQWindowEventToQPlatformWindow(static_cast<QWindow *>(object), event))
             return true; // Platform plugin ate the event
     }
+
+    QGuiApplicationPrivate::captureGlobalModifierState(event);
 
     return QCoreApplication::notify(object, event);
 }
@@ -2027,6 +2071,9 @@ void QGuiApplicationPrivate::processWindowSystemEvent(QWindowSystemInterfacePriv
         break;
     case QWindowSystemInterfacePrivate::Expose:
         QGuiApplicationPrivate::processExposeEvent(static_cast<QWindowSystemInterfacePrivate::ExposeEvent *>(e));
+        break;
+    case QWindowSystemInterfacePrivate::Paint:
+        QGuiApplicationPrivate::processPaintEvent(static_cast<QWindowSystemInterfacePrivate::PaintEvent *>(e));
         break;
     case QWindowSystemInterfacePrivate::Tablet:
         QGuiApplicationPrivate::processTabletEvent(
@@ -3092,6 +3139,8 @@ void QGuiApplicationPrivate::processScreenLogicalDotsPerInchChange(QWindowSystem
     if (QCoreApplication::startingUp())
         return;
 
+    QHighDpiScaling::updateHighDpiScaling();
+
     if (!e->screen)
         return;
 
@@ -3144,13 +3193,62 @@ void QGuiApplicationPrivate::processExposeEvent(QWindowSystemInterfacePrivate::E
             p->resizeEventPending = false;
         }
 
+        // FIXME: It would logically make sense to set this _after_ we've sent the
+        // expose event to the window, to mark that it now has received an expose.
+        // But some parts of Qt (mis)use this private member to check whether the
+        // window has been mapped yet, which they do in code that is triggered
+        // by the very same expose event we send below. To keep the code working
+        // we need to set the variable up front, until the code has been fixed.
         p->receivedExpose = true;
     }
 
+    // If the platform does not send paint events we need to synthesize them from expose events
+    const bool shouldSynthesizePaintEvents = !platformIntegration()->hasCapability(QPlatformIntegration::PaintEvents);
+
+    const bool wasExposed = p->exposed;
     p->exposed = e->isExposed && window->screen();
+
+    // We treat expose events for an already exposed window as paint events
+    if (wasExposed && p->exposed && shouldSynthesizePaintEvents) {
+        QPaintEvent paintEvent(e->region);
+        QCoreApplication::sendSpontaneousEvent(window, &paintEvent);
+        if (paintEvent.isAccepted())
+            return; // No need to send expose
+
+        // The paint event was not accepted, so we fall through and send an expose
+        // event instead, to maintain compatibility for clients that haven't adopted
+        // paint events yet.
+    }
 
     QExposeEvent exposeEvent(e->region);
     QCoreApplication::sendSpontaneousEvent(window, &exposeEvent);
+    e->eventAccepted = exposeEvent.isAccepted();
+
+    // If the window was just exposed we also need to send a paint event,
+    // so that clients that implement paint events will draw something.
+    // Note that we we can not skip this based on the expose event being
+    // accepted, as clients may implement exposeEvent to track the state
+    // change, but without drawing anything.
+    if (!wasExposed && p->exposed && shouldSynthesizePaintEvents) {
+        QPaintEvent paintEvent(e->region);
+        QCoreApplication::sendSpontaneousEvent(window, &paintEvent);
+    }
+}
+
+void QGuiApplicationPrivate::processPaintEvent(QWindowSystemInterfacePrivate::PaintEvent *e)
+{
+    Q_ASSERT_X(platformIntegration()->hasCapability(QPlatformIntegration::PaintEvents), "QGuiApplication",
+        "The platform sent paint events without claiming support for it in QPlatformIntegration::capabilities()");
+
+    if (!e->window)
+        return;
+
+    QPaintEvent paintEvent(e->region);
+    QCoreApplication::sendSpontaneousEvent(e->window, &paintEvent);
+
+    // We report back the accepted state to the platform, so that it can
+    // decide when the best time to send the fallback expose event is.
+    e->eventAccepted = paintEvent.isAccepted();
 }
 
 #if QT_CONFIG(draganddrop)
@@ -3310,10 +3408,10 @@ bool QGuiApplicationPrivate::setPalette(const QPalette &palette)
     // Resolve the palette against the theme palette, filling in
     // any missing roles, while keeping the original resolve mask.
     QPalette basePalette = qGuiApp ? qGuiApp->d_func()->basePalette() : Qt::gray;
-    basePalette.resolve(0); // The base palette only contributes missing colors roles
+    basePalette.setResolveMask(0); // The base palette only contributes missing colors roles
     QPalette resolvedPalette = palette.resolve(basePalette);
 
-    if (app_pal && resolvedPalette == *app_pal && resolvedPalette.resolve() == app_pal->resolve())
+    if (app_pal && resolvedPalette == *app_pal && resolvedPalette.resolveMask() == app_pal->resolveMask())
         return false;
 
     if (!app_pal)
@@ -3321,7 +3419,7 @@ bool QGuiApplicationPrivate::setPalette(const QPalette &palette)
     else
         *app_pal = resolvedPalette;
 
-    QCoreApplication::setAttribute(Qt::AA_SetPalette, app_pal->resolve() != 0);
+    QCoreApplication::setAttribute(Qt::AA_SetPalette, app_pal->resolveMask() != 0);
 
     return true;
 }
@@ -3544,27 +3642,6 @@ bool QGuiApplicationPrivate::shouldQuitInternal(const QWindowList &processedWind
     return true;
 }
 
-bool QGuiApplicationPrivate::tryCloseAllWindows()
-{
-    return tryCloseRemainingWindows(QWindowList());
-}
-
-bool QGuiApplicationPrivate::tryCloseRemainingWindows(QWindowList processedWindows)
-{
-    QWindowList list = QGuiApplication::topLevelWindows();
-    for (int i = 0; i < list.size(); ++i) {
-        QWindow *w = list.at(i);
-        if (w->isVisible() && !processedWindows.contains(w)) {
-            if (!w->close())
-                return false;
-            processedWindows.append(w);
-            list = QGuiApplication::topLevelWindows();
-            i = -1;
-        }
-    }
-    return true;
-}
-
 void QGuiApplicationPrivate::processApplicationTermination(QWindowSystemInterfacePrivate::WindowSystemEvent *windowSystemEvent)
 {
     QEvent event(QEvent::Quit);
@@ -3594,7 +3671,7 @@ Qt::ApplicationState QGuiApplication::applicationState()
 
     Sets the high-DPI scale factor rounding policy for the application. The
     \a policy decides how non-integer scale factors (such as Windows 150%) are
-    handled, for applications that have AA_EnableHighDpiScaling enabled.
+    handled.
 
     The two principal options are whether fractional scale factors should
     be rounded to an integer or not. Keeping the scale factor as-is will
@@ -3666,57 +3743,6 @@ void QGuiApplicationPrivate::setApplicationState(Qt::ApplicationState state, boo
     emit qApp->applicationStateChanged(applicationState);
 }
 
-#ifndef QT_NO_SESSIONMANAGER
-// ### Qt6: consider removing the feature or making it less intrusive
-/*!
-    \since 5.6
-
-    Returns whether QGuiApplication will use fallback session management.
-
-    The default is \c true.
-
-    If this is \c true and the session manager allows user interaction,
-    QGuiApplication will try to close toplevel windows after
-    commitDataRequest() has been emitted. If a window cannot be closed, session
-    shutdown will be canceled and the application will keep running.
-
-    Fallback session management only benefits applications that have an
-    "are you sure you want to close this window?" feature or other logic that
-    prevents closing a toplevel window depending on certain conditions, and
-    that do nothing to explicitly implement session management. In applications
-    that \e do implement session management using the proper session management
-    API, fallback session management interferes and may break session
-    management logic.
-
-    \warning If all windows \e are closed due to fallback session management
-    and quitOnLastWindowClosed() is \c true, the application will quit before
-    it is explicitly instructed to quit through the platform's session
-    management protocol. That violation of protocol may prevent the platform
-    session manager from saving application state.
-
-    \sa setFallbackSessionManagementEnabled(),
-    QSessionManager::allowsInteraction(), saveStateRequest(),
-    commitDataRequest(), {Session Management}
-*/
-bool QGuiApplication::isFallbackSessionManagementEnabled()
-{
-    return QGuiApplicationPrivate::is_fallback_session_management_enabled;
-}
-
-/*!
-   \since 5.6
-
-    Sets whether QGuiApplication will use fallback session management to
-    \a enabled.
-
-    \sa isFallbackSessionManagementEnabled()
-*/
-void QGuiApplication::setFallbackSessionManagementEnabled(bool enabled)
-{
-    QGuiApplicationPrivate::is_fallback_session_management_enabled = enabled;
-}
-#endif // QT_NO_SESSIONMANAGER
-
 /*!
     \since 4.2
     \fn void QGuiApplication::commitDataRequest(QSessionManager &manager)
@@ -3741,8 +3767,7 @@ void QGuiApplication::setFallbackSessionManagementEnabled(bool enabled)
 
     \note You should use Qt::DirectConnection when connecting to this signal.
 
-    \sa setFallbackSessionManagementEnabled(), isSessionRestored(),
-    sessionId(), saveStateRequest(), {Session Management}
+    \sa isSessionRestored(), sessionId(), saveStateRequest(), {Session Management}
 */
 
 /*!
@@ -3850,13 +3875,7 @@ void QGuiApplicationPrivate::commitData()
 {
     Q_Q(QGuiApplication);
     is_saving_session = true;
-
     emit q->commitDataRequest(*session_manager);
-    if (is_fallback_session_management_enabled && session_manager->allowsInteraction()
-        && !tryCloseAllWindows()) {
-        session_manager->cancel();
-    }
-
     is_saving_session = false;
 }
 

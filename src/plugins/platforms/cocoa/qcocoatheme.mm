@@ -477,7 +477,7 @@ public:
         return QAbstractFileIconEngine::toSizeList(sizes, sizes + sizeof(sizes) / sizeof(sizes[0]));
     }
 
-    QList<QSize> availableSizes(QIcon::Mode = QIcon::Normal, QIcon::State = QIcon::Off) const override
+    QList<QSize> availableSizes(QIcon::Mode = QIcon::Normal, QIcon::State = QIcon::Off) override
     { return QCocoaFileIconEngine::availableIconSizes(); }
 
 protected:
@@ -501,7 +501,7 @@ QVariant QCocoaTheme::themeHint(ThemeHint hint) const
 {
     switch (hint) {
     case QPlatformTheme::StyleNames:
-        return QStringList(QStringLiteral("macintosh"));
+        return QStringList(QStringLiteral("macos"));
     case QPlatformTheme::DialogButtonBoxLayout:
         return QVariant(QPlatformDialogHelper::MacLayout);
     case KeyboardScheme:

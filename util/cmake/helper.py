@@ -50,6 +50,7 @@ class LibraryMapping:
         self.packageName = packageName
         self.resultVariable = resultVariable
         self.appendFoundSuffix = appendFoundSuffix
+        # Allows passing addiitonal arguments to the generated find_package call.
         self.extra = extra
         self.targetName = targetName
 
@@ -277,6 +278,9 @@ _qt_library_map = [
     LibraryMapping("quick3dutils", "Qt6", "Qt::Quick3DUtils", extra=["COMPONENTS", "Quick3DUtils"]),
     LibraryMapping(
         "quickcontrols2", "Qt6", "Qt::QuickControls2", extra=["COMPONENTS", "QuickControls2"]
+    ),
+    LibraryMapping(
+        "quickcontrols2impl", "Qt6", "Qt::QuickControls2Impl", extra=["COMPONENTS", "QuickControls2Impl"]
     ),
     LibraryMapping("quick", "Qt6", "Qt::Quick", extra=["COMPONENTS", "Quick"]),
     LibraryMapping("quickshapes", "Qt6", "Qt::QuickShapes", extra=["COMPONENTS", "QuickShapes"]),

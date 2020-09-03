@@ -442,9 +442,8 @@ QShader QShader::fromSerialized(const QByteArray &data)
     if (d->qsbVersion > QShaderPrivate::QSB_VERSION_WITH_CBOR) {
         d->desc = QShaderDescription::deserialize(&ds, d->qsbVersion);
     } else if (d->qsbVersion > QShaderPrivate::QSB_VERSION_WITH_BINARY_JSON) {
-        QByteArray descBin;
-        ds >> descBin;
-        d->desc = QShaderDescription::fromCbor(descBin);
+        qWarning("Can no longer load QShaderDescription from CBOR.");
+        d->desc = QShaderDescription();
     } else {
         qWarning("Can no longer load QShaderDescription from binary JSON.");
         d->desc = QShaderDescription();
@@ -513,7 +512,7 @@ QShaderKey::QShaderKey(QShader::Source s,
 
     \relates QShader
  */
-bool operator==(const QShader &lhs, const QShader &rhs) Q_DECL_NOTHROW
+bool operator==(const QShader &lhs, const QShader &rhs) noexcept
 {
     return lhs.d->stage == rhs.d->stage
             && lhs.d->shaders == rhs.d->shaders;
@@ -521,6 +520,7 @@ bool operator==(const QShader &lhs, const QShader &rhs) Q_DECL_NOTHROW
 }
 
 /*!
+    \internal
     \fn bool operator!=(const QShader &lhs, const QShader &rhs)
 
     Returns \c false if the values in the two QShader objects \a a and \a b
@@ -534,7 +534,7 @@ bool operator==(const QShader &lhs, const QShader &rhs) Q_DECL_NOTHROW
 
     \relates QShader
  */
-size_t qHash(const QShader &s, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QShader &s, size_t seed) noexcept
 {
     QtPrivate::QHashCombine hash;
     seed = hash(seed, s.stage());
@@ -550,12 +550,13 @@ size_t qHash(const QShader &s, size_t seed) Q_DECL_NOTHROW
 
     \relates QShaderVersion
  */
-bool operator==(const QShaderVersion &lhs, const QShaderVersion &rhs) Q_DECL_NOTHROW
+bool operator==(const QShaderVersion &lhs, const QShaderVersion &rhs) noexcept
 {
     return lhs.version() == rhs.version() && lhs.flags() == rhs.flags();
 }
 
 /*!
+    \internal
     \fn bool operator!=(const QShaderVersion &lhs, const QShaderVersion &rhs)
 
     Returns \c false if the values in the two QShaderVersion objects \a a
@@ -569,13 +570,14 @@ bool operator==(const QShaderVersion &lhs, const QShaderVersion &rhs) Q_DECL_NOT
 
     \relates QShaderKey
  */
-bool operator==(const QShaderKey &lhs, const QShaderKey &rhs) Q_DECL_NOTHROW
+bool operator==(const QShaderKey &lhs, const QShaderKey &rhs) noexcept
 {
     return lhs.source() == rhs.source() && lhs.sourceVersion() == rhs.sourceVersion()
             && lhs.sourceVariant() == rhs.sourceVariant();
 }
 
 /*!
+    \internal
     \fn bool operator!=(const QShaderKey &lhs, const QShaderKey &rhs)
 
     Returns \c false if the values in the two QShaderKey objects \a a
@@ -589,7 +591,7 @@ bool operator==(const QShaderKey &lhs, const QShaderKey &rhs) Q_DECL_NOTHROW
 
     \relates QShaderKey
  */
-size_t qHash(const QShaderKey &k, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QShaderKey &k, size_t seed) noexcept
 {
     return qHashMulti(seed,
                       k.source(),
@@ -603,12 +605,13 @@ size_t qHash(const QShaderKey &k, size_t seed) Q_DECL_NOTHROW
 
     \relates QShaderCode
  */
-bool operator==(const QShaderCode &lhs, const QShaderCode &rhs) Q_DECL_NOTHROW
+bool operator==(const QShaderCode &lhs, const QShaderCode &rhs) noexcept
 {
     return lhs.shader() == rhs.shader() && lhs.entryPoint() == rhs.entryPoint();
 }
 
 /*!
+    \internal
     \fn bool operator!=(const QShaderCode &lhs, const QShaderCode &rhs)
 
     Returns \c false if the values in the two QShaderCode objects \a a

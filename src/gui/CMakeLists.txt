@@ -60,6 +60,7 @@ qt_add_module(Gui
     QMAKE_MODULE_CONFIG "${qmake_module_config}" # special case
     SOURCES
         image/qabstractfileiconengine.cpp image/qabstractfileiconengine_p.h
+        image/qabstractfileiconprovider.cpp image/qabstractfileiconprovider.h image/qabstractfileiconprovider_p.h
         image/qbitmap.cpp image/qbitmap.h
         image/qbmphandler.cpp image/qbmphandler_p.h
         image/qicon.cpp image/qicon.h image/qicon_p.h
@@ -90,6 +91,7 @@ qt_add_module(Gui
         kernel/qgenericplugin.cpp kernel/qgenericplugin.h
         kernel/qgenericpluginfactory.cpp kernel/qgenericpluginfactory.h
         kernel/qguiapplication.cpp kernel/qguiapplication.h kernel/qguiapplication_p.h
+        kernel/qguistatemachine.cpp
         kernel/qguivariant.cpp
         kernel/qhighdpiscaling.cpp kernel/qhighdpiscaling_p.h
         kernel/qinputdevice.cpp kernel/qinputdevice.h kernel/qinputdevice_p.h
@@ -98,7 +100,7 @@ qt_add_module(Gui
         kernel/qinputmethod.cpp kernel/qinputmethod.h kernel/qinputmethod_p.h
         kernel/qinternalmimedata.cpp kernel/qinternalmimedata_p.h
         kernel/qkeymapper.cpp kernel/qkeymapper_p.h
-        kernel/qoffscreensurface.cpp kernel/qoffscreensurface.h
+        kernel/qoffscreensurface.cpp kernel/qoffscreensurface.h kernel/qoffscreensurface_p.h kernel/qoffscreensurface_platform.h
         kernel/qpaintdevicewindow.cpp kernel/qpaintdevicewindow.h kernel/qpaintdevicewindow_p.h
         kernel/qpalette.cpp kernel/qpalette.h
         kernel/qpixelformat.cpp kernel/qpixelformat.h
@@ -217,7 +219,6 @@ qt_add_module(Gui
         text/qfont.cpp text/qfont.h text/qfont_p.h
         text/qfontdatabase.cpp text/qfontdatabase.h text/qfontdatabase_p.h
         text/qfontengine.cpp text/qfontengine_p.h
-        text/qfontengine_qpf2.cpp
         text/qfontengineglyphcache.cpp text/qfontengineglyphcache_p.h
         text/qfontinfo.h
         text/qfontmetrics.cpp text/qfontmetrics.h
@@ -351,6 +352,11 @@ qt_extend_target(Gui CONDITION QT_FEATURE_opengl
         rhi/qrhigles2_p_p.h
 )
 
+qt_extend_target(Gui CONDITION ANDROID
+    SOURCES
+        platform/android/qandroidplatforminterface.cpp
+)
+
 #### Keys ignored in scope 2:.:.:gui.pro:QT_FEATURE_opengl:
 # MODULE_CONFIG = "opengl"
 
@@ -403,6 +409,7 @@ qt_extend_target(Gui CONDITION WIN32
         gdi32
         ole32
         user32
+        shell32
     PUBLIC_LIBRARIES
         d3d11
         dxgi
@@ -535,6 +542,12 @@ qt_extend_target(Gui CONDITION QT_FEATURE_draganddrop
         kernel/qplatformdrag.cpp kernel/qplatformdrag.h
         kernel/qshapedpixmapdndwindow.cpp kernel/qshapedpixmapdndwindow_p.h
         kernel/qsimpledrag.cpp kernel/qsimpledrag_p.h
+)
+
+qt_extend_target(Gui CONDITION QT_FEATURE_filesystemmodel
+    SOURCES
+        itemmodels/qfileinfogatherer.cpp itemmodels/qfileinfogatherer_p.h
+        itemmodels/qfilesystemmodel.cpp itemmodels/qfilesystemmodel.h itemmodels/qfilesystemmodel_p.h
 )
 
 qt_extend_target(Gui CONDITION QT_FEATURE_shortcut

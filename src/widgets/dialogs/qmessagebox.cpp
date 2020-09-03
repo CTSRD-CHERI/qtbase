@@ -1522,7 +1522,7 @@ void QMessageBox::keyPressEvent(QKeyEvent *e)
             const QList<QAbstractButton *> buttons = d->buttonBox->buttons();
             for (auto *pb : buttons) {
                 QKeySequence shortcut = pb->shortcut();
-                if (!shortcut.isEmpty() && key == int(shortcut[0] & ~Qt::MODIFIER_MASK)) {
+                if (!shortcut.isEmpty() && key == shortcut[0].key()) {
                     pb->animateClick();
                     return;
                 }
@@ -2662,10 +2662,8 @@ QPixmap QMessageBoxPrivate::standardIcon(QMessageBox::Icon icon, QMessageBox *mb
         break;
     }
     if (!tmpIcon.isNull()) {
-        QWindow *window = mb
-            ? qt_widget_private(mb)->windowHandle(QWidgetPrivate::WindowHandleMode::Closest)
-            : nullptr;
-        return tmpIcon.pixmap(window, QSize(iconSize, iconSize));
+        qreal dpr = mb ? mb->devicePixelRatio() : qApp->devicePixelRatio();
+        return tmpIcon.pixmap(QSize(iconSize, iconSize), dpr);
     }
     return QPixmap();
 }

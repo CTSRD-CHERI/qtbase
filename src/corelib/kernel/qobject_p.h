@@ -60,6 +60,7 @@
 #include "QtCore/qreadwritelock.h"
 #include "QtCore/qsharedpointer.h"
 #include "QtCore/qvariant.h"
+#include "QtCore/qproperty.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -153,9 +154,10 @@ public:
         ushort method_offset;
         ushort method_relative;
         signed int signal_index : 27; // In signal range (see QObjectPrivate::signalIndex())
-        ushort connectionType : 3; // 0 == auto, 1 == direct, 2 == queued, 4 == blocking
+        ushort connectionType : 2; // 0 == auto, 1 == direct, 2 == queued, 3 == blocking
         ushort isSlotObject : 1;
         ushort ownArgumentTypes : 1;
+        ushort isSingleShot : 1;
         Connection() : ref_(2), ownArgumentTypes(true) {
             //ref_ is 2 for the use in the internal lists, and for the use in QMetaObject::Connection
         }
@@ -348,10 +350,11 @@ public:
 
     static QMetaObject::Connection connectImpl(const QObject *sender, int signal_index,
                                                const QObject *receiver, void **slot,
-                                               QtPrivate::QSlotObjectBase *slotObj, Qt::ConnectionType type,
+                                               QtPrivate::QSlotObjectBase *slotObj, int type,
                                                const int *types, const QMetaObject *senderMetaObject);
     static QMetaObject::Connection connect(const QObject *sender, int signal_index, QtPrivate::QSlotObjectBase *slotObj, Qt::ConnectionType type);
     static bool disconnect(const QObject *sender, int signal_index, void **slot);
+    static bool disconnect(Connection *c);
 
     void ensureConnectionData()
     {
@@ -381,6 +384,7 @@ public:
     // these objects are all used to indicate that a QObject was deleted
     // plus QPointer, which keeps a separate list
     QAtomicPointer<QtSharedPointer::ExternalRefCountData> sharedRefcount;
+    QBindingStorage bindingStorage;
 };
 
 Q_DECLARE_TYPEINFO(QObjectPrivate::ConnectionList, Q_MOVABLE_TYPE);
@@ -548,8 +552,8 @@ public:
     inline int id() const { return d.method_offset_ + d.method_relative_; }
     inline const void * const* args() const { return d.args_; }
     inline void ** args() { return d.args_; }
-    inline const int *types() const { return reinterpret_cast<int*>(d.args_ + d.nargs_); }
-    inline int *types() { return reinterpret_cast<int*>(d.args_ + d.nargs_); }
+    inline const QMetaType *types() const { return reinterpret_cast<QMetaType *>(d.args_ + d.nargs_); }
+    inline QMetaType *types() { return reinterpret_cast<QMetaType *>(d.args_ + d.nargs_); }
 
     virtual void placeMetaCall(QObject *object) override;
 
@@ -565,7 +569,7 @@ private:
         ushort method_relative_;
     } d;
     // preallocate enough space for three arguments
-    char prealloc_[3*(sizeof(void*) + sizeof(int))];
+    alignas(void *) char prealloc_[3*sizeof(void*) + 3*sizeof(QMetaType)];
 };
 
 class QBoolBlocker
@@ -601,6 +605,16 @@ struct Q_CORE_EXPORT QAbstractDynamicMetaObject : public QDynamicMetaObjectData,
     { return metaCall(c, _id, a); }
     virtual int metaCall(QMetaObject::Call, int _id, void **) { return _id; } // Compat overload
 };
+
+inline const QBindingStorage *qGetBindingStorage(const QObjectPrivate *o)
+{
+    return &o->bindingStorage;
+}
+inline QBindingStorage *qGetBindingStorage(QObjectPrivate *o)
+{
+    return &o->bindingStorage;
+}
+
 
 QT_END_NAMESPACE
 

@@ -179,6 +179,47 @@ Q_GUI_EXPORT int qt_defaultDpi()
     return qt_defaultDpiY();
 }
 
+/* Helper function to convert between legacy Qt and OpenType font weights. */
+static int convertWeights(int weight, bool inverted)
+{
+    static const QVarLengthArray<QPair<int, int>, 9> legacyToOpenTypeMap = {
+        { 0, QFont::Thin },    { 12, QFont::ExtraLight }, { 25, QFont::Light },
+        { 50, QFont::Normal }, { 57, QFont::Medium },     { 63, QFont::DemiBold },
+        { 75, QFont::Bold },   { 81, QFont::ExtraBold },  { 87, QFont::Black },
+    };
+
+    int closestDist = INT_MAX;
+    int result = -1;
+
+    // Go through and find the closest mapped value
+    for (auto mapping : legacyToOpenTypeMap) {
+        const int weightOld = inverted ? mapping.second : mapping.first;
+        const int weightNew = inverted ? mapping.first : mapping.second;
+        const int dist = qAbs(weightOld - weight);
+        if (dist < closestDist) {
+            result = weightNew;
+            closestDist = dist;
+        } else {
+            // Break early since following values will be further away
+            break;
+        }
+    }
+
+    return result;
+}
+
+/* Converts from legacy Qt font weight (Qt < 6.0) to OpenType font weight (Qt >= 6.0) */
+Q_GUI_EXPORT int qt_legacyToOpenTypeWeight(int weight)
+{
+    return convertWeights(weight, false);
+}
+
+/* Converts from  OpenType font weight (Qt >= 6.0) to legacy Qt font weight (Qt < 6.0) */
+Q_GUI_EXPORT int qt_openTypeToLegacyWeight(int weight)
+{
+    return convertWeights(weight, true);
+}
+
 QFontPrivate::QFontPrivate()
     : engineData(nullptr), dpi(qt_defaultDpi()),
       underline(false), overline(false), strikeOut(false), kerning(true),
@@ -570,7 +611,7 @@ QFontEngineData::~QFontEngineData()
 */
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-/*!
+/*
   \obsolete
   Constructs a font from \a font for use on the paint device \a pd.
 */
@@ -1066,29 +1107,28 @@ void QFont::setStyle(Style style)
 
     \sa setWeight(), Weight, QFontInfo
 */
-int QFont::weight() const
+QFont::Weight QFont::weight() const
 {
-    return d->request.weight;
+    return static_cast<Weight>(d->request.weight);
 }
 
 /*!
     \enum QFont::Weight
 
-    Qt uses a weighting scale from 0 to 99 similar to, but not the
-    same as, the scales used in Windows or CSS. A weight of 0 will be
-    thin, whilst 99 will be extremely black.
+    Qt uses a weighting scale from 1 to 1000 compatible with OpenType. A weight of 1 will be
+    thin, whilst 1000 will be extremely black.
 
     This enum contains the predefined font weights:
 
-    \value Thin 0
-    \value ExtraLight 12
-    \value Light 25
-    \value Normal 50
-    \value Medium 57
-    \value DemiBold 63
-    \value Bold 75
-    \value ExtraBold 81
-    \value Black 87
+    \value Thin 100
+    \value ExtraLight 200
+    \value Light 300
+    \value Normal 400
+    \value Medium 500
+    \value DemiBold 600
+    \value Bold 700
+    \value ExtraBold 800
+    \value Black 900
 */
 
 /*!
@@ -1099,16 +1139,20 @@ int QFont::weight() const
 
     \sa weight(), QFontInfo
 */
-void QFont::setWeight(int weight)
+void QFont::setWeight(QFont::Weight weight)
 {
-    Q_ASSERT_X(weight >= 0 && weight <= 99, "QFont::setWeight", "Weight must be between 0 and 99");
+    const int weightValue = qBound(QFONT_WEIGHT_MIN, static_cast<int>(weight), QFONT_WEIGHT_MAX);
+    if (weightValue != static_cast<int>(weight)) {
+        qWarning() << "QFont::setWeight: Weight must be between 1 and 1000, attempted to set "
+                   << static_cast<int>(weight);
+    }
 
-    if ((resolve_mask & QFont::WeightResolved) && d->request.weight == weight)
+    if ((resolve_mask & QFont::WeightResolved) && d->request.weight == weightValue)
         return;
 
     detach();
 
-    d->request.weight = weight;
+    d->request.weight = weightValue;
     resolve_mask |= QFont::WeightResolved;
 }
 
@@ -1726,7 +1770,7 @@ bool QFont::operator!=(const QFont &f) const
 */
 QFont::operator QVariant() const
 {
-    return QVariant(QMetaType::QFont, this);
+    return QVariant::fromValue(*this);
 }
 
 /*!
@@ -1761,12 +1805,12 @@ QFont QFont::resolve(const QFont &other) const
 }
 
 /*!
-    \fn uint QFont::resolve() const
+    \fn uint QFont::resolveMask() const
     \internal
 */
 
 /*!
-    \fn void QFont::resolve(uint mask)
+    \fn void QFont::setResolveMask(uint mask)
     \internal
 */
 
@@ -1878,7 +1922,7 @@ void QFont::removeSubstitutions(const QString &familyName)
 /*!
     Returns a sorted list of substituted family names.
 
-    \sa insertSubstitution(), removeSubstitution(), substitute()
+    \sa insertSubstitution(), removeSubstitutions(), substitute()
 */
 QStringList QFont::substitutions()
 {
@@ -1988,7 +2032,13 @@ QString QFont::toString() const
         QString::number((int) underline()) + comma +
         QString::number((int) strikeOut()) + comma +
         QString::number((int)fixedPitch()) + comma +
-        QString::number((int)   false);
+        QString::number((int)   false) + comma +
+        QString::number((int)capitalization()) + comma +
+        QString::number((int)letterSpacingType()) + comma +
+        QString::number(letterSpacing()) + comma +
+        QString::number(wordSpacing()) + comma +
+        QString::number(stretch()) + comma +
+        QString::number((int)styleStrategy());
 
     QString fontStyle = styleName();
     if (!fontStyle.isEmpty())
@@ -2022,7 +2072,7 @@ bool QFont::fromString(const QString &descrip)
     const auto sr = QStringView(descrip).trimmed();
     const auto l = sr.split(QLatin1Char(','));
     const int count = l.count();
-    if (!count || (count > 2 && count < 9) || count > 11 ||
+    if (!count || (count > 2 && count < 9) || count == 9 || count > 17 ||
         l.first().isEmpty()) {
         qWarning("QFont::fromString: Invalid description '%s'",
                  descrip.isEmpty() ? "(empty)" : descrip.toLatin1().data());
@@ -2034,7 +2084,7 @@ bool QFont::fromString(const QString &descrip)
         setPointSizeF(l[1].toDouble());
     if (count == 9) {
         setStyleHint((StyleHint) l[2].toInt());
-        setWeight(qMax(qMin(99, l[3].toInt()), 0));
+        setWeight(QFont::Weight(l[3].toInt()));
         setItalic(l[4].toInt());
         setUnderline(l[5].toInt());
         setStrikeOut(l[6].toInt());
@@ -2043,13 +2093,20 @@ bool QFont::fromString(const QString &descrip)
         if (l[2].toInt() > 0)
             setPixelSize(l[2].toInt());
         setStyleHint((StyleHint) l[3].toInt());
-        setWeight(qMax(qMin(99, l[4].toInt()), 0));
+        setWeight(QFont::Weight(l[4].toInt()));
         setStyle((QFont::Style)l[5].toInt());
         setUnderline(l[6].toInt());
         setStrikeOut(l[7].toInt());
         setFixedPitch(l[8].toInt());
-        if (count == 11)
-            d->request.styleName = l[10].toString();
+        if (count >= 16) {
+            setCapitalization((Capitalization)l[10].toInt());
+            setLetterSpacing((SpacingType)l[11].toInt(), l[12].toDouble());
+            setWordSpacing(l[13].toDouble());
+            setStretch(l[14].toInt());
+            setStyleStrategy((StyleStrategy)l[15].toInt());
+        }
+        if (count == 11 || count == 17)
+            d->request.styleName = l[count - 1].toString();
         else
             d->request.styleName.clear();
     }
@@ -2201,9 +2258,13 @@ QDataStream &operator<<(QDataStream &s, const QFont &font)
         else
             s << (quint8) font.d->request.styleStrategy;
     }
-    s << (quint8) 0
-      << (quint8) font.d->request.weight
-      << get_font_bits(s.version(), font.d.data());
+
+    if (s.version() < QDataStream::Qt_6_0)
+        s << quint8(0) << quint8(qt_openTypeToLegacyWeight(font.d->request.weight));
+    else
+        s << quint16(font.d->request.weight);
+
+    s << get_font_bits(s.version(), font.d.data());
     if (s.version() >= QDataStream::Qt_4_3)
         s << (quint16)font.d->request.stretch;
     if (s.version() >= QDataStream::Qt_4_4)
@@ -2235,7 +2296,7 @@ QDataStream &operator>>(QDataStream &s, QFont &font)
     font.d = new QFontPrivate;
     font.resolve_mask = QFont::AllPropertiesResolved;
 
-    quint8 styleHint, charSet, weight, bits;
+    quint8 styleHint, bits;
     quint16 styleStrategy = QFont::PreferDefault;
 
     if (s.version() == 1) {
@@ -2275,13 +2336,22 @@ QDataStream &operator>>(QDataStream &s, QFont &font)
         }
     }
 
-    s >> charSet;
-    s >> weight;
+    if (s.version() < QDataStream::Qt_6_0) {
+        quint8 charSet;
+        quint8 weight;
+        s >> charSet;
+        s >> weight;
+        font.d->request.weight = qt_legacyToOpenTypeWeight(weight);
+    } else {
+        quint16 weight;
+        s >> weight;
+        font.d->request.weight = weight;
+    }
+
     s >> bits;
 
     font.d->request.styleHint = styleHint;
     font.d->request.styleStrategy = styleStrategy;
-    font.d->request.weight = weight;
 
     set_font_bits(s.version(), bits, font.d.data());
 

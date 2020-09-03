@@ -1496,7 +1496,7 @@ QStyleOptionTab::QStyleOptionTab(int version)
 QStyleOptionProgressBar::QStyleOptionProgressBar()
     : QStyleOption(QStyleOptionProgressBar::Version, SO_ProgressBar),
       minimum(0), maximum(0), progress(0), textAlignment(Qt::AlignLeft), textVisible(false),
-      orientation(Qt::Horizontal), invertedAppearance(false), bottomToTop(false)
+      invertedAppearance(false), bottomToTop(false)
 {
 }
 
@@ -1506,7 +1506,7 @@ QStyleOptionProgressBar::QStyleOptionProgressBar()
 QStyleOptionProgressBar::QStyleOptionProgressBar(int version)
     : QStyleOption(version, SO_ProgressBar),
       minimum(0), maximum(0), progress(0), textAlignment(Qt::AlignLeft), textVisible(false),
-      orientation(Qt::Horizontal), invertedAppearance(false), bottomToTop(false)
+      invertedAppearance(false), bottomToTop(false)
 {
 }
 
@@ -1609,17 +1609,6 @@ QStyleOptionProgressBar::QStyleOptionProgressBar(int version)
 */
 
 /*!
-    \variable QStyleOptionProgressBar::orientation
-    \brief the progress bar's orientation (horizontal or vertical);
-    the default orentation is Qt::Horizontal
-
-    \deprecated
-    Use the QStyle::State_Horizontal flag instead (in the QStyleOption::state member).
-
-    \sa QProgressBar::orientation
-*/
-
-/*!
     \variable QStyleOptionProgressBar::invertedAppearance
     \brief whether the progress bar's appearance is inverted
 
@@ -1668,7 +1657,8 @@ QStyleOptionProgressBar::QStyleOptionProgressBar(int version)
 
 QStyleOptionMenuItem::QStyleOptionMenuItem()
     : QStyleOption(QStyleOptionMenuItem::Version, SO_MenuItem), menuItemType(Normal),
-      checkType(NotCheckable), checked(false), menuHasCheckableItems(true), maxIconWidth(0), tabWidth(0)
+      checkType(NotCheckable), checked(false), menuHasCheckableItems(true), maxIconWidth(0),
+      reservedShortcutWidth(0)
 {
 }
 
@@ -1677,7 +1667,8 @@ QStyleOptionMenuItem::QStyleOptionMenuItem()
 */
 QStyleOptionMenuItem::QStyleOptionMenuItem(int version)
     : QStyleOption(version, SO_MenuItem), menuItemType(Normal),
-      checkType(NotCheckable), checked(false), menuHasCheckableItems(true), maxIconWidth(0), tabWidth(0)
+      checkType(NotCheckable), checked(false), menuHasCheckableItems(true), maxIconWidth(0),
+      reservedShortcutWidth(0)
 {
 }
 
@@ -1821,7 +1812,7 @@ QStyleOptionMenuItem::QStyleOptionMenuItem(int version)
 */
 
 /*!
-    \variable QStyleOptionMenuItem::tabWidth
+    \variable QStyleOptionMenuItem::reservedShortcutWidth
     \brief the reserved width for the menu item's shortcut
 
     QMenu sets it to the width occupied by the widest shortcut among

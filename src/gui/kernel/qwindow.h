@@ -64,6 +64,7 @@ QT_BEGIN_NAMESPACE
 class QWindowPrivate;
 
 class QExposeEvent;
+class QPaintEvent;
 class QFocusEvent;
 class QMoveEvent;
 class QResizeEvent;
@@ -106,7 +107,7 @@ class Q_GUI_EXPORT QWindow : public QObject, public QSurface
 
     // Any new properties which you add here MUST be versioned and MUST be documented both as
     // C++ properties in qwindow.cpp AND as QML properties in qquickwindow.cpp.
-    // http://qt-project.org/doc/qt-5.0/qtqml/qtqml-cppintegration-definetypes.html#type-revisions-and-versions
+    // https://doc.qt.io/qt/qtqml-cppintegration-definetypes.html#type-revisions-and-versions
 
     Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY windowTitleChanged)
     Q_PROPERTY(Qt::WindowModality modality READ modality WRITE setModality NOTIFY modalityChanged)
@@ -124,7 +125,11 @@ class Q_GUI_EXPORT QWindow : public QObject, public QSurface
     Q_PROPERTY(Visibility visibility READ visibility WRITE setVisibility NOTIFY visibilityChanged REVISION(2, 1))
     Q_PROPERTY(Qt::ScreenOrientation contentOrientation READ contentOrientation WRITE reportContentOrientationChange NOTIFY contentOrientationChanged)
     Q_PROPERTY(qreal opacity READ opacity WRITE setOpacity NOTIFY opacityChanged REVISION(2, 1))
+#ifdef Q_QDOC
+    Q_PROPERTY(QWindow* transientParent READ transientParent WRITE setTransientParent NOTIFY transientParentChanged)
+#else
     Q_PRIVATE_PROPERTY(QWindow::d_func(), QWindow* transientParent MEMBER transientParent WRITE setTransientParent NOTIFY transientParentChanged REVISION(2, 13))
+#endif
 
 public:
     enum Visibility {
@@ -346,6 +351,7 @@ Q_SIGNALS:
 protected:
     virtual void exposeEvent(QExposeEvent *);
     virtual void resizeEvent(QResizeEvent *);
+    virtual void paintEvent(QPaintEvent *);
     virtual void moveEvent(QMoveEvent *);
     virtual void focusInEvent(QFocusEvent *);
     virtual void focusOutEvent(QFocusEvent *);

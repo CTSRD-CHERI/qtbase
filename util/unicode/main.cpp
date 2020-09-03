@@ -878,6 +878,14 @@ static const QByteArray sizeOfPropertiesStructCheck =
         "static_assert(sizeof(Properties) == " + QByteArray::number(SizeOfPropertiesStruct) + ");\n\n";
 
 struct PropertyFlags {
+    PropertyFlags()
+        : combiningClass(0)
+        , category(QChar::Other_NotAssigned) // Cn
+        , direction(QChar::DirL)
+        , joining(QChar::Joining_None)
+        , age(QChar::Unicode_Unassigned)
+        , mirrorDiff(0) {}
+
     bool operator==(const PropertyFlags &o) const {
         return (combiningClass == o.combiningClass
                 && category == o.category
@@ -910,25 +918,25 @@ struct PropertyFlags {
     QChar::JoiningType joining : 3;
     // from DerivedAge.txt
     QChar::UnicodeVersion age : 5;
-    int digitValue;
+    int digitValue = -1;
 
     int mirrorDiff : 16;
 
-    int lowerCaseDiff;
-    int upperCaseDiff;
-    int titleCaseDiff;
-    int caseFoldDiff;
-    bool lowerCaseSpecial;
-    bool upperCaseSpecial;
-    bool titleCaseSpecial;
-    bool caseFoldSpecial;
-    GraphemeBreakClass graphemeBreakClass;
-    WordBreakClass wordBreakClass;
-    SentenceBreakClass sentenceBreakClass;
-    LineBreakClass lineBreakClass;
-    int script;
+    int lowerCaseDiff = 0;
+    int upperCaseDiff = 0;
+    int titleCaseDiff = 0;
+    int caseFoldDiff = 0;
+    bool lowerCaseSpecial = 0;
+    bool upperCaseSpecial = 0;
+    bool titleCaseSpecial = 0;
+    bool caseFoldSpecial = 0;
+    GraphemeBreakClass graphemeBreakClass = GraphemeBreak_Any;
+    WordBreakClass wordBreakClass = WordBreak_Any;
+    SentenceBreakClass sentenceBreakClass = SentenceBreak_Any;
+    LineBreakClass lineBreakClass = LineBreak_AL;
+    int script = QChar::Script_Unknown;
     // from DerivedNormalizationProps.txt
-    uchar nfQuickCheck;
+    uchar nfQuickCheck = 0;
 };
 
 
@@ -1006,9 +1014,6 @@ static inline bool isDefaultIgnorable(uint ucs4)
 
 struct UnicodeData {
     UnicodeData(int codepoint = 0) {
-        p.category = QChar::Other_NotAssigned; // Cn
-        p.combiningClass = 0;
-
         p.direction = QChar::DirL;
         // DerivedBidiClass.txt
         // The unassigned code points that default to AL are in the ranges:
@@ -1066,28 +1071,6 @@ struct UnicodeData {
         else if (codepoint >= 0x20A0 && codepoint <= 0x20CF) {
             p.lineBreakClass = LineBreak_PR;
         }
-
-        mirroredChar = 0;
-        decompositionType = QChar::NoDecomposition;
-        p.joining = QChar::Joining_None;
-        p.age = QChar::Unicode_Unassigned;
-        p.mirrorDiff = 0;
-        p.digitValue = -1;
-        p.lowerCaseDiff = 0;
-        p.upperCaseDiff = 0;
-        p.titleCaseDiff = 0;
-        p.caseFoldDiff = 0;
-        p.lowerCaseSpecial = 0;
-        p.upperCaseSpecial = 0;
-        p.titleCaseSpecial = 0;
-        p.caseFoldSpecial = 0;
-        p.graphemeBreakClass = GraphemeBreak_Any;
-        p.wordBreakClass = WordBreak_Any;
-        p.sentenceBreakClass = SentenceBreak_Any;
-        p.script = QChar::Script_Unknown;
-        p.nfQuickCheck = 0;
-        propertyIndex = -1;
-        excludedComposition = false;
     }
 
     static UnicodeData &valueRef(int codepoint);
@@ -1095,19 +1078,19 @@ struct UnicodeData {
     PropertyFlags p;
 
     // from UnicodeData.txt
-    QChar::Decomposition decompositionType;
+    QChar::Decomposition decompositionType = QChar::NoDecomposition;
     QList<int> decomposition;
 
     QList<int> specialFolding;
 
     // from BidiMirroring.txt
-    int mirroredChar;
+    int mirroredChar = 0;
 
     // DerivedNormalizationProps.txt
-    bool excludedComposition;
+    bool excludedComposition = false;
 
     // computed position of unicode property set
-    int propertyIndex;
+    int propertyIndex = -1;
 };
 
 static QList<UnicodeData> unicodeData;
@@ -2330,6 +2313,8 @@ static QByteArray createPropertyInfo()
     QList<int> blockMap;
     int used = 0;
 
+    // Group BMP data into blocks indexed by their 12 most significant bits
+    // (blockId = ucs >> 5):
     for (int block = 0; block < BMP_END/BMP_BLOCKSIZE; ++block) {
         UniqueBlock b;
         b.values.reserve(BMP_BLOCKSIZE);
@@ -2349,6 +2334,8 @@ static QByteArray createPropertyInfo()
     }
     int bmp_blocks = uniqueBlocks.size();
 
+    // Group SMP data into blocks indexed by their 9 most significant bits, plus
+    // an offset to put them after the BMP blocks (blockId = (ucs >> 8) + 0x880):
     for (int block = BMP_END/SMP_BLOCKSIZE; block < SMP_END/SMP_BLOCKSIZE; ++block) {
         UniqueBlock b;
         b.values.reserve(SMP_BLOCKSIZE);
@@ -2386,10 +2373,11 @@ static QByteArray createPropertyInfo()
     qDebug("\n        properties data uses : %d bytes", prop_data);
     qDebug("    memory usage: %d bytes", bmp_mem + smp_mem + prop_data);
 
+    Q_ASSERT(blockMap.size() == BMP_END/BMP_BLOCKSIZE +(SMP_END-BMP_END)/SMP_BLOCKSIZE); // 0x1870
     Q_ASSERT(blockMap.last() + blockMap.size() < (1<<(sizeof(unsigned short)*8)));
 
     QByteArray out = "static const unsigned short uc_property_trie[] = {\n";
-    // first write the map
+    // First write the map from blockId to indices of unique blocks:
     out += "    // [0x0..0x" + QByteArray::number(BMP_END, 16) + ")";
     for (int i = 0; i < BMP_END/BMP_BLOCKSIZE; ++i) {
         if (!(i % 8)) {
@@ -2419,7 +2407,9 @@ static QByteArray createPropertyInfo()
     if (out.endsWith(' '))
         out.chop(1);
     out += "\n";
-    // write the data
+    // Then write the contents of the unique blocks, at the anticipated indices.
+    // Each unique block is a list of UnicodeData::propertyIndex values, whch
+    // are indices into the uc_properties table.
     for (int i = 0; i < uniqueBlocks.size(); ++i) {
         if (out.endsWith(' '))
             out.chop(1);
@@ -2438,17 +2428,6 @@ static QByteArray createPropertyInfo()
     if (out.endsWith(", "))
         out.chop(2);
     out += "\n};\n\n";
-
-    out += "#define GET_PROP_INDEX(ucs4) \\\n"
-           "       (ucs4 < 0x" + QByteArray::number(BMP_END, 16) + " \\\n"
-           "        ? (uc_property_trie[uc_property_trie[ucs4>>" + QByteArray::number(BMP_SHIFT) +
-           "] + (ucs4 & 0x" + QByteArray::number(BMP_BLOCKSIZE-1, 16)+ ")]) \\\n"
-           "        : (uc_property_trie[uc_property_trie[((ucs4 - 0x" + QByteArray::number(BMP_END, 16) +
-           ")>>" + QByteArray::number(SMP_SHIFT) + ") + 0x" + QByteArray::number(BMP_END/BMP_BLOCKSIZE, 16) + "]"
-           " + (ucs4 & 0x" + QByteArray::number(SMP_BLOCKSIZE-1, 16) + ")]))\n\n"
-           "#define GET_PROP_INDEX_UCS2(ucs2) \\\n"
-           "       (uc_property_trie[uc_property_trie[ucs2>>" + QByteArray::number(BMP_SHIFT) +
-           "] + (ucs2 & 0x" + QByteArray::number(BMP_BLOCKSIZE-1, 16)+ ")])\n\n";
 
     out += "static const Properties uc_properties[] = {";
     // keep in sync with the property declaration
@@ -2520,15 +2499,27 @@ static QByteArray createPropertyInfo()
         out.chop(1);
     out += "\n};\n\n";
 
-
     out += "Q_DECL_CONST_FUNCTION static inline const Properties *qGetProp(char32_t ucs4) noexcept\n"
            "{\n"
-           "    return uc_properties + GET_PROP_INDEX(ucs4);\n"
+           "    Q_ASSERT(ucs4 <= QChar::LastValidCodePoint);\n"
+           "    if (ucs4 < 0x" + QByteArray::number(BMP_END, 16) + ")\n"
+           "        return uc_properties + uc_property_trie[uc_property_trie[ucs4 >> "
+           + QByteArray::number(BMP_SHIFT) + "] + (ucs4 & 0x"
+           + QByteArray::number(BMP_BLOCKSIZE - 1, 16)+ ")];\n"
+           "\n"
+           "    return uc_properties\n"
+           "        + uc_property_trie[uc_property_trie[((ucs4 - 0x"
+           + QByteArray::number(BMP_END, 16) + ") >> "
+           + QByteArray::number(SMP_SHIFT) + ") + 0x"
+           + QByteArray::number(BMP_END / BMP_BLOCKSIZE, 16) + "] + (ucs4 & 0x"
+           + QByteArray::number(SMP_BLOCKSIZE - 1, 16) + ")];\n"
            "}\n"
            "\n"
            "Q_DECL_CONST_FUNCTION static inline const Properties *qGetProp(char16_t ucs2) noexcept\n"
            "{\n"
-           "    return uc_properties + GET_PROP_INDEX_UCS2(ucs2);\n"
+           "    return uc_properties + uc_property_trie[uc_property_trie[ucs2 >> "
+           + QByteArray::number(BMP_SHIFT) + "] + (ucs2 & 0x"
+           + QByteArray::number(BMP_BLOCKSIZE - 1, 16) + ")];\n"
            "}\n"
            "\n"
            "Q_DECL_CONST_FUNCTION Q_CORE_EXPORT const Properties * QT_FASTCALL properties(char32_t ucs4) noexcept\n"

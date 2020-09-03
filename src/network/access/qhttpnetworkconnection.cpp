@@ -1440,7 +1440,9 @@ void QHttpNetworkConnection::ignoreSslErrors(int channel)
         return;
 
     if (channel == -1) { // ignore for all channels
-        for (int i = 0; i < d->activeChannelCount; ++i) {
+        // We need to ignore for all channels, even the ones that are not in use just in case they
+        // will be in the future.
+        for (int i = 0; i < d->channelCount; ++i) {
             d->channels[i].ignoreSslErrors();
         }
 
@@ -1456,7 +1458,9 @@ void QHttpNetworkConnection::ignoreSslErrors(const QList<QSslError> &errors, int
         return;
 
     if (channel == -1) { // ignore for all channels
-        for (int i = 0; i < d->activeChannelCount; ++i) {
+        // We need to ignore for all channels, even the ones that are not in use just in case they
+        // will be in the future.
+        for (int i = 0; i < d->channelCount; ++i) {
             d->channels[i].ignoreSslErrors(errors);
         }
 
@@ -1514,7 +1518,8 @@ void QHttpNetworkConnectionPrivate::emitProxyAuthenticationRequired(const QHttpN
     // dialog is displaying
     pauseConnection();
     QHttpNetworkReply *reply;
-    if (connectionType == QHttpNetworkConnection::ConnectionTypeHTTP2
+    if ((connectionType == QHttpNetworkConnection::ConnectionTypeHTTP2
+         && (chan->switchedToHttp2 || chan->h2RequestsToSend.count() > 0))
         || connectionType == QHttpNetworkConnection::ConnectionTypeHTTP2Direct) {
         // we choose the reply to emit the proxyAuth signal from somewhat arbitrarily,
         // but that does not matter because the signal will ultimately be emitted

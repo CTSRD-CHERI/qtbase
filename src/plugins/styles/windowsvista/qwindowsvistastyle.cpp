@@ -104,7 +104,8 @@ bool canAnimate(const QStyleOption *option) {
 
 static inline QImage createAnimationBuffer(const QStyleOption *option, const QWidget *widget)
 {
-    const int devicePixelRatio = widget ? widget->devicePixelRatio() : 1;
+    const qreal devicePixelRatio = widget
+        ? widget->devicePixelRatioF() : qApp->devicePixelRatio();
     QImage result(option->rect.size() * devicePixelRatio, QImage::Format_ARGB32_Premultiplied);
     result.setDevicePixelRatio(devicePixelRatio);
     result.fill(0);
@@ -1006,7 +1007,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
         if (const QStyleOptionProgressBar *bar
                 = qstyleoption_cast<const QStyleOptionProgressBar *>(option)) {
             bool isIndeterminate = (bar->minimum == 0 && bar->maximum == 0);
-            const bool vertical = bar->orientation == Qt::Vertical;
+            const bool vertical = !(bar->state & QStyle::State_Horizontal);
             const bool inverted = bar->invertedAppearance;
 
             if (isIndeterminate || (bar->progress > 0 && (bar->progress < bar->maximum) && d->transitionsEnabled())) {
@@ -1198,7 +1199,7 @@ void QWindowsVistaStyle::drawControl(ControlElement element, const QStyleOption 
 
             int x, y, w, h;
             menuitem->rect.getRect(&x, &y, &w, &h);
-            int tab = menuitem->tabWidth;
+            int tab = menuitem->reservedShortcutWidth;
             bool dis = !(menuitem->state & State_Enabled);
             bool checked = menuitem->checkType != QStyleOptionMenuItem::NotCheckable
                             ? menuitem->checked : false;
@@ -2472,7 +2473,7 @@ QIcon QWindowsVistaStyle::standardIcon(StandardPixmap standardIcon,
                               QWindowsXPStylePrivate::ButtonTheme,
                               BP_COMMANDLINKGLYPH, CMDLGS_NORMAL);
             if (theme.isValid()) {
-                const QSize size = (theme.size() * QWindowsStylePrivate::nativeMetricScaleFactor(widget)).toSize();
+                const QSize size = theme.size().toSize();
                 QIcon linkGlyph;
                 QPixmap pm(size);
                 pm.fill(Qt::transparent);

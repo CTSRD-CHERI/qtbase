@@ -49,6 +49,8 @@ QT_BEGIN_NAMESPACE
 class QJsonArray;
 class QDataStream;
 
+namespace QJsonPrivate { class Variant; }
+
 class QCborContainerPrivate;
 class Q_CORE_EXPORT QCborArray
 {
@@ -66,8 +68,8 @@ public:
         typedef QCborValueRef reference;
         typedef QCborValueRef *pointer;
 
-        Q_DECL_CONSTEXPR Iterator() = default;
-        Q_DECL_CONSTEXPR Iterator(const Iterator &) = default;
+        constexpr Iterator() = default;
+        constexpr Iterator(const Iterator &) = default;
         Iterator &operator=(const Iterator &other)
         {
             // rebind the reference
@@ -115,8 +117,8 @@ public:
         typedef const QCborValueRef reference;
         typedef const QCborValueRef *pointer;
 
-        Q_DECL_CONSTEXPR ConstIterator() = default;
-        Q_DECL_CONSTEXPR ConstIterator(const ConstIterator &) = default;
+        constexpr ConstIterator() = default;
+        constexpr ConstIterator(const ConstIterator &) = default;
         ConstIterator &operator=(const ConstIterator &other)
         {
             // rebind the reference
@@ -273,6 +275,7 @@ private:
 
     friend QCborValue;
     friend QCborValueRef;
+    friend class QJsonPrivate::Variant;
     explicit QCborArray(QCborContainerPrivate &dd) noexcept;
     QExplicitlySharedDataPointer<QCborContainerPrivate> d;
 };

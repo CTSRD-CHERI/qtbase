@@ -1642,7 +1642,7 @@ QTextBlock QTextDocument::begin() const
     This function returns a block to test for the end of the document
     while iterating over it.
 
-    \snippet textdocumentendsnippet.cpp 0
+    \snippet textdocument-end/textdocumentendsnippet.cpp 0
 
     The block returned is invalid and represents the block after the
     last block in the document. You can use lastBlock() to retrieve the
@@ -1730,6 +1730,93 @@ QFont QTextDocument::defaultFont() const
 {
     Q_D(const QTextDocument);
     return d->defaultFont();
+}
+
+/*!
+    \fn void QTextDocument::setSuperScriptBaseline(qreal baseline)
+    \since 6.0
+
+    Sets the default superscript's base line as a % of font height to use in the document layout.
+    The default value is 50% (1/2 of height)
+
+    \sa superScriptBaseline(), setSubScriptBaseline(), subScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+void QTextDocument::setSuperScriptBaseline(qreal baseline)
+{
+    Q_D(QTextDocument);
+    d->formats.setSuperScriptBaseline(baseline);
+}
+
+/*!
+    \fn qreal QTextDocument::superScriptBaseline() const
+    \since 6.0
+
+    Returns the superscript's base line as a % of font height used in the document layout.
+
+    \sa setSuperScriptBaseline(), setSubScriptBaseline(), subScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+qreal QTextDocument::superScriptBaseline() const
+{
+    Q_D(const QTextDocument);
+    return d->formats.defaultTextFormat().superScriptBaseline();
+}
+
+/*!
+    \fn void QTextDocument::setSubScriptBaseline(qreal baseline)
+    \since 6.0
+
+    Sets the default subscript's base line as a % of font height to use in the document layout.
+    The default value is 16.67% (1/6 of height)
+
+    \sa subScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+void QTextDocument::setSubScriptBaseline(qreal baseline)
+{
+    Q_D(QTextDocument);
+    d->formats.setSubScriptBaseline(baseline);
+}
+
+/*!
+    \fn qreal QTextDocument::subScriptBaseline() const
+    \since 6.0
+
+    Returns the superscript's base line as a % of font height used in the document layout.
+
+    \sa setSubScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline(), setBaselineOffset(), baselineOffset()
+*/
+qreal QTextDocument::subScriptBaseline() const
+{
+    Q_D(const QTextDocument);
+    return d->formats.defaultTextFormat().subScriptBaseline();
+}
+
+/*!
+    \fn void QTextDocument::setBaselineOffset(qreal baseline)
+    \since 6.0
+
+    Sets the baseline (in % of height) to use in the document layout. The default value is 0.
+    A positive value moves up the text, by the corresponding %; a negative value moves it down.
+
+    \sa baselineOffset(), setSubScriptBaseline(), subScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline()
+*/
+void QTextDocument::setBaselineOffset(qreal baseline)
+{
+    Q_D(QTextDocument);
+    d->formats.setBaselineOffset(baseline);
+}
+
+/*!
+    \fn qreal QTextDocument::baselineOffset() const
+    \since 6.0
+
+    Returns the the baseline offset in % used in the document layout.
+
+    \sa setBaselineOffset(), setSubScriptBaseline(), subScriptBaseline(), setSuperScriptBaseline(), superScriptBaseline()
+*/
+qreal QTextDocument::baselineOffset() const
+{
+    Q_D(const QTextDocument);
+    return d->formats.defaultTextFormat().baselineOffset();
 }
 
 /*!
@@ -1831,10 +1918,13 @@ void QTextDocument::print(QPagedPaintDevice *printer) const
     QPagedPaintDevicePrivate *pd = QPagedPaintDevicePrivate::get(printer);
 
     // ### set page size to paginated size?
-    QPagedPaintDevice::Margins m = printer->margins();
-    if (!documentPaginated && m.left == 0. && m.right == 0. && m.top == 0. && m.bottom == 0.) {
-        m.left = m.right = m.top = m.bottom = 2.;
-        printer->setMargins(m);
+    QMarginsF m = printer->pageLayout().margins(QPageLayout::Millimeter);
+    if (!documentPaginated && m.left() == 0. && m.right() == 0. && m.top() == 0. && m.bottom() == 0.) {
+        m.setLeft(2);
+        m.setRight(2);
+        m.setTop(2);
+        m.setBottom(2);
+        printer->setPageMargins(m, QPageLayout::Millimeter);
     }
     // ### use the margins correctly
 
@@ -2221,7 +2311,7 @@ QString QTextHtmlExporter::toHtml(ExportMode mode)
         }
 
         html += QLatin1String(" font-weight:");
-        html += QString::number(defaultCharFormat.fontWeight() * 8);
+        html += QString::number(defaultCharFormat.fontWeight());
         html += QLatin1Char(';');
 
         html += QLatin1String(" font-style:");
@@ -2334,7 +2424,7 @@ bool QTextHtmlExporter::emitCharFormatStyle(const QTextCharFormat &format)
     if (format.hasProperty(QTextFormat::FontWeight)
         && format.fontWeight() != defaultCharFormat.fontWeight()) {
         html += QLatin1String(" font-weight:");
-        html += QString::number(format.fontWeight() * 8);
+        html += QString::number(format.fontWeight());
         html += QLatin1Char(';');
         attributesEmitted = true;
     }

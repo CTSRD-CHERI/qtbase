@@ -46,9 +46,7 @@
     1. offer QStringView, overload some functions taking QString with
     QStringView
 
-    2. like 1, but remove all overloads of functions taking QStringRef,
-    leaving only the function taking QStringView.  Do this only where
-    QStringRef overloads tradionally existed.
+    2. Obsolete: QStringRef and its overloads have been removed.
 
     3. like 2, but replace functions taking QString, too.
 */
@@ -71,7 +69,6 @@ Q_FORWARD_DECLARE_OBJC_CLASS(NSString);
 QT_BEGIN_NAMESPACE
 
 class QString;
-class QStringRef;
 class QStringView;
 class QRegularExpression;
 
@@ -113,7 +110,6 @@ struct IsContainerCompatibleWithQStringView<T, std::enable_if_t<std::conjunction
 
             // These need to be treated specially due to the empty vs null distinction
             std::negation<std::is_same<std::decay_t<T>, QString>>,
-            std::negation<std::is_same<std::decay_t<T>, QStringRef>>,
 
             // Don't make an accidental copy constructor
             std::negation<std::is_same<std::decay_t<T>, QStringView>>
@@ -146,7 +142,7 @@ private:
     using if_compatible_pointer = typename std::enable_if<QtPrivate::IsCompatiblePointer<Pointer>::value, bool>::type;
 
     template <typename T>
-    using if_compatible_qstring_like = typename std::enable_if<std::is_same<T, QString>::value || std::is_same<T, QStringRef>::value, bool>::type;
+    using if_compatible_qstring_like = typename std::enable_if<std::is_same<T, QString>::value, bool>::type;
 
     template <typename T>
     using if_compatible_container = typename std::enable_if<QtPrivate::IsContainerCompatibleWithQStringView<T>::value, bool>::type;
@@ -170,13 +166,13 @@ private:
     }
 
     template <typename Container>
-    static Q_DECL_CONSTEXPR qsizetype lengthHelperContainer(const Container &c) noexcept
+    static constexpr qsizetype lengthHelperContainer(const Container &c) noexcept
     {
         return qsizetype(std::size(c));
     }
 
     template <typename Char, size_t N>
-    static Q_DECL_CONSTEXPR qsizetype lengthHelperContainer(const Char (&)[N]) noexcept
+    static constexpr qsizetype lengthHelperContainer(const Char (&)[N]) noexcept
     {
         return qsizetype(N - 1);
     }
@@ -184,40 +180,39 @@ private:
     template <typename Char>
     static const storage_type *castHelper(const Char *str) noexcept
     { return reinterpret_cast<const storage_type*>(str); }
-    static Q_DECL_CONSTEXPR const storage_type *castHelper(const storage_type *str) noexcept
+    static constexpr const storage_type *castHelper(const storage_type *str) noexcept
     { return str; }
 
 public:
-    Q_DECL_CONSTEXPR QStringView() noexcept
+    constexpr QStringView() noexcept
         : m_size(0), m_data(nullptr) {}
-    Q_DECL_CONSTEXPR QStringView(std::nullptr_t) noexcept
+    constexpr QStringView(std::nullptr_t) noexcept
         : QStringView() {}
 
     template <typename Char, if_compatible_char<Char> = true>
-    Q_DECL_CONSTEXPR QStringView(const Char *str, qsizetype len)
+    constexpr QStringView(const Char *str, qsizetype len)
         : m_size((Q_ASSERT(len >= 0), Q_ASSERT(str || !len), len)),
           m_data(castHelper(str)) {}
 
     template <typename Char, if_compatible_char<Char> = true>
-    Q_DECL_CONSTEXPR QStringView(const Char *f, const Char *l)
+    constexpr QStringView(const Char *f, const Char *l)
         : QStringView(f, l - f) {}
 
 #ifdef Q_CLANG_QDOC
     template <typename Char, size_t N>
-    Q_DECL_CONSTEXPR QStringView(const Char (&array)[N]) noexcept;
+    constexpr QStringView(const Char (&array)[N]) noexcept;
 
     template <typename Char>
-    Q_DECL_CONSTEXPR QStringView(const Char *str) noexcept;
+    constexpr QStringView(const Char *str) noexcept;
 #else
 
     template <typename Pointer, if_compatible_pointer<Pointer> = true>
-    Q_DECL_CONSTEXPR QStringView(const Pointer &str) noexcept
+    constexpr QStringView(const Pointer &str) noexcept
         : QStringView(str, str ? lengthHelperPointer(str) : 0) {}
 #endif
 
 #ifdef Q_CLANG_QDOC
     QStringView(const QString &str) noexcept;
-    QStringView(const QStringRef &str) noexcept;
 #else
     template <typename String, if_compatible_qstring_like<String> = true>
     QStringView(const String &str) noexcept
@@ -225,7 +220,7 @@ public:
 #endif
 
     template <typename Container, if_compatible_container<Container> = true>
-    Q_DECL_CONSTEXPR QStringView(const Container &c) noexcept
+    constexpr QStringView(const Container &c) noexcept
         : QStringView(std::data(c), lengthHelperContainer(c)) {}
 
     Q_REQUIRED_RESULT inline QString toString() const; // defined in qstring.h
@@ -235,12 +230,12 @@ public:
     Q_REQUIRED_RESULT Q_CORE_EXPORT NSString *toNSString() const Q_DECL_NS_RETURNS_AUTORELEASED;
 #endif
 
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR qsizetype size() const noexcept { return m_size; }
+    Q_REQUIRED_RESULT constexpr qsizetype size() const noexcept { return m_size; }
     Q_REQUIRED_RESULT const_pointer data() const noexcept { return reinterpret_cast<const_pointer>(m_data); }
     Q_REQUIRED_RESULT const_pointer constData() const noexcept { return data(); }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR const storage_type *utf16() const noexcept { return m_data; }
+    Q_REQUIRED_RESULT constexpr const storage_type *utf16() const noexcept { return m_data; }
 
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QChar operator[](qsizetype n) const
+    Q_REQUIRED_RESULT constexpr QChar operator[](qsizetype n) const
     { return Q_ASSERT(n >= 0), Q_ASSERT(n < size()), QChar(m_data[n]); }
 
     //
@@ -255,7 +250,7 @@ public:
     Q_REQUIRED_RESULT QByteArray toLocal8Bit() const { return QtPrivate::convertToLocal8Bit(*this); }
     Q_REQUIRED_RESULT inline QList<uint> toUcs4() const; // defined in qlist.h
 
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QChar at(qsizetype n) const { return (*this)[n]; }
+    Q_REQUIRED_RESULT constexpr QChar at(qsizetype n) const { return (*this)[n]; }
 
     Q_REQUIRED_RESULT constexpr QStringView mid(qsizetype pos, qsizetype n = -1) const
     {
@@ -284,12 +279,12 @@ public:
     { Q_ASSERT(pos >= 0); Q_ASSERT(pos <= size()); return QStringView(m_data + pos, size() - pos); }
     Q_REQUIRED_RESULT constexpr QStringView sliced(qsizetype pos, qsizetype n) const
     { Q_ASSERT(pos >= 0); Q_ASSERT(n >= 0); Q_ASSERT(size_t(pos) + size_t(n) <= size_t(size())); return QStringView(m_data + pos, n); }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QStringView chopped(qsizetype n) const
+    Q_REQUIRED_RESULT constexpr QStringView chopped(qsizetype n) const
     { return Q_ASSERT(n >= 0), Q_ASSERT(n <= size()), QStringView(m_data, m_size - n); }
 
-    Q_DECL_RELAXED_CONSTEXPR void truncate(qsizetype n)
+    constexpr void truncate(qsizetype n)
     { Q_ASSERT(n >= 0); Q_ASSERT(n <= size()); m_size = n; }
-    Q_DECL_RELAXED_CONSTEXPR void chop(qsizetype n)
+    constexpr void chop(qsizetype n)
     { Q_ASSERT(n >= 0); Q_ASSERT(n <= size()); m_size -= n; }
 
     Q_REQUIRED_RESULT QStringView trimmed() const noexcept { return QtPrivate::trimmed(*this); }
@@ -303,7 +298,7 @@ public:
     Q_REQUIRED_RESULT int compare(QStringView other, Qt::CaseSensitivity cs = Qt::CaseSensitive) const noexcept
     { return QtPrivate::compareStrings(*this, other, cs); }
     Q_REQUIRED_RESULT inline int compare(QLatin1String other, Qt::CaseSensitivity cs = Qt::CaseSensitive) const noexcept;
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR int compare(QChar c) const noexcept
+    Q_REQUIRED_RESULT constexpr int compare(QChar c) const noexcept
     { return size() >= 1 ? compare_single_char_helper(*utf16() - c.unicode()) : -1; }
     Q_REQUIRED_RESULT int compare(QChar c, Qt::CaseSensitivity cs) const noexcept
     { return QtPrivate::compareStrings(*this, QStringView(&c, 1), cs); }
@@ -363,7 +358,7 @@ public:
     Q_REQUIRED_RESULT Q_CORE_EXPORT float toFloat(bool *ok = nullptr) const;
     Q_REQUIRED_RESULT Q_CORE_EXPORT double toDouble(bool *ok = nullptr) const;
 
-    Q_REQUIRED_RESULT inline int toWCharArray(wchar_t *array) const; // defined in qstring.h
+    Q_REQUIRED_RESULT inline qsizetype toWCharArray(wchar_t *array) const; // defined in qstring.h
 
 
     Q_REQUIRED_RESULT Q_CORE_EXPORT
@@ -392,30 +387,30 @@ public:
     Q_REQUIRED_RESULT const_reverse_iterator crbegin() const noexcept { return rbegin(); }
     Q_REQUIRED_RESULT const_reverse_iterator crend()   const noexcept { return rend(); }
 
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR bool empty() const noexcept { return size() == 0; }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QChar front() const { return Q_ASSERT(!empty()), QChar(m_data[0]); }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QChar back()  const { return Q_ASSERT(!empty()), QChar(m_data[m_size - 1]); }
+    Q_REQUIRED_RESULT constexpr bool empty() const noexcept { return size() == 0; }
+    Q_REQUIRED_RESULT constexpr QChar front() const { return Q_ASSERT(!empty()), QChar(m_data[0]); }
+    Q_REQUIRED_RESULT constexpr QChar back()  const { return Q_ASSERT(!empty()), QChar(m_data[m_size - 1]); }
 
     //
     // Qt compatibility API:
     //
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR bool isNull() const noexcept { return !m_data; }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR bool isEmpty() const noexcept { return empty(); }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR int length() const /* not nothrow! */
+    Q_REQUIRED_RESULT constexpr bool isNull() const noexcept { return !m_data; }
+    Q_REQUIRED_RESULT constexpr bool isEmpty() const noexcept { return empty(); }
+    Q_REQUIRED_RESULT constexpr int length() const /* not nothrow! */
     { return Q_ASSERT(int(size()) == size()), int(size()); }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QChar first() const { return front(); }
-    Q_REQUIRED_RESULT Q_DECL_CONSTEXPR QChar last()  const { return back(); }
+    Q_REQUIRED_RESULT constexpr QChar first() const { return front(); }
+    Q_REQUIRED_RESULT constexpr QChar last()  const { return back(); }
 private:
     qsizetype m_size;
     const storage_type *m_data;
 
-    Q_DECL_CONSTEXPR int compare_single_char_helper(int diff) const noexcept
+    constexpr int compare_single_char_helper(int diff) const noexcept
     { return diff ? diff : size() > 1 ? 1 : 0; }
 };
 Q_DECLARE_TYPEINFO(QStringView, Q_PRIMITIVE_TYPE);
 
 template <typename QStringLike, typename std::enable_if<
-    std::is_same<QStringLike, QString>::value || std::is_same<QStringLike, QStringRef>::value,
+    std::is_same<QStringLike, QString>::value,
     bool>::type = true>
 inline QStringView qToStringViewIgnoringNull(const QStringLike &s) noexcept
 { return QStringView(s.data(), s.size()); }

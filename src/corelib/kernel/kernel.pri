@@ -12,6 +12,7 @@ HEADERS += \
         kernel/qcorecmdlineargs_p.h \
         kernel/qcoreapplication.h \
         kernel/qcoreevent.h \
+        kernel/qmetacontainer.h \
         kernel/qmetaobject.h \
         kernel/qmetatype.h \
         kernel/qmimedata.h \
@@ -42,7 +43,6 @@ HEADERS += \
         kernel/qmath.h \
         kernel/qsystemerror_p.h \
         kernel/qmetatype_p.h \
-        kernel/qmetatypeswitcher_p.h \
         kernel/qtestsupport_core.h \
         kernel/qproperty.h \
         kernel/qpropertyprivate.h \
@@ -57,6 +57,7 @@ SOURCES += \
         kernel/qeventloop.cpp \
         kernel/qcoreapplication.cpp \
         kernel/qcoreevent.cpp \
+        kernel/qmetacontainer.cpp \
         kernel/qmetaobject.cpp \
         kernel/qmetatype.cpp \
         kernel/qmetaobjectbuilder.cpp \

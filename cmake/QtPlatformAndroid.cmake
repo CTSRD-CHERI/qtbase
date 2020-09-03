@@ -131,6 +131,15 @@ define_property(TARGET
 
 define_property(TARGET
     PROPERTY
+        QT_ANDROID_APPLICATION_ARGUMENTS
+    BRIEF_DOCS
+        "This variable can be used to specify command-line arguments to the Android app."
+    FULL_DOCS
+        "Specifies extra command-line arguments to the Android app using the AndroidManifest.xml with the tag android.app.arguments."
+)
+
+define_property(TARGET
+    PROPERTY
         QT_ANDROID_DEPLOYMENT_SETTINGS_FILE
     BRIEF_DOCS
         " "
@@ -286,6 +295,10 @@ endif()
     string(APPEND file_contents
         "   \"application-binary\": \"${target_output_name}\",\n")
 
+    # App command-line arguments
+    string(APPEND file_contents
+        "   \"android-application-arguments\": \"${QT_ANDROID_APPLICATION_ARGUMENTS}\",\n")
+
     # Override qmlimportscanner binary path
     set(qml_importscanner_binary_path "${QT_HOST_PATH}/bin/qmlimportscanner")
     if (WIN32)
@@ -350,10 +363,8 @@ function(qt_android_add_apk_target target)
     )
 endfunction()
 
-
 # Add a test for Android which will be run by the android test runner tool
 function(qt_android_add_test target)
-
     set(deployment_tool "${QT_HOST_PATH}/bin/androiddeployqt")
     set(test_runner "${QT_HOST_PATH}/bin/androidtestrunner")
 

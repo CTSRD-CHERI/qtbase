@@ -155,7 +155,7 @@ struct QRandomGenerator::SystemGenerator
             qt_safe_close(fd);
     }
 
-    Q_DECL_CONSTEXPR SystemGenerator() : fdp1 Q_BASIC_ATOMIC_INITIALIZER(0) {}
+    constexpr SystemGenerator() : fdp1 Q_BASIC_ATOMIC_INITIALIZER(0) {}
 
     qsizetype fillBuffer(void *buffer, qsizetype count)
     {
@@ -595,7 +595,7 @@ inline QRandomGenerator::SystemGenerator &QRandomGenerator::SystemGenerator::sel
 
     \snippet code/src_corelib_global_qrandom.cpp 3
 
-    \sa QRandomGenerator64, qrand()
+    \sa QRandomGenerator64
  */
 
 /*!
@@ -1057,7 +1057,7 @@ inline QRandomGenerator::SystemGenerator &QRandomGenerator::SystemGenerator::sel
     \sa QRandomGenerator::generate(), QRandomGenerator::generate64()
  */
 
-Q_DECL_CONSTEXPR QRandomGenerator::Storage::Storage()
+constexpr QRandomGenerator::Storage::Storage()
     : dummy(0)
 {
     // nothing
@@ -1215,89 +1215,6 @@ struct QRandEngine
         engine.seed(q);
     }
 };
-}
-
-#if defined(Q_OS_WIN)
-// On Windows srand() and rand() already use Thread-Local-Storage
-// to store the seed between calls
-static inline QRandEngine *randTLS()
-{
-    return nullptr;
-}
-#elif defined(Q_COMPILER_THREAD_LOCAL)
-static inline QRandEngine *randTLS()
-{
-    thread_local QRandEngine r;
-    return &r;
-}
-#else
-Q_GLOBAL_STATIC(QThreadStorage<QRandEngine>, g_randTLS)
-static inline QRandEngine *randTLS()
-{
-    auto tls = g_randTLS();
-    if (!tls)
-        return nullptr;
-    return &tls->localData();
-
-}
-#endif
-
-/*!
-    \relates <QtGlobal>
-    \deprecated
-    \since 4.2
-
-    Thread-safe version of the standard C++ \c srand() function.
-
-    Sets the argument \a newSeed to be used to generate a new random number sequence of
-    pseudo random integers to be returned by qrand().
-
-    The sequence of random numbers generated is deterministic per thread. For example,
-    if two threads call qsrand(1) and subsequently call qrand(), the threads will get
-    the same random number sequence.
-
-    \note This function is deprecated. In new applications, use
-    QRandomGenerator instead.
-
-    \sa qrand(), QRandomGenerator
-*/
-void qsrand(uint newSeed)
-{
-    auto prng = randTLS();
-    if (prng)
-        prng->seed(newSeed);
-    else
-        srand(newSeed);
-}
-
-/*!
-    \relates <QtGlobal>
-    \deprecated
-    \since 4.2
-
-    Thread-safe version of the standard C++ \c rand() function.
-
-    Returns a value between 0 and \c RAND_MAX (defined in \c <cstdlib> and
-    \c <stdlib.h>), the next number in the current sequence of pseudo-random
-    integers.
-
-    Use \c qsrand() to initialize the pseudo-random number generator with a
-    seed value. Seeding must be performed at least once on each thread. If that
-    step is skipped, then the sequence will be pre-seeded with a constant
-    value.
-
-    \note This function is deprecated. In new applications, use
-    QRandomGenerator instead.
-
-    \sa qsrand(), QRandomGenerator
-*/
-int qrand()
-{
-    auto prng = randTLS();
-    if (prng)
-        return prng->generate();
-    else
-        return rand();
 }
 
 QT_END_NAMESPACE

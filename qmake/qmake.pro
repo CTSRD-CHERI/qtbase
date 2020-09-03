@@ -144,11 +144,11 @@ SOURCES += \
     qjsonparser.cpp \
     qjsonvalue.cpp \
     qlibraryinfo.cpp \
-    qlist.cpp \
     qlocale.cpp \
     qlocale_tools.cpp \
     qlogging.cpp \
     qmalloc.cpp \
+    qmetacontainer.cpp \
     qmetatype.cpp \
     qnumeric.cpp \
     qregularexpression.cpp \
@@ -182,6 +182,7 @@ HEADERS += \
     qcborvalue.h \
     qcborvalue_p.h \
     qchar.h \
+    qcontainerinfo.h \
     qcryptographichash.h \
     qdatetime.h \
     qdatetime_p.h \
@@ -205,6 +206,7 @@ HEADERS += \
     qlocale.h \
     qlocale_tools_p.h \
     qmap.h \
+    qmetacontainer.h \
     qmetatype.h \
     qnumeric.h \
     qregularexpression.h \

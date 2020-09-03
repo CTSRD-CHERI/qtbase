@@ -136,7 +136,8 @@ QPagedPaintDevicePrivate *QPagedPaintDevice::dd()
     \enum QPagedPaintDevice::PageSize
 
     This enum type lists the available page sizes as defined in the Postscript
-    PPD standard.  These values are duplicated in QPageSize and QPrinter.
+    PPD standard.  These values are duplicated in QPageSize and QPrinter and
+    those types and enum will be merged in Qt 6.
 
     The defined sizes are:
 
@@ -315,6 +316,7 @@ QPagedPaintDevice::PageSize QPagedPaintDevice::pageSize() const
 }
 
 /*!
+    \obsolete Use setPageSize(QPageSize) instead.
     Sets the page size to \a size. \a size is specified in millimeters.
 
     If the size matches a standard QPagedPaintDevice::PageSize then that page
@@ -326,6 +328,8 @@ void QPagedPaintDevice::setPageSizeMM(const QSizeF &size)
 }
 
 /*!
+  \obsolete Use pageLayout().pageSize() instead.
+
   Returns the page size in millimeters.
   */
 QSizeF QPagedPaintDevice::pageSizeMM() const
@@ -334,6 +338,7 @@ QSizeF QPagedPaintDevice::pageSizeMM() const
 }
 
 /*!
+  \obsolete Use setPageMargins(QMarginsF, QPageLayout::Unit) instead.
   Sets the margins to be used to \a margins.
 
   Margins are specified in millimeters.
@@ -343,27 +348,22 @@ QSizeF QPagedPaintDevice::pageSizeMM() const
 
   \sa margins()
   */
-void QPagedPaintDevice::setMargins(const Margins &margins)
+void QPagedPaintDevice::setMargins(const QMarginsF &margins)
 {
-    d->setPageMargins(QMarginsF(margins.left, margins.top, margins.right, margins.bottom), QPageLayout::Millimeter);
+    d->setPageMargins(margins, QPageLayout::Millimeter);
 }
 
 /*!
+  \obsolete Use pageLayout().margins() instead.
   Returns the current margins of the paint device. The default is 0.
 
   Margins are specified in millimeters.
 
   \sa setMargins()
   */
-QPagedPaintDevice::Margins QPagedPaintDevice::margins() const
+QMarginsF QPagedPaintDevice::margins() const
 {
-    QMarginsF margins = d->pageLayout().margins(QPageLayout::Millimeter);
-    Margins result;
-    result.left = margins.left();
-    result.top = margins.top();
-    result.right = margins.right();
-    result.bottom = margins.bottom();
-    return result;
+    return d->pageLayout().margins(QPageLayout::Millimeter);
 }
 
 /*!

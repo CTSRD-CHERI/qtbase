@@ -1,6 +1,10 @@
-SOURCES     = main.cpp \
-              mainwindow.cpp \
-              xmlwriter.cpp
-HEADERS     = mainwindow.h \
-              xmlwriter.h
-QT          += xml
+TEMPLATE = lib
+TARGET = textdocument-tables_snippets
+QT += core gui widgets
+
+HEADERS = \
+    mainwindow.h
+
+SOURCES = \
+    main.cpp \
+    mainwindow.cpp

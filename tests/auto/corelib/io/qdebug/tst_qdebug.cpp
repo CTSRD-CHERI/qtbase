@@ -35,6 +35,14 @@
 #include <QtConcurrentRun>
 #include <QFutureSynchronizer>
 
+static_assert(QTypeTraits::has_ostream_operator_v<QDebug, int>);
+static_assert(QTypeTraits::has_ostream_operator_v<QDebug, QList<int>>);
+static_assert(QTypeTraits::has_ostream_operator_v<QDebug, QMap<int, QString>>);
+struct NonStreamable {};
+static_assert(!QTypeTraits::has_ostream_operator_v<QDebug, NonStreamable>);
+static_assert(!QTypeTraits::has_ostream_operator_v<QDebug, QList<NonStreamable>>);
+static_assert(!QTypeTraits::has_ostream_operator_v<QDebug, QMap<int, NonStreamable>>);
+
 class tst_QDebug: public QObject
 {
     Q_OBJECT
@@ -58,7 +66,6 @@ private slots:
     void veryLongWarningMessage() const;
     void qDebugQChar() const;
     void qDebugQString() const;
-    void qDebugQStringRef() const;
     void qDebugQStringView() const;
     void qDebugQLatin1String() const;
     void qDebugQByteArray() const;
@@ -430,7 +437,7 @@ void tst_QDebug::qDebugQString() const
         QString file, function;
         int line = 0;
         const QString in(QLatin1String("input"));
-        const QStringRef inRef(&in);
+        const QStringView inRef{ in };
 
         MessageHandlerSetter mhs(myMessageHandler);
         { qDebug() << inRef; }
@@ -499,47 +506,6 @@ void tst_QDebug::qDebugQString() const
     string = QString::fromUtf16(utf16);
     qDebug() << string;
     QCOMPARE(s_msg, QString("\"\\uDC00\\uD800x\\uD800\""));
-}
-
-void tst_QDebug::qDebugQStringRef() const
-{
-    /* Use a basic string. */
-    {
-        QString file, function;
-        int line = 0;
-        const QString in(QLatin1String("input"));
-        const QStringRef inRef(&in);
-
-        MessageHandlerSetter mhs(myMessageHandler);
-        { qDebug() << inRef; }
-#ifndef QT_NO_MESSAGELOGCONTEXT
-        file = __FILE__; line = __LINE__ - 2; function = Q_FUNC_INFO;
-#endif
-        QCOMPARE(s_msgType, QtDebugMsg);
-        QCOMPARE(s_msg, QString::fromLatin1("\"input\""));
-        QCOMPARE(QString::fromLatin1(s_file), file);
-        QCOMPARE(s_line, line);
-        QCOMPARE(QString::fromLatin1(s_function), function);
-    }
-
-    /* Use a null QStringRef. */
-    {
-        QString file, function;
-        int line = 0;
-
-        const QStringRef inRef;
-
-        MessageHandlerSetter mhs(myMessageHandler);
-        { qDebug() << inRef; }
-#ifndef QT_NO_MESSAGELOGCONTEXT
-        file = __FILE__; line = __LINE__ - 2; function = Q_FUNC_INFO;
-#endif
-        QCOMPARE(s_msgType, QtDebugMsg);
-        QCOMPARE(s_msg, QString::fromLatin1("\"\""));
-        QCOMPARE(QString::fromLatin1(s_file), file);
-        QCOMPARE(s_line, line);
-        QCOMPARE(QString::fromLatin1(s_function), function);
-    }
 }
 
 void tst_QDebug::qDebugQStringView() const

@@ -754,8 +754,6 @@ void QDockWidgetPrivate::updateButtons()
     button->setAccessibleName(QDockWidget::tr("Close"));
     button->setAccessibleDescription(QDockWidget::tr("Closes the dock widget"));
 #endif
-    q->setAttribute(Qt::WA_ContentsPropagated,
-                    (canFloat || canClose) && !hideButtons);
 
     layout->invalidate();
 }
@@ -1588,8 +1586,8 @@ bool QDockWidget::event(QEvent *event)
 
         // Usually the window won't get resized while it's being moved, but it can happen,
         // for example on Windows when moving to a screen with bigger scale factor
-        // (and Qt::AA_EnableHighDpiScaling is enabled). If that happens we should
-        // update state->pressPos, otherwise it will be outside the window when the window shrinks.
+        // If that happens we should update state->pressPos, otherwise it will be outside
+        // the window when the window shrinks.
         if (d->state && d->state->dragging)
             d->recalculatePressPos(static_cast<QResizeEvent*>(event));
         break;

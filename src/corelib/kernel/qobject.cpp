@@ -95,28 +95,29 @@ QAbstractDynamicMetaObject::~QAbstractDynamicMetaObject()
 {
 }
 
-static int *queuedConnectionTypes(const QList<QByteArray> &typeNames)
+static int *queuedConnectionTypes(const QMetaMethod& method)
 {
-    int *types = new int [typeNames.count() + 1];
-    Q_CHECK_PTR(types);
-    for (int i = 0; i < typeNames.count(); ++i) {
-        const QByteArray typeName = typeNames.at(i);
-        if (typeName.endsWith('*'))
-            types[i] = QMetaType::VoidStar;
+    const auto parameterCount = method.parameterCount();
+    int *typeIds = new int [parameterCount + 1];
+    Q_CHECK_PTR(typeIds);
+    for (int i = 0; i < parameterCount; ++i) {
+        const QMetaType metaType = method.parameterMetaType(i);
+        if (metaType.flags() & QMetaType::IsPointer)
+            typeIds[i] = QMetaType::VoidStar;
         else
-            types[i] = QMetaType::type(typeName);
-
-        if (!types[i]) {
+            typeIds[i] = metaType.id();
+        if (!typeIds[i]) {
+            const QByteArray typeName = method.parameterTypeName(i);
             qWarning("QObject::connect: Cannot queue arguments of type '%s'\n"
                      "(Make sure '%s' is registered using qRegisterMetaType().)",
                      typeName.constData(), typeName.constData());
-            delete [] types;
+            delete [] typeIds;
             return nullptr;
         }
     }
-    types[typeNames.count()] = 0;
+    typeIds[parameterCount] = 0;
 
-    return types;
+    return typeIds;
 }
 
 static int *queuedConnectionTypes(const QArgumentType *argumentTypes, int argc)
@@ -129,7 +130,7 @@ static int *queuedConnectionTypes(const QArgumentType *argumentTypes, int argc)
         else if (type.name().endsWith('*'))
             types[i] = QMetaType::VoidStar;
         else
-            types[i] = QMetaType::type(type.name());
+            types[i] = QMetaType::fromName(type.name()).id();
 
         if (!types[i]) {
             qWarning("QObject::connect: Cannot queue arguments of type '%s'\n"
@@ -506,7 +507,7 @@ inline void QMetaCallEvent::allocArgs()
     if (!d.nargs_)
         return;
 
-    constexpr size_t each = sizeof(void*) + sizeof(int);
+    constexpr size_t each = sizeof(void*) + sizeof(QMetaType);
     void *const memory = d.nargs_ * each > sizeof(prealloc_) ?
         calloc(d.nargs_, each) : prealloc_;
 
@@ -588,10 +589,10 @@ QMetaCallEvent::QMetaCallEvent(QtPrivate::QSlotObjectBase *slotO,
 QMetaCallEvent::~QMetaCallEvent()
 {
     if (d.nargs_) {
-        int *typeIDs = types();
+        QMetaType *t = types();
         for (int i = 0; i < d.nargs_; ++i) {
-            if (typeIDs[i] && d.args_[i])
-                QMetaType::destroy(typeIDs[i], d.args_[i]);
+            if (t[i].isValid() && d.args_[i])
+                t[i].destroy(d.args_[i]);
         }
         if (reinterpret_cast<void*>(d.args_) != reinterpret_cast<void*>(prealloc_))
             free(d.args_);
@@ -1531,6 +1532,10 @@ void QObject::moveToThread(QThread *targetThread)
         qWarning("QObject::moveToThread: Widgets cannot be moved to a new thread");
         return;
     }
+    if (!d->bindingStorage.isEmpty()) {
+        qWarning("QObject::moveToThread: Can not move objects that contain bindings or are used in bindings to a new thread.");
+        return;
+    }
 
     QThreadData *currentData = QThreadData::current();
     QThreadData *targetData = targetThread ? QThreadData::get2(targetThread) : nullptr;
@@ -2274,33 +2279,6 @@ void QObject::deleteLater()
     \sa QCoreApplication::translate(), {Internationalization with Qt}
 */
 
-/*!
-    \fn QString QObject::trUtf8(const char *sourceText, const char *disambiguation, int n)
-    \reentrant
-    \obsolete
-
-    Returns a translated version of \a sourceText, or
-    QString::fromUtf8(\a sourceText) if there is no appropriate
-    version. It is otherwise identical to tr(\a sourceText, \a
-    disambiguation, \a n).
-
-    \warning This method is reentrant only if all translators are
-    installed \e before calling this method. Installing or removing
-    translators while performing translations is not supported. Doing
-    so will probably result in crashes or other undesirable behavior.
-
-    \warning For portability reasons, we recommend that you use
-    escape sequences for specifying non-ASCII characters in string
-    literals to trUtf8(). For example:
-
-    \snippet code/src_corelib_kernel_qobject.cpp 20
-
-    \sa tr(), QCoreApplication::translate(), {Internationalization with Qt}
-*/
-
-
-
-
 /*****************************************************************************
   Signals and slots
  *****************************************************************************/
@@ -2898,7 +2876,7 @@ QMetaObject::Connection QObject::connect(const QObject *sender, const QMetaMetho
 
     int *types = nullptr;
     if ((type == Qt::QueuedConnection)
-            && !(types = queuedConnectionTypes(signal.parameterTypes())))
+            && !(types = queuedConnectionTypes(signal)))
         return QMetaObject::Connection(nullptr);
 
 #ifndef QT_NO_DEBUG
@@ -3351,8 +3329,14 @@ QObjectPrivate::Connection *QMetaObjectPrivate::connect(const QObject *sender,
                 c2 = c2->nextConnectionList.loadRelaxed();
             }
         }
-        type &= Qt::UniqueConnection - 1;
     }
+    type &= ~Qt::UniqueConnection;
+
+    const bool isSingleShot = type & Qt::SingleShotConnection;
+    type &= ~Qt::SingleShotConnection;
+
+    Q_ASSERT(type >= 0);
+    Q_ASSERT(type <= 3);
 
     std::unique_ptr<QObjectPrivate::Connection> c{new QObjectPrivate::Connection};
     c->sender = s;
@@ -3367,6 +3351,7 @@ QObjectPrivate::Connection *QMetaObjectPrivate::connect(const QObject *sender,
     c->isSlotObject = false;
     c->argumentTypes.storeRelaxed(types);
     c->callFunction = callFunction;
+    c->isSingleShot = isSingleShot;
 
     QObjectPrivate::get(s)->addConnection(signal_index, c.get());
 
@@ -3642,7 +3627,7 @@ static void queued_activate(QObject *sender, int signal, QObjectPrivate::Connect
     const int *argumentTypes = c->argumentTypes.loadRelaxed();
     if (!argumentTypes) {
         QMetaMethod m = QMetaObjectPrivate::signal(sender->metaObject(), signal);
-        argumentTypes = queuedConnectionTypes(m.parameterTypes());
+        argumentTypes = queuedConnectionTypes(m);
         if (!argumentTypes) // cannot queue arguments
             argumentTypes = &DIRECT_CONNECTION_ONLY;
         if (!c->argumentTypes.testAndSetOrdered(nullptr, argumentTypes)) {
@@ -3658,7 +3643,8 @@ static void queued_activate(QObject *sender, int signal, QObjectPrivate::Connect
         ++nargs;
 
     QBasicMutexLocker locker(signalSlotLock(c->receiver.loadRelaxed()));
-    if (!c->receiver.loadRelaxed()) {
+    QObject *receiver = c->receiver.loadRelaxed();
+    if (!receiver) {
         // the connection has been disconnected before we got the lock
         return;
     }
@@ -3671,30 +3657,35 @@ static void queued_activate(QObject *sender, int signal, QObjectPrivate::Connect
         new QMetaCallEvent(c->method_offset, c->method_relative, c->callFunction, sender, signal, nargs);
 
     void **args = ev->args();
-    int *types = ev->types();
+    QMetaType *types = ev->types();
 
-    types[0] = 0; // return type
+    types[0] = QMetaType(); // return type
     args[0] = nullptr; // return value
 
     if (nargs > 1) {
         for (int n = 1; n < nargs; ++n)
-            types[n] = argumentTypes[n-1];
+            types[n] = QMetaType(argumentTypes[n-1]);
 
         for (int n = 1; n < nargs; ++n)
-            args[n] = QMetaType::create(types[n], argv[n]);
+            args[n] = types[n].create(argv[n]);
+    }
+
+    if (c->isSingleShot && !QObjectPrivate::disconnect(c)) {
+        delete ev;
+        return;
     }
 
     locker.relock();
     if (c->isSlotObject)
         c->slotObj->destroyIfLastRef();
-    if (!c->receiver.loadRelaxed()) {
+    if (!c->isSingleShot && !c->receiver.loadRelaxed()) {
         // the connection has been disconnected while we were unlocked
         locker.unlock();
         delete ev;
         return;
     }
 
-    QCoreApplication::postEvent(c->receiver.loadRelaxed(), ev);
+    QCoreApplication::postEvent(receiver, ev);
 }
 
 template <bool callbacks_enabled>
@@ -3788,10 +3779,14 @@ void doActivate(QObject *sender, int signal_index, void **argv)
                     sender->metaObject()->className(), sender,
                     receiver->metaObject()->className(), receiver);
                 }
+
+                if (c->isSingleShot && !QObjectPrivate::disconnect(c))
+                    continue;
+
                 QSemaphore semaphore;
                 {
-                    QBasicMutexLocker locker(signalSlotLock(sender));
-                    if (!c->receiver.loadAcquire())
+                    QBasicMutexLocker locker(signalSlotLock(receiver));
+                    if (!c->isSingleShot && !c->receiver.loadAcquire())
                         continue;
                     QMetaCallEvent *ev = c->isSlotObject ?
                         new QMetaCallEvent(c->slotObj, sender, signal_index, argv, &semaphore) :
@@ -3803,6 +3798,9 @@ void doActivate(QObject *sender, int signal_index, void **argv)
                 continue;
 #endif
             }
+
+            if (c->isSingleShot && !QObjectPrivate::disconnect(c))
+                continue;
 
             QObjectPrivate::Sender senderData(receiverInSameThread ? receiver : nullptr, sender, signal_index);
 
@@ -4050,6 +4048,24 @@ QList<QByteArray> QObject::dynamicPropertyNames() const
     if (d->extraData)
         return d->extraData->propertyNames;
     return QList<QByteArray>();
+}
+
+/*!
+    \internal
+*/
+QBindingStorage *QObject::bindingStorage()
+{
+    Q_D(QObject);
+    return &d->bindingStorage;
+}
+
+/*!
+    \internal
+*/
+const QBindingStorage *QObject::bindingStorage() const
+{
+    Q_D(const QObject);
+    return &d->bindingStorage;
 }
 
 #endif // QT_NO_PROPERTIES
@@ -4764,9 +4780,8 @@ void qDeleteInEventHandler(QObject *o)
     The signal must be a function declared as a signal in the header.
     The slot function can be any function or functor that can be connected
     to the signal.
-    A function can be connected to a given signal if the signal has at
-    least as many argument as the slot. A functor can be connected to a signal
-    if they have exactly the same number of arguments. There must exist implicit
+    A slot function can be connected to a given signal if the signal has at
+    least as many arguments as the slot function. There must exist implicit
     conversion between the types of the corresponding arguments in the
     signal and the slot.
 
@@ -4804,9 +4819,8 @@ void qDeleteInEventHandler(QObject *o)
     The signal must be a function declared as a signal in the header.
     The slot function can be any function or functor that can be connected
     to the signal.
-    A function can be connected to a given signal if the signal has at
-    least as many argument as the slot. A functor can be connected to a signal
-    if they have exactly the same number of arguments. There must exist implicit
+    A slot function can be connected to a given signal if the signal has at
+    least as many arguments as the slot function. There must exist implicit
     conversion between the types of the corresponding arguments in the
     signal and the slot.
 
@@ -4883,7 +4897,7 @@ QMetaObject::Connection QObject::connectImpl(const QObject *sender, void **signa
  */
 QMetaObject::Connection QObjectPrivate::connectImpl(const QObject *sender, int signal_index,
                                              const QObject *receiver, void **slot,
-                                             QtPrivate::QSlotObjectBase *slotObj, Qt::ConnectionType type,
+                                             QtPrivate::QSlotObjectBase *slotObj, int type,
                                              const int *types, const QMetaObject *senderMetaObject)
 {
     if (!sender || !receiver || !slotObj || !senderMetaObject) {
@@ -4917,8 +4931,14 @@ QMetaObject::Connection QObjectPrivate::connectImpl(const QObject *sender, int s
                 c2 = c2->nextConnectionList.loadRelaxed();
             }
         }
-        type = static_cast<Qt::ConnectionType>(type ^ Qt::UniqueConnection);
     }
+    type &= ~Qt::UniqueConnection;
+
+    const bool isSingleShot = type & Qt::SingleShotConnection;
+    type &= ~Qt::SingleShotConnection;
+
+    Q_ASSERT(type >= 0);
+    Q_ASSERT(type <= 3);
 
     std::unique_ptr<QObjectPrivate::Connection> c{new QObjectPrivate::Connection};
     c->sender = s;
@@ -4934,6 +4954,7 @@ QMetaObject::Connection QObjectPrivate::connectImpl(const QObject *sender, int s
         c->argumentTypes.storeRelaxed(types);
         c->ownArgumentTypes = false;
     }
+    c->isSingleShot = isSingleShot;
 
     QObjectPrivate::get(s)->addConnection(signal_index, c.get());
     QMetaObject::Connection ret(c.release());
@@ -4957,39 +4978,12 @@ QMetaObject::Connection QObjectPrivate::connectImpl(const QObject *sender, int s
 bool QObject::disconnect(const QMetaObject::Connection &connection)
 {
     QObjectPrivate::Connection *c = static_cast<QObjectPrivate::Connection *>(connection.d_ptr);
-
-    if (!c)
-        return false;
-    QObject *receiver = c->receiver.loadRelaxed();
-    if (!receiver)
-        return false;
-
-    QBasicMutex *senderMutex = signalSlotLock(c->sender);
-    QBasicMutex *receiverMutex = signalSlotLock(receiver);
-
-    QObjectPrivate::ConnectionData *connections;
-    {
-        QOrderedMutexLocker locker(senderMutex, receiverMutex);
-
-        // load receiver once again and recheck to ensure nobody else has removed the connection in the meantime
-        receiver = c->receiver.loadRelaxed();
-        if (!receiver)
-            return false;
-
-        connections = QObjectPrivate::get(c->sender)->connections.loadRelaxed();
-        Q_ASSERT(connections);
-        connections->removeConnection(c);
+    const bool disconnected = QObjectPrivate::disconnect(c);
+    if (disconnected) {
+        const_cast<QMetaObject::Connection &>(connection).d_ptr = nullptr;
+        c->deref(); // has been removed from the QMetaObject::Connection object
     }
-
-    connections->cleanOrphanedConnections(c->sender);
-
-    c->sender->disconnectNotify(QMetaObjectPrivate::signal(c->sender->metaObject(),
-                                                           c->signal_index));
-
-    const_cast<QMetaObject::Connection &>(connection).d_ptr = nullptr;
-    c->deref(); // has been removed from the QMetaObject::Connection object
-
-    return true;
+    return disconnected;
 }
 
 /*! \fn template<typename PointerToMemberFunction> bool QObject::disconnect(const QObject *sender, PointerToMemberFunction signal, const QObject *receiver, PointerToMemberFunction method)
@@ -5035,8 +5029,9 @@ bool QObject::disconnect(const QMetaObject::Connection &connection)
     any signal. If not, only the specified signal is disconnected.
 
     If \a receiver is \nullptr, it disconnects anything connected to \a
-    signal. If not, slots in objects other than \a receiver are not
-    disconnected.
+    signal. If not, only slots in the specified receiver are disconnected.
+    disconnect() with a non-null \a receiver also disconnects slot functions
+    that were connected with \a receiver as their context object.
 
     If \a method is \nullptr, it disconnects anything that is connected to \a
     receiver. If not, only slots named \a method will be disconnected,
@@ -5109,6 +5104,43 @@ bool QObjectPrivate::disconnect(const QObject *sender, int signal_index, void **
     signal_index = methodIndexToSignalIndex(&senderMetaObject, signal_index);
 
     return QMetaObjectPrivate::disconnect(sender, signal_index, senderMetaObject, sender, -1, slot);
+}
+
+/*!
+    \internal
+    \threadsafe
+*/
+bool QObjectPrivate::disconnect(QObjectPrivate::Connection *c)
+{
+    if (!c)
+        return false;
+    QObject *receiver = c->receiver.loadRelaxed();
+    if (!receiver)
+        return false;
+
+    QBasicMutex *senderMutex = signalSlotLock(c->sender);
+    QBasicMutex *receiverMutex = signalSlotLock(receiver);
+
+    QObjectPrivate::ConnectionData *connections;
+    {
+        QOrderedMutexLocker locker(senderMutex, receiverMutex);
+
+        // load receiver once again and recheck to ensure nobody else has removed the connection in the meantime
+        receiver = c->receiver.loadRelaxed();
+        if (!receiver)
+            return false;
+
+        connections = QObjectPrivate::get(c->sender)->connections.loadRelaxed();
+        Q_ASSERT(connections);
+        connections->removeConnection(c);
+    }
+
+    connections->cleanOrphanedConnections(c->sender);
+
+    c->sender->disconnectNotify(QMetaObjectPrivate::signal(c->sender->metaObject(),
+                                                           c->signal_index));
+
+    return true;
 }
 
 /*! \class QMetaObject::Connection

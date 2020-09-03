@@ -309,7 +309,7 @@ bool QSQLiteResultPrivate::fetchNext(QSqlCachedResult::ValueCache &values, int i
                 };
                 break;
             case SQLITE_NULL:
-                values[i + idx] = QVariant(QVariant::String);
+                values[i + idx] = QVariant(QMetaType::fromType<QString>());
                 break;
             default:
                 values[i + idx] = QString(reinterpret_cast<const QChar *>(
@@ -478,7 +478,12 @@ bool QSQLiteResult::exec()
         for (int i = 0, currentIndex = 0; i < values.size(); ++i) {
             if (handledIndexes.contains(i))
                 continue;
-            const auto placeHolder = QString::fromUtf8(sqlite3_bind_parameter_name(d->stmt, currentIndex + 1));
+            const char *parameterName = sqlite3_bind_parameter_name(d->stmt, currentIndex + 1);
+            if (!parameterName) {
+                paramCountIsValid = false;
+                continue;
+            }
+            const auto placeHolder = QString::fromUtf8(parameterName);
             const auto &indexes = d->indexes.value(placeHolder);
             handledIndexes << indexes;
             prunedValues << values.at(indexes.first());

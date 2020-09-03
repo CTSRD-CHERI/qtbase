@@ -193,7 +193,7 @@ template <> struct QConcatenable<char16_t> : private QAbstractConcatenable
     typedef char16_t type;
     typedef QString ConvertTo;
     enum { ExactSize = true };
-    static Q_DECL_CONSTEXPR int size(char16_t) { return 1; }
+    static constexpr int size(char16_t) { return 1; }
     static inline void appendTo(char16_t c, QChar *&out)
     { *out++ = c; }
 };
@@ -236,7 +236,7 @@ template <> struct QConcatenable<QLatin1String> : private QAbstractConcatenable
     typedef QLatin1String type;
     typedef QString ConvertTo;
     enum { ExactSize = true };
-    static int size(const QLatin1String a) { return a.size(); }
+    static int size(const QLatin1String a) { return int(a.size()); } // ### Qt 6: qsizetype
     static inline void appendTo(const QLatin1String a, QChar *&out)
     {
         appendLatin1To(a.latin1(), a.size(), out);
@@ -258,21 +258,6 @@ template <> struct QConcatenable<QString> : private QAbstractConcatenable
     enum { ExactSize = true };
     static int size(const QString &a) { return a.size(); }
     static inline void appendTo(const QString &a, QChar *&out)
-    {
-        const int n = a.size();
-        if (n)
-            memcpy(out, reinterpret_cast<const char*>(a.constData()), sizeof(QChar) * n);
-        out += n;
-    }
-};
-
-template <> struct QConcatenable<QStringRef> : private QAbstractConcatenable
-{
-    typedef QStringRef type;
-    typedef QString ConvertTo;
-    enum { ExactSize = true };
-    static int size(const QStringRef &a) { return a.size(); }
-    static inline void appendTo(const QStringRef &a, QChar *&out)
     {
         const int n = a.size();
         if (n)
@@ -325,7 +310,7 @@ template <> struct QConcatenable<const char *> : private QAbstractConcatenable
     typedef const char *type;
     typedef QByteArray ConvertTo;
     enum { ExactSize = false };
-    static int size(const char *a) { return qstrlen(a); }
+    static qsizetype size(const char *a) { return qstrlen(a); }
 #ifndef QT_NO_CAST_FROM_ASCII
     static inline void QT_ASCII_CAST_WARN appendTo(const char *a, QChar *&out)
     { QAbstractConcatenable::convertFromAscii(a, -1, out); }
@@ -481,6 +466,14 @@ QString &operator+=(QString &a, const QStringBuilder<A, B> &b)
     return a;
 }
 
+//
+// inline QAnyStringView members requiring QStringBuilder:
+//
+
+template <typename A, typename B>
+QAnyStringView::QAnyStringView(const QStringBuilder<A, B> &expr,
+                               typename QStringBuilder<A, B>::ConvertTo &&capacity)
+    : QAnyStringView(capacity = expr) {}
 
 QT_END_NAMESPACE
 

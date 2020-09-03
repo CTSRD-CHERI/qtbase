@@ -187,7 +187,7 @@ static bool addFontToDatabase(QString familyName,
     const int size = scalable ? SMOOTH_SCALABLE : textmetric->tmHeight;
     const QFont::Style style = textmetric->tmItalic ? QFont::StyleItalic : QFont::StyleNormal;
     const bool antialias = false;
-    const QFont::Weight weight = QPlatformFontDatabase::weightFromInteger(textmetric->tmWeight);
+    const QFont::Weight weight = static_cast<QFont::Weight>(textmetric->tmWeight);
     const QFont::Stretch stretch = QFont::Unstretched;
 
 #ifndef QT_NO_DEBUG_STREAM
@@ -330,8 +330,8 @@ static int QT_WIN_CALLBACK storeFont(const LOGFONT *logFont, const TEXTMETRIC *t
     return 1;
 }
 
-/*!
-    \brief Populate font database using EnumFontFamiliesEx().
+/*
+    \brief Populates the font database using EnumFontFamiliesEx().
 
     Normally, leaving the name empty should enumerate
     all fonts, however, system fonts like "MS Shell Dlg 2"

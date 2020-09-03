@@ -129,8 +129,7 @@
 
     Finally, if the test class has a static public \c{void initMain()} method,
     it is called by the QTEST_MAIN macros before the QApplication object
-    is instantiated. For example, this allows for setting application
-    attributes like Qt::AA_DisableHighDpiScaling. This was added in 5.14.
+    is instantiated. This was added in 5.14.
 
     For more examples, refer to the \l{Qt Test Tutorial}.
 
@@ -181,6 +180,11 @@
     additional line:
 
     \snippet code/doc_src_qtestlib.pro 2
+
+    To prevent the test from being installed to your target, add the
+    additional line:
+
+    \snippet code/doc_src_qtestlib.pro 3
 
     See the \l{Building a Testcase}{qmake manual} for
     more information about \c{make check}.

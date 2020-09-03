@@ -1459,11 +1459,10 @@ void QTableView::scrollContentsBy(int dx, int dy)
 /*!
   \reimp
 */
-QStyleOptionViewItem QTableView::viewOptions() const
+void QTableView::initViewItemOption(QStyleOptionViewItem *option) const
 {
-    QStyleOptionViewItem option = QAbstractItemView::viewOptions();
-    option.showDecorationSelected = true;
-    return option;
+    QAbstractItemView::initViewItemOption(option);
+    option->showDecorationSelected = true;
 }
 
 /*!
@@ -1473,7 +1472,8 @@ void QTableView::paintEvent(QPaintEvent *event)
 {
     Q_D(QTableView);
     // setup temp variables for the painting
-    QStyleOptionViewItem option = d->viewOptionsV1();
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
     const QPoint offset = d->scrollDelayOffset;
     const bool showGrid = d->showGrid;
     const int gridSize = showGrid ? 1 : 0;
@@ -2352,7 +2352,8 @@ int QTableView::sizeHintForRow(int row) const
     if (right == -1) // the table don't have enough columns to fill the viewport
         right = d->model->columnCount(d->root) - 1;
 
-    QStyleOptionViewItem option = d->viewOptionsV1();
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
 
     int hint = 0;
     QModelIndex index;
@@ -2440,7 +2441,8 @@ int QTableView::sizeHintForColumn(int column) const
     if (!isVisible() || bottom == -1) // the table don't have enough rows to fill the viewport
         bottom = d->model->rowCount(d->root) - 1;
 
-    QStyleOptionViewItem option = d->viewOptionsV1();
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
 
     int hint = 0;
     int rowsProcessed = 0;
@@ -3236,11 +3238,11 @@ void QTableView::sortByColumn(int column, Qt::SortOrder order)
     Q_D(QTableView);
     if (column < -1)
         return;
-    // If sorting is enabled it will emit a signal connected to
-    // _q_sortIndicatorChanged, which then actually sorts
     d->horizontalHeader->setSortIndicator(column, order);
-    // If sorting is not enabled, force to sort now
-    if (!d->sortingEnabled)
+    // If sorting is not enabled or has the same order as before, force to sort now
+    // else sorting will be trigger through sortIndicatorChanged()
+    if (!d->sortingEnabled ||
+        (d->horizontalHeader->sortIndicatorSection() == column && d->horizontalHeader->sortIndicatorOrder() == order))
         d->model->sort(column, order);
 }
 

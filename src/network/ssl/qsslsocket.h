@@ -117,7 +117,6 @@ public:
     bool canReadLine() const override;
     void close() override;
     bool atEnd() const override;
-    void abort();
 
     // From QAbstractSocket:
     void setReadBufferSize(qint64 size) override;
@@ -186,6 +185,7 @@ Q_SIGNALS:
 
 protected:
     qint64 readData(char *data, qint64 maxlen) override;
+    qint64 skipData(qint64 maxSize) override;
     qint64 writeData(const char *data, qint64 len) override;
 
 private:

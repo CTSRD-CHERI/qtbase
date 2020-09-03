@@ -104,7 +104,6 @@ class tst_QHeaderView : public QObject
 
 public:
     tst_QHeaderView();
-    static void initMain();
 
 private slots:
     void initTestCase();
@@ -264,14 +263,6 @@ protected:
     bool m_special_prepare = false;
     QElapsedTimer timer;
 };
-
-void tst_QHeaderView::initMain()
-{
-#ifdef Q_OS_WIN
-    // Ensure minimum size constraints of framed windows on High DPI screens
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
-}
 
 class QtTestModel: public QAbstractTableModel
 {

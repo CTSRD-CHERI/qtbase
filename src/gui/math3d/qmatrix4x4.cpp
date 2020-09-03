@@ -145,30 +145,6 @@ QMatrix4x4::QMatrix4x4(const float *values)
 */
 
 /*!
-    \fn template <int N, int M> QMatrix4x4 qGenericMatrixToMatrix4x4(const QGenericMatrix<N, M, float>& matrix)
-    \relates QMatrix4x4
-    \obsolete
-
-    Returns a 4x4 matrix constructed from the left-most 4 columns and
-    top-most 4 rows of \a matrix.  If \a matrix has less than 4 columns
-    or rows, the remaining elements are filled with elements from the
-    identity matrix.
-*/
-
-/*!
-    \fn QGenericMatrix<N, M, float> qGenericMatrixFromMatrix4x4(const QMatrix4x4& matrix)
-    \relates QMatrix4x4
-    \obsolete
-
-    Returns a NxM generic matrix constructed from the left-most N columns
-    and top-most M rows of \a matrix.  If N or M is greater than 4,
-    then the remaining elements are filled with elements from the
-    identity matrix.
-
-    \sa QMatrix4x4::toGenericMatrix()
-*/
-
-/*!
     \internal
 */
 QMatrix4x4::QMatrix4x4(const float *values, int cols, int rows)
@@ -1651,8 +1627,6 @@ void QMatrix4x4::copyDataTo(float *values) const
     third row and third column of the QMatrix4x4.  This is suitable
     for implementing orthographic projections where the z co-ordinate
     should be dropped rather than projected.
-
-    \sa toAffine()
 */
 QTransform QMatrix4x4::toTransform() const
 {
@@ -1675,8 +1649,6 @@ QTransform QMatrix4x4::toTransform() const
     of the QMatrix4x4.  This is suitable for implementing
     orthographic projections where the z co-ordinate should
     be dropped rather than projected.
-
-    \sa toAffine()
 */
 QTransform QMatrix4x4::toTransform(float distanceToPlane) const
 {
@@ -1977,7 +1949,7 @@ void QMatrix4x4::optimize()
 */
 QMatrix4x4::operator QVariant() const
 {
-    return QVariant(QMetaType::QMatrix4x4, this);
+    return QVariant::fromValue(*this);
 }
 
 #ifndef QT_NO_DEBUG_STREAM

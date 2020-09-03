@@ -171,7 +171,7 @@ static inline const char *rawTypeNameFromTypeInfo(const QMetaObject *mo, uint ty
     if (typeInfo & IsUnresolvedType) {
         return rawStringData(mo, typeInfo & TypeNameIndexMask);
     } else {
-        return QMetaType::typeName(typeInfo);
+        return QMetaType(typeInfo).name();
     }
 }
 
@@ -180,9 +180,7 @@ static inline QByteArray typeNameFromTypeInfo(const QMetaObject *mo, uint typeIn
     if (typeInfo & IsUnresolvedType) {
         return stringData(mo, typeInfo & TypeNameIndexMask);
     } else {
-        // ### Use the QMetaType::typeName() that returns QByteArray
-        const char *t = QMetaType::typeName(typeInfo);
-        return QByteArray::fromRawData(t, qstrlen(t));
+        return QMetaType(typeInfo).name();
     }
 }
 
@@ -190,7 +188,7 @@ static inline int typeFromTypeInfo(const QMetaObject *mo, uint typeInfo)
 {
     if (!(typeInfo & IsUnresolvedType))
         return typeInfo;
-    return QMetaType::type(rawStringData(mo, typeInfo & TypeNameIndexMask));
+    return QMetaType::fromName(rawStringData(mo, typeInfo & TypeNameIndexMask)).id();
 }
 
 class QMetaMethodPrivate : public QMetaMethod
@@ -209,6 +207,7 @@ public:
     inline uint parameterTypeInfo(int index) const;
     inline int parameterType(int index) const;
     inline void getParameterTypes(int *types) const;
+    inline QByteArray parameterTypeName(int index) const;
     inline QList<QByteArray> parameterTypes() const;
     inline QList<QByteArray> parameterNames() const;
     inline QByteArray tag() const;
@@ -1739,7 +1738,7 @@ const char *QMetaMethodPrivate::rawReturnTypeName() const
     if (typeInfo & IsUnresolvedType)
         return rawStringData(mobj, typeInfo & TypeNameIndexMask);
     else
-        return QMetaType::typeName(typeInfo);
+        return QMetaType(typeInfo).name();
 }
 
 int QMetaMethodPrivate::returnType() const
@@ -1780,6 +1779,12 @@ void QMetaMethodPrivate::getParameterTypes(int *types) const
         int id = typeFromTypeInfo(mobj, mobj->d.data[dataIndex++]);
         *(types++) = id;
     }
+}
+
+QByteArray QMetaMethodPrivate::parameterTypeName(int index) const
+{
+    int paramsIndex = parametersDataIndex();
+    return typeNameFromTypeInfo(mobj, mobj->d.data[paramsIndex + index]);
 }
 
 QList<QByteArray> QMetaMethodPrivate::parameterTypes() const
@@ -1960,6 +1965,20 @@ QList<QByteArray> QMetaMethod::parameterTypes() const
     if (!mobj)
         return QList<QByteArray>();
     return QMetaMethodPrivate::get(this)->parameterTypes();
+}
+
+/*!
+   \since 6.0
+   Returns the name of the type at position \a index
+   If there is no parameter at \a index, returns an empty QByteArray
+
+   \sa parameterNames()
+ */
+QByteArray QMetaMethod::parameterTypeName(int index) const
+{
+    if (!mobj || index < 0 || index >= parameterCount())
+        return {};
+    return QMetaMethodPrivate::get(this)->parameterTypeName(index);
 }
 
 /*!
@@ -2230,7 +2249,7 @@ bool QMetaMethod::invoke(QObject *object,
             if (qstrcmp(normalized.constData(), retType) != 0) {
                 // String comparison failed, try compare the metatype.
                 int t = returnType();
-                if (t == QMetaType::UnknownType || t != QMetaType::type(normalized))
+                if (t == QMetaType::UnknownType || t != QMetaType::fromName(normalized).id())
                     return false;
             }
         }
@@ -2311,25 +2330,25 @@ bool QMetaMethod::invoke(QObject *object,
         }
 
         QScopedPointer<QMetaCallEvent> event(new QMetaCallEvent(idx_offset, idx_relative, callFunction, nullptr, -1, paramCount));
-        int *types = event->types();
+        QMetaType *types = event->types();
         void **args = event->args();
 
         int argIndex = 0;
         for (int i = 1; i < paramCount; ++i) {
-            types[i] = QMetaType::type(typeNames[i]);
-            if (types[i] == QMetaType::UnknownType && param[i]) {
+            types[i] = QMetaType::fromName(typeNames[i]);
+            if (!types[i].isValid() && param[i]) {
                 // Try to register the type and try again before reporting an error.
                 void *argv[] = { &types[i], &argIndex };
                 QMetaObject::metacall(object, QMetaObject::RegisterMethodArgumentMetaType,
                                       idx_relative + idx_offset, argv);
-                if (types[i] == -1) {
+                if (!types[i].isValid()) {
                     qWarning("QMetaMethod::invoke: Unable to handle unregistered datatype '%s'",
                             typeNames[i]);
                     return false;
                 }
             }
-            if (types[i] != QMetaType::UnknownType) {
-                args[i] = QMetaType::create(types[i], param[i]);
+            if (types[i].isValid()) {
+                args[i] = QMetaType(types[i]).create(param[i]);
                 ++argIndex;
             }
         }
@@ -2453,7 +2472,7 @@ bool QMetaMethod::invokeOnGadget(void *gadget,
             if (qstrcmp(normalized.constData(), retType) != 0) {
                 // String comparison failed, try compare the metatype.
                 int t = returnType();
-                if (t == QMetaType::UnknownType || t != QMetaType::type(normalized))
+                if (t == QMetaType::UnknownType || t != QMetaType::fromName(normalized).id())
                     return false;
             }
         }
@@ -3187,7 +3206,7 @@ bool QMetaProperty::write(QObject *object, const QVariant &value) const
             if (isResettable())
                 return reset(object);
             v = QVariant(t, nullptr);
-        } else if (!v.convert(t.id())) {
+        } else if (!v.convert(t)) {
             return false;
         }
     }
@@ -3231,6 +3250,23 @@ bool QMetaProperty::reset(QObject *object) const
     else
         QMetaObject::metacall(object, QMetaObject::ResetProperty, data.index(mobj) + mobj->propertyOffset(), argv);
     return true;
+}
+
+/*!
+    \since 6.0
+    Returns the bindable interface for the property on a given \a object.
+
+    If the property doesn't support bindings, the returned interface will be
+    invalid.
+
+    \sa QUntypedBindable, QProperty, isBindable()
+*/
+QUntypedBindable QMetaProperty::bindable(QObject *object) const
+{
+    QUntypedBindable bindable;
+    void * argv[1] { &bindable };
+    mobj->metacall(object, QMetaObject::BindableProperty, data.index(mobj) + mobj->propertyOffset(), argv);
+    return bindable;
 }
 /*!
     \since 5.5
@@ -3389,12 +3425,8 @@ bool QMetaProperty::isWritable() const
 
 
 /*!
-    Returns \c true if this property is designable;
-    otherwise returns \c false.
-
-    If no \a object is given, the function returns \c false if the
-    \c{Q_PROPERTY()}'s \c DESIGNABLE attribute is false; otherwise
-    returns \c true.
+    Returns \c false if the \c{Q_PROPERTY()}'s \c DESIGNABLE attribute
+    is false; otherwise returns \c true.
 
     \sa isScriptable(), isStored()
 */
@@ -3406,12 +3438,8 @@ bool QMetaProperty::isDesignable() const
 }
 
 /*!
-    Returns \c true if the property is scriptable;
-    otherwise returns \c false.
-
-    If no \a object is given, the function returns \c false if the
-    \c{Q_PROPERTY()}'s \c SCRIPTABLE attribute is false; otherwise returns
-    true.
+    Returns \c false if the \c{Q_PROPERTY()}'s \c SCRIPTABLE attribute
+    is false; otherwise returns true.
 
     \sa isDesignable(), isStored()
 */
@@ -3440,15 +3468,10 @@ bool QMetaProperty::isStored() const
 }
 
 /*!
-    Returns \c true if this property is designated as the \c USER
-    property, i.e., the one that the user can edit or
-    that is significant in some other way.  Otherwise it returns
-    false. e.g., the \c text property is the \c USER editable property
-    of a QLineEdit.
-
-    If \a object is \nullptr, the function returns \c false if the \c
-    {Q_PROPERTY()}'s \c USER attribute is false. Otherwise it returns
-    true.
+    Returns \c false if the \c {Q_PROPERTY()}'s \c USER attribute is false.
+    Otherwise it returns true, indicating the property is designated as the
+    \c USER property, i.e., the one that the user can edit or
+    that is significant in some other way.
 
     \sa QMetaObject::userProperty(), isDesignable(), isScriptable()
 */
@@ -3503,16 +3526,18 @@ bool QMetaProperty::isRequired() const
 
 /*!
     \since 6.0
-    Returns \c true if the property is implemented using a QProperty member; otherwise returns \c false.
+    Returns \c true if the \c{Q_PROPERTY()} exposes binding functionality; otherwise returns false.
 
-    This can be used to detect the availability of QProperty related meta-call types ahead of
-    performing the call itself.
+    This implies that you can create bindings that use this property as a dependency or install QPropertyObserver
+    objects on this property. Unless the property is readonly, you can also set a binding on this property.
+
+    \sa QProperty, isReadOnly(), bindable()
 */
-bool QMetaProperty::isQProperty() const
+bool QMetaProperty::isBindable() const
 {
     if (!mobj)
         return false;
-    return data.flags() & IsQProperty;
+    return (data.flags() & Bindable);
 }
 
 /*!

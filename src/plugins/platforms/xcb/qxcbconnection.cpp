@@ -459,7 +459,7 @@ static Qt::MouseButtons translateMouseButtons(int s)
     if (s & XCB_BUTTON_MASK_1)
         ret |= Qt::LeftButton;
     if (s & XCB_BUTTON_MASK_2)
-        ret |= Qt::MidButton;
+        ret |= Qt::MiddleButton;
     if (s & XCB_BUTTON_MASK_3)
         ret |= Qt::RightButton;
     return ret;
@@ -475,7 +475,7 @@ Qt::MouseButton QXcbConnection::translateMouseButton(xcb_button_t s)
 {
     switch (s) {
     case 1: return Qt::LeftButton;
-    case 2: return Qt::MidButton;
+    case 2: return Qt::MiddleButton;
     case 3: return Qt::RightButton;
     // Button values 4-7 were already handled as Wheel events, and won't occur here.
     case 8: return Qt::BackButton;      // Also known as Qt::ExtraButton1
@@ -597,12 +597,16 @@ void QXcbConnection::handleXcbEvent(xcb_generic_event_t *event)
         HANDLE_PLATFORM_WINDOW_EVENT(xcb_client_message_event_t, window, handleClientMessageEvent);
     }
     case XCB_ENTER_NOTIFY:
-        if (hasXInput2() && !xi2MouseEventsDisabled())
+        if (hasXInput2()) {
+            // Prefer XI2 enter (XCB_INPUT_ENTER) events over core events.
             break;
+        }
         HANDLE_PLATFORM_WINDOW_EVENT(xcb_enter_notify_event_t, event, handleEnterNotifyEvent);
     case XCB_LEAVE_NOTIFY:
-        if (hasXInput2() && !xi2MouseEventsDisabled())
+        if (hasXInput2()) {
+            // Prefer XI2 leave (XCB_INPUT_LEAVE) events over core events.
             break;
+        }
         m_keyboard->updateXKBStateFromCore(reinterpret_cast<xcb_leave_notify_event_t *>(event)->state);
         HANDLE_PLATFORM_WINDOW_EVENT(xcb_leave_notify_event_t, event, handleLeaveNotifyEvent);
     case XCB_FOCUS_IN:

@@ -5,6 +5,7 @@
 #####################################################################
 
 qt_add_module(Network
+    PLUGIN_TYPES networkaccessbackends
     SOURCES
         access/qabstractnetworkcache.cpp access/qabstractnetworkcache.h access/qabstractnetworkcache_p.h
         access/qhsts.cpp access/qhsts_p.h
@@ -41,7 +42,7 @@ qt_add_module(Network
         socket/qudpsocket.cpp socket/qudpsocket.h
         ssl/qasn1element.cpp ssl/qasn1element_p.h
         ssl/qpassworddigestor.cpp ssl/qpassworddigestor.h
-        ssl/qssl.cpp ssl/qssl.h ssl/qssl_p.h
+        ssl/qssl.cpp ssl/qssl.h ssl/qssl_p.h ssl/qtls_utils_p.h
         ssl/qsslcertificate.cpp ssl/qsslcertificate.h ssl/qsslcertificate_p.h
         ssl/qsslcertificateextension.cpp ssl/qsslcertificateextension.h ssl/qsslcertificateextension_p.h
     DEFINES
@@ -68,13 +69,6 @@ qt_add_module(Network
 qt_extend_target(Network CONDITION MSVC AND (TEST_architecture_arch STREQUAL "i386")
     LINK_OPTIONS
         "/BASE:0x64000000"
-)
-
-qt_extend_target(Network CONDITION QT_FEATURE_ftp
-    SOURCES
-        access/qftp.cpp access/qftp_p.h
-        access/qnetworkaccessftpbackend.cpp access/qnetworkaccessftpbackend_p.h
-        kernel/qurlinfo.cpp kernel/qurlinfo_p.h
 )
 
 qt_extend_target(Network CONDITION QT_FEATURE_networkdiskcache
@@ -126,6 +120,11 @@ qt_extend_target(Network CONDITION QT_FEATURE_http
 qt_extend_target(Network CONDITION QT_FEATURE_brotli AND QT_FEATURE_http
     LIBRARIES
         WrapBrotli::WrapBrotliDec
+)
+
+qt_extend_target(Network CONDITION QT_FEATURE_http AND QT_FEATURE_zstd
+    LIBRARIES
+        ZSTD::ZSTD
 )
 
 qt_extend_target(Network CONDITION QT_FEATURE_system_zlib
@@ -422,3 +421,5 @@ qt_add_docs(Network
 )
 
 qt_extend_target(Network CONDITION WIN32 PUBLIC_LIBRARIES ws2_32) # special case: mkspecs/common/msvc-desktop.conf
+
+qt_extend_target(Network CONDITION QNX PUBLIC_LIBRARIES socket) # special case: mkspecs/common/qcc-base-qnx.conf

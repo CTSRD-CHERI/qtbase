@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Copyright (C) 2013 Olivier Goffart <ogoffart@woboq.com>
 ** Contact: https://www.qt.io/licensing/
 **
@@ -62,6 +62,7 @@
 QT_BEGIN_NAMESPACE
 
 
+class QBindingStorage;
 class QEvent;
 class QTimerEvent;
 class QChildEvent;
@@ -130,11 +131,7 @@ public:
 #if defined(QT_NO_TRANSLATION) || defined(Q_CLANG_QDOC)
     static QString tr(const char *sourceText, const char * = nullptr, int = -1)
         { return QString::fromUtf8(sourceText); }
-#if QT_DEPRECATED_SINCE(5, 0)
-    QT_DEPRECATED static QString trUtf8(const char *sourceText, const char * = nullptr, int = -1)
-        { return QString::fromUtf8(sourceText); }
-#endif
-#endif //QT_NO_TRANSLATION
+#endif // QT_NO_TRANSLATION
 
     QString objectName() const;
     void setObjectName(const QString &name);
@@ -375,6 +372,8 @@ public:
     bool setProperty(const char *name, const QVariant &value);
     QVariant property(const char *name) const;
     QList<QByteArray> dynamicPropertyNames() const;
+    QBindingStorage *bindingStorage();
+    const QBindingStorage *bindingStorage() const;
 #endif // QT_NO_PROPERTIES
 
 Q_SIGNALS:
@@ -439,19 +438,6 @@ inline QMetaObject::Connection QObject::connect(const QObject *asender, const ch
                                             const char *amember, Qt::ConnectionType atype) const
 { return connect(asender, asignal, this, amember, atype); }
 
-#if QT_DEPRECATED_SINCE(5, 0)
-template<typename T>
-inline QT_DEPRECATED T qFindChild(const QObject *o, const QString &name = QString())
-{ return o->findChild<T>(name); }
-
-template<typename T>
-inline QT_DEPRECATED QList<T> qFindChildren(const QObject *o, const QString &name = QString())
-{
-    return o->findChildren<T>(name);
-}
-
-#endif //QT_DEPRECATED
-
 template <class T>
 inline T qobject_cast(QObject *object)
 {
@@ -474,6 +460,14 @@ inline T qobject_cast(const QObject *object)
 template <class T> inline const char * qobject_interface_iid()
 { return nullptr; }
 
+inline const QBindingStorage *qGetBindingStorage(const QObject *o)
+{
+    return o->bindingStorage();
+}
+inline QBindingStorage *qGetBindingStorage(QObject *o)
+{
+    return o->bindingStorage();
+}
 
 #if defined(Q_CLANG_QDOC)
 #  define Q_DECLARE_INTERFACE(IFace, IId)

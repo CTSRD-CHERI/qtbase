@@ -16,6 +16,10 @@ endif()
 file(RELATIVE_PATH QT_INVERSE_CONFIG_INSTALL_DIR
     "${_clean_prefix}" "${QT_BUILD_INTERNALS_RELOCATABLE_INSTALL_PREFIX}")
 
+if(ANDROID)
+    set(corelib_extra_cmake_files
+        "${CMAKE_CURRENT_SOURCE_DIR}/${QT_CMAKE_EXPORT_NAMESPACE}AndroidMacros.cmake")
+endif()
 # special case end
 
 #####################################################################
@@ -29,6 +33,7 @@ qt_add_module(Core
     SOURCES
         global/archdetect.cpp
         global/qcompilerdetection.h
+        global/qcontainerinfo.h
         global/qendian.cpp global/qendian.h global/qendian_p.h
         global/qflags.h
         global/qfloat16.cpp global/qfloat16.h
@@ -67,6 +72,7 @@ qt_add_module(Core
         io/qfilesystemmetadata_p.h
         io/qfsfileengine.cpp io/qfsfileengine_p.h
         io/qfsfileengine_iterator.cpp io/qfsfileengine_iterator_p.h
+        io/qiodevicebase.h
         io/qiodevice.cpp io/qiodevice.h io/qiodevice_p.h
         io/qipaddress.cpp io/qipaddress_p.h
         io/qlockfile.cpp io/qlockfile.h io/qlockfile_p.h
@@ -98,11 +104,11 @@ qt_add_module(Core
         kernel/qeventloop.cpp kernel/qeventloop.h
         kernel/qfunctions_p.h
         kernel/qmath.cpp kernel/qmath.h
+        kernel/qmetacontainer.cpp kernel/qmetacontainer.h
         kernel/qmetaobject.cpp kernel/qmetaobject.h kernel/qmetaobject_p.h
         kernel/qmetaobject_moc_p.h
         kernel/qmetaobjectbuilder.cpp kernel/qmetaobjectbuilder_p.h
         kernel/qmetatype.cpp kernel/qmetatype.h kernel/qmetatype_p.h
-        kernel/qmetatypeswitcher_p.h
         kernel/qmimedata.cpp kernel/qmimedata.h
         # kernel/qobject.cpp kernel/qobject.h kernel/qobject_p.h # special case
         kernel/qobject_impl.h
@@ -143,15 +149,10 @@ qt_add_module(Core
         serialization/qjsonwriter.cpp serialization/qjsonwriter_p.h
         serialization/qtextstream.cpp serialization/qtextstream.h serialization/qtextstream_p.h
         serialization/qxmlstream.cpp serialization/qxmlstream.h serialization/qxmlstream_p.h
+        serialization/qxmlstreamgrammar.cpp serialization/qxmlstreamgrammar_p.h
+        serialization/qxmlstreamparser_p.h
         serialization/qxmlutils.cpp serialization/qxmlutils_p.h
-        statemachine/qabstractstate.cpp statemachine/qabstractstate.h statemachine/qabstractstate_p.h
-        statemachine/qabstracttransition.cpp statemachine/qabstracttransition.h statemachine/qabstracttransition_p.h
-        statemachine/qfinalstate.cpp statemachine/qfinalstate.h statemachine/qfinalstate_p.h
-        statemachine/qhistorystate.cpp statemachine/qhistorystate.h statemachine/qhistorystate_p.h
-        statemachine/qsignaleventgenerator_p.h
-        statemachine/qsignaltransition.cpp statemachine/qsignaltransition.h statemachine/qsignaltransition_p.h
-        statemachine/qstate.cpp statemachine/qstate.h statemachine/qstate_p.h
-        statemachine/qstatemachine.cpp statemachine/qstatemachine.h statemachine/qstatemachine_p.h
+        text/qanystringview.h
         text/qbytearray.cpp text/qbytearray.h text/qbytearray_p.h
         text/qbytearrayalgorithms.h
         text/qbytearraylist.cpp text/qbytearraylist.h
@@ -165,7 +166,6 @@ qt_add_module(Core
         text/qlocale_data_p.h
         text/qlocale_tools.cpp text/qlocale_tools_p.h
         text/qstring.cpp text/qstring.h
-        text/qstring_compat.cpp
         text/qstringalgorithms.h text/qstringalgorithms_p.h
         text/qstringbuilder.cpp text/qstringbuilder.h
         text/qstringconverter.cpp text/qstringconverter.h text/qstringconverter_p.h
@@ -178,6 +178,7 @@ qt_add_module(Core
         text/qtextboundaryfinder.cpp text/qtextboundaryfinder.h
         text/qunicodetables_p.h
         text/qunicodetools.cpp text/qunicodetools_p.h
+        text/qutf8stringview.h
         text/qvsnprintf.cpp
         thread/qmutex.h
         thread/qreadwritelock.h
@@ -211,7 +212,7 @@ qt_add_module(Core
         tools/qhashfunctions.h
         tools/qiterator.h
         tools/qline.cpp tools/qline.h
-        tools/qlist.cpp tools/qlist.h
+        tools/qlist.h
         tools/qmakearray_p.h
         tools/qmap.h
         tools/qmargins.cpp tools/qmargins.h
@@ -251,13 +252,13 @@ qt_add_module(Core
         Qt::GlobalConfigPrivate # special case
     PRECOMPILED_HEADER
         "global/qt_pch.h"
-    NO_PCH_SOURCES
-        "text/qstring_compat.cpp"
     PUBLIC_LIBRARIES  # special case:
         Qt::Platform # special case:
     # special case begin
     # Generated in QtBaseGlobalTargets
-    EXTRA_CMAKE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Qt6CTestMacros.cmake"
+    EXTRA_CMAKE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Qt6CTestMacros.cmake"
+    ${corelib_extra_cmake_files}
     # special case end
 )
 
@@ -296,7 +297,7 @@ qt_manual_moc(qobject_moc_files OUTPUT_MOC_JSON_FILES core_qobject_metatypes_jso
 set_source_files_properties(${qobject_moc_files} PROPERTIES HEADER_FILE_ONLY ON)
 target_sources(Core_qobject PRIVATE
     global/qnamespace.h
-    kernel/qobject.cpp kernel/qobject.h kernel/qobject_p.h ${qobject_moc_files})
+    kernel/qobject.cpp kernel/qproperty.cpp kernel/qproperty.h kernel/qproperty_p.h kernel/qobject.h kernel/qobject_p.h ${qobject_moc_files})
 set_target_properties(Core_qobject PROPERTIES
     COMPILE_OPTIONS $<TARGET_PROPERTY:Core,COMPILE_OPTIONS>
     COMPILE_DEFINITIONS $<TARGET_PROPERTY:Core,COMPILE_DEFINITIONS>
@@ -429,7 +430,7 @@ qt_extend_target(Core CONDITION ANDROID
         kernel/qsharedmemory_android.cpp
         kernel/qsystemsemaphore_android.cpp
     DEFINES
-        LIBS_SUFFIX="_${CMAKE_SYSTEM_PROCESSOR}.so"
+        LIBS_SUFFIX="_${ANDROID_ABI}.so" # special case
 )
 
 qt_extend_target(Core CONDITION MSVC AND (TEST_architecture_arch STREQUAL "i386")
@@ -1108,11 +1109,6 @@ qt_extend_target(Core CONDITION QT_FEATURE_cborstreamreader
 qt_extend_target(Core CONDITION QT_FEATURE_cborstreamwriter
     SOURCES
         serialization/qcborstreamwriter.cpp serialization/qcborstreamwriter.h
-)
-
-qt_extend_target(Core CONDITION QT_FEATURE_qeventtransition
-    SOURCES
-        statemachine/qeventtransition.cpp statemachine/qeventtransition.h statemachine/qeventtransition_p.h
 )
 
 qt_extend_target(Core CONDITION QT_FEATURE_mimetype

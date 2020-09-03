@@ -544,7 +544,8 @@ Q_LOGGING_CATEGORY(QRHI_LOG_INFO, "qt.rhi.general")
     supported. When reported as not supported, the line width set on the
     graphics pipeline state is ignored. This can always be false with some
     backends (D3D11, Metal). With Vulkan, the value depends on the
-    implementation.
+    implementation. With OpenGL, wide lines are not supported in core profile
+    contexts.
 
     \value VertexShaderPointSize Indicates that the size of rasterized points
     set via \c{gl_PointSize} in the vertex shader is taken into account. When
@@ -715,7 +716,7 @@ QRhiDepthStencilClearValue::QRhiDepthStencilClearValue(float d, quint32 s)
 
     \relates QRhiDepthStencilClearValue
  */
-bool operator==(const QRhiDepthStencilClearValue &a, const QRhiDepthStencilClearValue &b) Q_DECL_NOTHROW
+bool operator==(const QRhiDepthStencilClearValue &a, const QRhiDepthStencilClearValue &b) noexcept
 {
     return a.depthClearValue() == b.depthClearValue()
             && a.stencilClearValue() == b.stencilClearValue();
@@ -727,7 +728,7 @@ bool operator==(const QRhiDepthStencilClearValue &a, const QRhiDepthStencilClear
 
     \relates QRhiDepthStencilClearValue
 */
-bool operator!=(const QRhiDepthStencilClearValue &a, const QRhiDepthStencilClearValue &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiDepthStencilClearValue &a, const QRhiDepthStencilClearValue &b) noexcept
 {
     return !(a == b);
 }
@@ -737,7 +738,7 @@ bool operator!=(const QRhiDepthStencilClearValue &a, const QRhiDepthStencilClear
 
     \relates QRhiDepthStencilClearValue
  */
-size_t qHash(const QRhiDepthStencilClearValue &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiDepthStencilClearValue &v, size_t seed) noexcept
 {
     return seed * (uint(qFloor(qreal(v.depthClearValue()) * 100)) + v.stencilClearValue());
 }
@@ -810,7 +811,7 @@ QRhiViewport::QRhiViewport(float x, float y, float w, float h, float minDepth, f
 
     \relates QRhiViewport
  */
-bool operator==(const QRhiViewport &a, const QRhiViewport &b) Q_DECL_NOTHROW
+bool operator==(const QRhiViewport &a, const QRhiViewport &b) noexcept
 {
     return a.viewport() == b.viewport()
             && a.minDepth() == b.minDepth()
@@ -823,7 +824,7 @@ bool operator==(const QRhiViewport &a, const QRhiViewport &b) Q_DECL_NOTHROW
 
     \relates QRhiViewport
 */
-bool operator!=(const QRhiViewport &a, const QRhiViewport &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiViewport &a, const QRhiViewport &b) noexcept
 {
     return !(a == b);
 }
@@ -833,7 +834,7 @@ bool operator!=(const QRhiViewport &a, const QRhiViewport &b) Q_DECL_NOTHROW
 
     \relates QRhiViewport
  */
-size_t qHash(const QRhiViewport &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiViewport &v, size_t seed) noexcept
 {
     const std::array<float, 4> r = v.viewport();
     return seed + uint(r[0]) + uint(r[1]) + uint(r[2]) + uint(r[3])
@@ -903,7 +904,7 @@ QRhiScissor::QRhiScissor(int x, int y, int w, int h)
 
     \relates QRhiScissor
  */
-bool operator==(const QRhiScissor &a, const QRhiScissor &b) Q_DECL_NOTHROW
+bool operator==(const QRhiScissor &a, const QRhiScissor &b) noexcept
 {
     return a.scissor() == b.scissor();
 }
@@ -914,7 +915,7 @@ bool operator==(const QRhiScissor &a, const QRhiScissor &b) Q_DECL_NOTHROW
 
     \relates QRhiScissor
 */
-bool operator!=(const QRhiScissor &a, const QRhiScissor &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiScissor &a, const QRhiScissor &b) noexcept
 {
     return !(a == b);
 }
@@ -924,7 +925,7 @@ bool operator!=(const QRhiScissor &a, const QRhiScissor &b) Q_DECL_NOTHROW
 
     \relates QRhiScissor
  */
-size_t qHash(const QRhiScissor &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiScissor &v, size_t seed) noexcept
 {
     const std::array<int, 4> r = v.scissor();
     return seed + uint(r[0]) + uint(r[1]) + uint(r[2]) + uint(r[3]);
@@ -1035,7 +1036,7 @@ QRhiVertexInputBinding::QRhiVertexInputBinding(quint32 stride, Classification cl
 
     \relates QRhiVertexInputBinding
  */
-bool operator==(const QRhiVertexInputBinding &a, const QRhiVertexInputBinding &b) Q_DECL_NOTHROW
+bool operator==(const QRhiVertexInputBinding &a, const QRhiVertexInputBinding &b) noexcept
 {
     return a.stride() == b.stride()
             && a.classification() == b.classification()
@@ -1048,7 +1049,7 @@ bool operator==(const QRhiVertexInputBinding &a, const QRhiVertexInputBinding &b
 
     \relates QRhiVertexInputBinding
 */
-bool operator!=(const QRhiVertexInputBinding &a, const QRhiVertexInputBinding &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiVertexInputBinding &a, const QRhiVertexInputBinding &b) noexcept
 {
     return !(a == b);
 }
@@ -1058,7 +1059,7 @@ bool operator!=(const QRhiVertexInputBinding &a, const QRhiVertexInputBinding &b
 
     \relates QRhiVertexInputBinding
  */
-size_t qHash(const QRhiVertexInputBinding &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiVertexInputBinding &v, size_t seed) noexcept
 {
     return seed + v.stride() + v.classification();
 }
@@ -1187,7 +1188,7 @@ QRhiVertexInputAttribute::QRhiVertexInputAttribute(int binding, int location, Fo
 
     \relates QRhiVertexInputAttribute
  */
-bool operator==(const QRhiVertexInputAttribute &a, const QRhiVertexInputAttribute &b) Q_DECL_NOTHROW
+bool operator==(const QRhiVertexInputAttribute &a, const QRhiVertexInputAttribute &b) noexcept
 {
     return a.binding() == b.binding()
             && a.location() == b.location()
@@ -1201,7 +1202,7 @@ bool operator==(const QRhiVertexInputAttribute &a, const QRhiVertexInputAttribut
 
     \relates QRhiVertexInputAttribute
 */
-bool operator!=(const QRhiVertexInputAttribute &a, const QRhiVertexInputAttribute &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiVertexInputAttribute &a, const QRhiVertexInputAttribute &b) noexcept
 {
     return !(a == b);
 }
@@ -1211,7 +1212,7 @@ bool operator!=(const QRhiVertexInputAttribute &a, const QRhiVertexInputAttribut
 
     \relates QRhiVertexInputAttribute
  */
-size_t qHash(const QRhiVertexInputAttribute &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiVertexInputAttribute &v, size_t seed) noexcept
 {
     return seed + uint(v.binding()) + uint(v.location()) + uint(v.format()) + v.offset();
 }
@@ -1251,7 +1252,7 @@ QDebug operator<<(QDebug dbg, const QRhiVertexInputAttribute &a)
 
     \relates QRhiVertexInputLayout
  */
-bool operator==(const QRhiVertexInputLayout &a, const QRhiVertexInputLayout &b) Q_DECL_NOTHROW
+bool operator==(const QRhiVertexInputLayout &a, const QRhiVertexInputLayout &b) noexcept
 {
     return a.m_bindings == b.m_bindings && a.m_attributes == b.m_attributes;
 }
@@ -1262,7 +1263,7 @@ bool operator==(const QRhiVertexInputLayout &a, const QRhiVertexInputLayout &b) 
 
     \relates QRhiVertexInputLayout
 */
-bool operator!=(const QRhiVertexInputLayout &a, const QRhiVertexInputLayout &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiVertexInputLayout &a, const QRhiVertexInputLayout &b) noexcept
 {
     return !(a == b);
 }
@@ -1272,7 +1273,7 @@ bool operator!=(const QRhiVertexInputLayout &a, const QRhiVertexInputLayout &b) 
 
     \relates QRhiVertexInputLayout
  */
-size_t qHash(const QRhiVertexInputLayout &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiVertexInputLayout &v, size_t seed) noexcept
 {
     return qHash(v.m_bindings, seed) + qHash(v.m_attributes, seed);
 }
@@ -1339,7 +1340,7 @@ QRhiShaderStage::QRhiShaderStage(Type type, const QShader &shader, QShader::Vari
 
     \relates QRhiShaderStage
  */
-bool operator==(const QRhiShaderStage &a, const QRhiShaderStage &b) Q_DECL_NOTHROW
+bool operator==(const QRhiShaderStage &a, const QRhiShaderStage &b) noexcept
 {
     return a.type() == b.type()
             && a.shader() == b.shader()
@@ -1352,7 +1353,7 @@ bool operator==(const QRhiShaderStage &a, const QRhiShaderStage &b) Q_DECL_NOTHR
 
     \relates QRhiShaderStage
 */
-bool operator!=(const QRhiShaderStage &a, const QRhiShaderStage &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiShaderStage &a, const QRhiShaderStage &b) noexcept
 {
     return !(a == b);
 }
@@ -1362,7 +1363,7 @@ bool operator!=(const QRhiShaderStage &a, const QRhiShaderStage &b) Q_DECL_NOTHR
 
     \relates QRhiShaderStage
  */
-size_t qHash(const QRhiShaderStage &v, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiShaderStage &v, size_t seed) noexcept
 {
     return v.type() + qHash(v.shader(), seed) + v.shaderVariant();
 }
@@ -3243,7 +3244,7 @@ QRhiShaderResourceBinding QRhiShaderResourceBinding::bufferLoadStore(
 
     \relates QRhiShaderResourceBinding
  */
-bool operator==(const QRhiShaderResourceBinding &a, const QRhiShaderResourceBinding &b) Q_DECL_NOTHROW
+bool operator==(const QRhiShaderResourceBinding &a, const QRhiShaderResourceBinding &b) noexcept
 {
     const QRhiShaderResourceBinding::Data *da = a.data();
     const QRhiShaderResourceBinding::Data *db = b.data();
@@ -3316,7 +3317,7 @@ bool operator==(const QRhiShaderResourceBinding &a, const QRhiShaderResourceBind
 
     \relates QRhiShaderResourceBinding
  */
-bool operator!=(const QRhiShaderResourceBinding &a, const QRhiShaderResourceBinding &b) Q_DECL_NOTHROW
+bool operator!=(const QRhiShaderResourceBinding &a, const QRhiShaderResourceBinding &b) noexcept
 {
     return !(a == b);
 }
@@ -3326,7 +3327,7 @@ bool operator!=(const QRhiShaderResourceBinding &a, const QRhiShaderResourceBind
 
     \relates QRhiShaderResourceBinding
  */
-size_t qHash(const QRhiShaderResourceBinding &b, size_t seed) Q_DECL_NOTHROW
+size_t qHash(const QRhiShaderResourceBinding &b, size_t seed) noexcept
 {
     const QRhiShaderResourceBinding::Data *d = b.data();
     return seed + uint(d->binding) + 10 * uint(d->stage) + 100 * uint(d->type)
@@ -3463,7 +3464,8 @@ QDebug operator<<(QDebug dbg, const QRhiShaderResourceBindings &srb)
 /*!
     \enum QRhiGraphicsPipeline::Flag
 
-    Flag values for describing the dynamic state of the pipeline. The viewport is always dynamic.
+    Flag values for describing the dynamic state of the pipeline, and other
+    options. The viewport is always dynamic.
 
     \value UsesBlendConstants Indicates that a blend color constant will be set
     via QRhiCommandBuffer::setBlendConstants()
@@ -3473,6 +3475,22 @@ QDebug operator<<(QDebug dbg, const QRhiShaderResourceBindings &srb)
 
     \value UsesScissor Indicates that a scissor rectangle will be set via
     QRhiCommandBuffer::setScissor()
+
+    \value CompileShadersWithDebugInfo Requests compiling shaders with debug
+    information enabled. This is relevant only when runtime shader compilation
+    from source code is involved, and only when the underlying infrastructure
+    supports this. With concrete examples, this is not relevant with Vulkan and
+    SPIR-V, because the GLSL-to-SPIR-V compilation does not happen at run
+    time. On the other hand, consider Direct3D and HLSL, where there are
+    multiple options: when the QShader packages ship with pre-compiled bytecode
+    (\c DXBC), debug information is to be requested through the tool that
+    generates the \c{.qsb} file, similarly to the case of Vulkan and
+    SPIR-V. However, when having HLSL source code in the pre- or
+    runtime-generated QShader packages, the first phase of compilation (HLSL
+    source to intermediate format) happens at run time too, with this flag taken
+    into account. Debug information is relevant in particular with tools like
+    RenderDoc since it allows seeing the original source code when investigating
+    the pipeline and when performing vertex or fragment shader debugging.
  */
 
 /*!
@@ -3963,6 +3981,16 @@ QRhiResource::Type QRhiSwapChain::resourceType() const
  */
 
 /*!
+    \enum QRhiComputePipeline::Flag
+
+    Flag values for describing pipeline options.
+
+    \value CompileShadersWithDebugInfo Requests compiling shaders with debug
+    information enabled, when applicable. See
+    QRhiGraphicsPipeline::CompileShadersWithDebugInfo for more information.
+ */
+
+/*!
     \return the resource type.
  */
 QRhiResource::Type QRhiComputePipeline::resourceType() const
@@ -4074,7 +4102,7 @@ QRhiImplementation::~QRhiImplementation()
 #ifndef QT_NO_DEBUG
     if (!resources.isEmpty()) {
         qWarning("QRhi %p going down with %d unreleased resources that own native graphics objects. This is not nice.",
-                 q, resources.count());
+                 q, int(resources.count()));
         for (QRhiResource *res : qAsConst(resources)) {
             qWarning("  %s resource %p (%s)", resourceTypeStr(res), res, res->m_objectName.constData());
             res->m_rhi = nullptr;
@@ -4301,14 +4329,8 @@ bool QRhiImplementation::sanityCheckGraphicsPipeline(QRhiGraphicsPipeline *ps)
             qWarning("Empty shader passed to graphics pipeline");
             return false;
         }
-        if (it->type() == QRhiShaderStage::Vertex) {
+        if (it->type() == QRhiShaderStage::Vertex)
             hasVertexStage = true;
-            const QRhiVertexInputLayout inputLayout = ps->vertexInputLayout();
-            if (inputLayout.cbeginAttributes() == inputLayout.cendAttributes()) {
-                qWarning("Vertex stage present without any vertex inputs");
-                return false;
-            }
-        }
     }
     if (!hasVertexStage) {
         qWarning("Cannot build a graphics pipeline without a vertex stage");

@@ -115,6 +115,8 @@ void tst_QMouseEvent::mouseEventBasic()
     QPointF screen(300, 300);
     // Press left button
     QMouseEvent me(QEvent::MouseButtonPress, local, scene, screen, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QVERIFY(me.isInputEvent());
+    QVERIFY(me.isPointerEvent());
     QCOMPARE(me.isAccepted(), true);
     QCOMPARE(me.button(), Qt::LeftButton);
     QCOMPARE(me.buttons(), Qt::LeftButton);
@@ -152,11 +154,11 @@ void tst_QMouseEvent::checkMousePressEvent_data()
     QTest::newRow("rightButton-controlkey") << int(Qt::RightButton) << int(Qt::ControlModifier);
     QTest::newRow("rightButton-altkey") << int(Qt::RightButton) << int(Qt::AltModifier);
     QTest::newRow("rightButton-metakey") << int(Qt::RightButton) << int(Qt::MetaModifier);
-    QTest::newRow("midButton-nokey") << int(Qt::MidButton) << int(Qt::NoButton);
-    QTest::newRow("midButton-shiftkey") << int(Qt::MidButton) << int(Qt::ShiftModifier);
-    QTest::newRow("midButton-controlkey") << int(Qt::MidButton) << int(Qt::ControlModifier);
-    QTest::newRow("midButton-altkey") << int(Qt::MidButton) << int(Qt::AltModifier);
-    QTest::newRow("midButton-metakey") << int(Qt::MidButton) << int(Qt::MetaModifier);
+    QTest::newRow("middleButton-nokey") << int(Qt::MiddleButton) << int(Qt::NoButton);
+    QTest::newRow("middleButton-shiftkey") << int(Qt::MiddleButton) << int(Qt::ShiftModifier);
+    QTest::newRow("middleButton-controlkey") << int(Qt::MiddleButton) << int(Qt::ControlModifier);
+    QTest::newRow("middleButton-altkey") << int(Qt::MiddleButton) << int(Qt::AltModifier);
+    QTest::newRow("middleButton-metakey") << int(Qt::MiddleButton) << int(Qt::MetaModifier);
 }
 
 void tst_QMouseEvent::checkMousePressEvent()
@@ -193,11 +195,11 @@ void tst_QMouseEvent::checkMouseReleaseEvent_data()
     QTest::newRow("rightButton-controlkey") << int(Qt::RightButton) << int(Qt::ControlModifier);
     QTest::newRow("rightButton-altkey") << int(Qt::RightButton) << int(Qt::AltModifier);
     QTest::newRow("rightButton-metakey") << int(Qt::RightButton) << int(Qt::MetaModifier);
-    QTest::newRow("midButton-nokey") << int(Qt::MidButton) << int(Qt::NoButton);
-    QTest::newRow("midButton-shiftkey") << int(Qt::MidButton) << int(Qt::ShiftModifier);
-    QTest::newRow("midButton-controlkey") << int(Qt::MidButton) << int(Qt::ControlModifier);
-    QTest::newRow("midButton-altkey") << int(Qt::MidButton) << int(Qt::AltModifier);
-    QTest::newRow("midButton-metakey") << int(Qt::MidButton) << int(Qt::MetaModifier);
+    QTest::newRow("middleButton-nokey") << int(Qt::MiddleButton) << int(Qt::NoButton);
+    QTest::newRow("middleButton-shiftkey") << int(Qt::MiddleButton) << int(Qt::ShiftModifier);
+    QTest::newRow("middleButton-controlkey") << int(Qt::MiddleButton) << int(Qt::ControlModifier);
+    QTest::newRow("middleButton-altkey") << int(Qt::MiddleButton) << int(Qt::AltModifier);
+    QTest::newRow("middleButton-metakey") << int(Qt::MiddleButton) << int(Qt::MetaModifier);
 }
 
 void tst_QMouseEvent::checkMouseReleaseEvent()

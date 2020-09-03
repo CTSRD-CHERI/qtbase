@@ -297,35 +297,6 @@ namespace QtTestInternal
         };
 #endif
     };
-
-    template<bool>
-    struct DataStreamOpHelper
-    {
-        template <typename T>
-        struct Getter {
-            static QMetaType::SaveOperator saveOp() { return 0; }
-        };
-    };
-
-    template<>
-    struct DataStreamOpHelper<true>
-    {
-        template <typename T>
-        struct Getter {
-            static QMetaType::SaveOperator saveOp()
-            {
-                return ::QtMetaTypePrivate::QMetaTypeFunctionHelper<T>::Save;
-            }
-        };
-
-    };
-
-    template<typename T>
-    inline QMetaType::SaveOperator getSaveOperator(T * = 0)
-    {
-        typedef typename DataStreamOpHelper<DataStreamChecker<T>::HasDataStream>::template Getter<T> GetterHelper;
-        return GetterHelper::saveOp();
-    }
 };
 
 struct MyString: public QString {};
@@ -344,14 +315,6 @@ void tst_Compiler::detectDataStream()
     QVERIFY(QtTestInternal::DataStreamChecker<QString>::HasDataStream);
     QVERIFY(QtTestInternal::DataStreamChecker<MyString>::HasDataStream);
     QVERIFY(!QtTestInternal::DataStreamChecker<Qxxx>::HasDataStream);
-
-    QVERIFY(QtTestInternal::getSaveOperator<int>() != 0);
-    QVERIFY(QtTestInternal::getSaveOperator<uint>() != 0);
-    QVERIFY(QtTestInternal::getSaveOperator<char *>() != 0);
-    QVERIFY(QtTestInternal::getSaveOperator<double>() != 0);
-    QVERIFY(QtTestInternal::getSaveOperator<QString>() != 0);
-    QVERIFY(QtTestInternal::getSaveOperator<MyString>() != 0);
-    QVERIFY(!QtTestInternal::getSaveOperator<Qxxx>());
 }
 #else
 void tst_Compiler::detectDataStream()
@@ -1018,9 +981,10 @@ void tst_Compiler::cxx11_noexcept()
 #ifndef Q_COMPILER_NOEXCEPT
     QSKIP("Compiler does not support C++11 feature");
 #else
+    extern void may_throw();
     extern void noexcept_f() noexcept;
     extern void g() noexcept(noexcept(noexcept_f()));
-    QCOMPARE(noexcept(cxx11_noexcept()), false);
+    QCOMPARE(noexcept(may_throw()), false);
     QCOMPARE(noexcept(noexcept_f), true);
     QCOMPARE(noexcept(g), true);
 #endif

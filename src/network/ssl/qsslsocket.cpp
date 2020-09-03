@@ -323,7 +323,7 @@
 */
 
 /*!
-    \fn void QSslSocket::alertSent(QAlertLevel level, QAlertType type, const QString &description)
+    \fn void QSslSocket::alertSent(QSsl::AlertLevel level, QSsl::AlertType type, const QString &description)
 
     QSslSocket emits this signal if an alert message was sent to a peer. \a level
     describes if it was a warning or a fatal error. \a type gives the code
@@ -334,11 +334,11 @@
     purposes, normally it does not require any actions from the application.
     \note Not all backends support this functionality.
 
-    \sa alertReceived(), QAlertLevel, QAlertType
+    \sa alertReceived(), QSsl::AlertLevel, QSsl::AlertType
 */
 
 /*!
-    \fn void QSslSocket::alertReceived(QAlertLevel level, QAlertType type, const QString &description)
+    \fn void QSslSocket::alertReceived(QSsl::AlertLevel level, QSsl::AlertType type, const QString &description)
 
     QSslSocket emits this signal if an alert message was received from a peer.
     \a level tells if the alert was fatal or it was a warning. \a type is the
@@ -350,7 +350,7 @@
     backend will handle it and close the connection.
     \note Not all backends support this functionality.
 
-    \sa alertSent(), QAlertLevel, QAlertType
+    \sa alertSent(), QSsl::AlertLevel, QSsl::AlertType
 */
 
 /*!
@@ -899,13 +899,19 @@ void QSslSocket::close()
 #endif
     Q_D(QSslSocket);
 
-    // We don't want any CA roots fetched anymore.
+    // On Windows, CertGetCertificateChain is probably still doing its
+    // job, if the socket is re-used, we want to ignore its reported
+    // root CA.
     d->caToFetch = QSslCertificate{};
 
-    if (encryptedBytesToWrite() || !d->writeBuffer.isEmpty())
+    if (!d->abortCalled && (encryptedBytesToWrite() || !d->writeBuffer.isEmpty()))
         flush();
-    if (d->plainSocket)
-        d->plainSocket->close();
+    if (d->plainSocket) {
+        if (d->abortCalled)
+            d->plainSocket->abort();
+        else
+            d->plainSocket->close();
+    }
     QTcpSocket::close();
 
     // must be cleared, reading/writing not possible on closed socket:
@@ -936,29 +942,6 @@ void QSslSocket::setReadBufferSize(qint64 size)
 
     if (d->plainSocket)
         d->plainSocket->setReadBufferSize(size);
-}
-
-/*!
-    Aborts the current connection and resets the socket. Unlike
-    disconnectFromHost(), this function immediately closes the socket,
-    clearing any pending data in the write buffer.
-
-    \sa disconnectFromHost(), close()
-*/
-void QSslSocket::abort()
-{
-    Q_D(QSslSocket);
-#ifdef QSSLSOCKET_DEBUG
-    qCDebug(lcSsl) << "QSslSocket::abort()";
-#endif
-    // On Windows, CertGetCertificateChain is probably still doing its
-    // job, if the socket is re-used, we want to ignore its reported
-    // root CA.
-    d->caToFetch = QSslCertificate{};
-
-    if (d->plainSocket)
-        d->plainSocket->abort();
-    close();
 }
 
 /*!
@@ -1836,7 +1819,7 @@ qint64 QSslSocket::writeData(const char *data, qint64 len)
     if (d->mode == UnencryptedMode && !d->autoStartHandshake)
         return d->plainSocket->write(data, len);
 
-    d->writeBuffer.append(data, len);
+    d->write(data, len);
 
     // make sure we flush to the plain socket's buffer
     if (!d->flushTriggered) {
@@ -1883,6 +1866,7 @@ void QSslSocketPrivate::init()
     connectionEncrypted = false;
     ignoreAllSslErrors = false;
     shutdown = false;
+    abortCalled = false;
     pendingClose = false;
     flushTriggered = false;
     ocspResponses.clear();
@@ -2541,17 +2525,19 @@ QByteArray QSslSocketPrivate::peek(qint64 maxSize)
 }
 
 /*!
-    \internal
+    \reimp
 */
-qint64 QSslSocketPrivate::skip(qint64 maxSize)
+qint64 QSslSocket::skipData(qint64 maxSize)
 {
-    if (mode == QSslSocket::UnencryptedMode && !autoStartHandshake)
-        return plainSocket->skip(maxSize);
+    Q_D(QSslSocket);
+
+    if (d->mode == QSslSocket::UnencryptedMode && !d->autoStartHandshake)
+        return d->plainSocket->skip(maxSize);
 
     // In encrypted mode, the SSL backend writes decrypted data directly into the
     // QIODevice's read buffer. As this buffer is always emptied by the caller,
     // we need to wait for more incoming data.
-    return (state == QAbstractSocket::ConnectedState) ? Q_INT64_C(0) : Q_INT64_C(-1);
+    return (d->state == QAbstractSocket::ConnectedState) ? Q_INT64_C(0) : Q_INT64_C(-1);
 }
 
 /*!

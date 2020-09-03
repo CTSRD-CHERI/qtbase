@@ -2,6 +2,7 @@
 **
 ** Copyright (C) 2018 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com, author Marc Mutz <marc.mutz@kdab.com>
 ** Copyright (C) 2018 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com, author Giuseppe D'Angelo <giuseppe.dangelo@kdab.com>
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
@@ -61,7 +62,7 @@ namespace QtPrivate
 template <typename T, typename N>
 void q_uninitialized_relocate_n(T* first, N n, T* out)
 {
-    if constexpr (QTypeInfoQuery<T>::isRelocatable) {
+    if constexpr (QTypeInfo<T>::isRelocatable) {
         if (n != N(0)) { // even if N == 0, out == nullptr or first == nullptr are UB for memmove()
             std::memmove(static_cast<void*>(out),
                          static_cast<const void*>(first),
@@ -69,7 +70,7 @@ void q_uninitialized_relocate_n(T* first, N n, T* out)
         }
     } else {
         std::uninitialized_move_n(first, n, out);
-        if constexpr (QTypeInfoQuery<T>::isComplex)
+        if constexpr (QTypeInfo<T>::isComplex)
             std::destroy_n(first, n);
     }
 }
@@ -147,6 +148,9 @@ template <typename Iterator>
 using IfAssociativeIteratorHasFirstAndSecond =
     typename std::enable_if<AssociativeIteratorHasFirstAndSecond<Iterator>::value, bool>::type;
 
+template <typename T, typename U>
+using IfIsNotSame =
+    typename std::enable_if<!std::is_same<T, U>::value, bool>::type;
 } // namespace QtPrivate
 
 QT_END_NAMESPACE

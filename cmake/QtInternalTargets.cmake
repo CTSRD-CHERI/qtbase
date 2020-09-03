@@ -115,6 +115,13 @@ endif()
 
 target_compile_definitions(PlatformCommonInternal INTERFACE $<$<NOT:$<CONFIG:Debug>>:QT_NO_DEBUG>)
 
+if(MSVC)
+    # To mimic mkspecs/common/msvc-desktop.conf add optimization flag for non-debug configs.
+    # In qmake, the flag is added to any user project built with qmake. In CMake land, to be on the
+    # safe side, only add when building Qt itself.
+    target_link_options(PlatformCommonInternal INTERFACE "$<$<NOT:$<CONFIG:Debug>>:/OPT:REF>")
+endif()
+
 function(qt_internal_apply_bitcode_flags target)
     # See mkspecs/features/uikit/bitcode.prf
     set(release_flags "-fembed-bitcode")
@@ -185,6 +192,41 @@ endif()
 
 if (GCC AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "9.2")
     target_compile_options(PlatformCommonInternal INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
+endif()
+
+if(QT_FEATURE_force_asserts)
+    target_compile_definitions(PlatformCommonInternal INTERFACE QT_FORCE_ASSERTS)
+endif()
+
+if(DEFINED QT_EXTRA_DEFINES)
+    target_compile_definitions(PlatformCommonInternal INTERFACE ${QT_EXTRA_DEFINES})
+endif()
+
+if(DEFINED QT_EXTRA_INCLUDEPATHS)
+    target_include_directories(PlatformCommonInternal INTERFACE ${QT_EXTRA_INCLUDEPATHS})
+endif()
+
+if(DEFINED QT_EXTRA_LIBDIRS)
+    target_link_directories(PlatformCommonInternal INTERFACE ${QT_EXTRA_LIBDIRS})
+endif()
+
+if(DEFINED QT_EXTRA_FRAMEWORKPATHS AND APPLE)
+    list(TRANSFORM QT_EXTRA_FRAMEWORKPATHS PREPEND "-F" OUTPUT_VARIABLE __qt_fw_flags)
+    target_compile_options(PlatformCommonInternal INTERFACE ${__qt_fw_flags})
+    target_link_options(PlatformCommonInternal INTERFACE ${__qt_fw_flags})
+    unset(__qt_fw_flags)
+endif()
+
+if(QT_FEATURE_use_gold_linker)
+    target_link_options(PlatformCommonInternal INTERFACE "-fuse-ld=gold")
+elseif(QT_FEATURE_use_bfd_linker)
+    target_link_options(PlatformCommonInternal INTERFACE "-fuse-ld=bfd")
+elseif(QT_FEATURE_use_lld_linker)
+    target_link_options(PlatformCommonInternal INTERFACE "-fuse-ld=lld")
+endif()
+
+if(QT_FEATURE_enable_gdb_index)
+    target_link_options(PlatformCommonInternal INTERFACE "-Wl,--gdb-index")
 endif()
 
 function(qt_get_implicit_sse2_genex_condition out_var)

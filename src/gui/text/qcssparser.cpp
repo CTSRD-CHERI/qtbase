@@ -710,7 +710,7 @@ static Qt::Alignment parseAlignment(const QCss::Value *values, int count)
 static ColorData parseColorValue(QCss::Value v)
 {
     if (v.type == Value::Identifier || v.type == Value::String) {
-        v.variant.convert(QMetaType::QColor);
+        v.variant.convert(QMetaType::fromType<QColor>());
         v.type = Value::Color;
     }
 
@@ -1139,14 +1139,14 @@ static bool setFontSizeFromValue(QCss::Value value, QFont *font, int *fontSizeAd
     if (s.endsWith(QLatin1String("pt"), Qt::CaseInsensitive)) {
         s.chop(2);
         value.variant = s;
-        if (value.variant.convert((QVariant::Type)qMetaTypeId<qreal>())) {
+        if (value.variant.convert(QMetaType::fromType<qreal>())) {
             font->setPointSizeF(value.variant.toReal());
             valid = true;
         }
     } else if (s.endsWith(QLatin1String("px"), Qt::CaseInsensitive)) {
         s.chop(2);
         value.variant = s;
-        if (value.variant.convert(QMetaType::Int)) {
+        if (value.variant.convert(QMetaType::fromType<int>())) {
             font->setPixelSize(value.variant.toInt());
             valid = true;
         }
@@ -1192,7 +1192,7 @@ static bool setFontWeightFromValue(const QCss::Value &value, QFont *font)
     }
     if (value.type != Value::Number)
         return false;
-    font->setWeight(qMin(value.variant.toInt() / 8, 99));
+    font->setWeight(QFont::Weight(value.variant.toInt()));
     return true;
 }
 
@@ -2759,7 +2759,7 @@ bool Parser::parseTerm(Value *value)
     switch (lookup()) {
         case NUMBER:
             value->type = Value::Number;
-            value->variant.convert(QMetaType::Double);
+            value->variant.convert(QMetaType::fromType<double>());
             break;
         case PERCENTAGE:
             value->type = Value::Percentage;

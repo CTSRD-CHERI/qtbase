@@ -2490,7 +2490,8 @@ void tst_QTreeView::spanningItems()
 
     // size hint
     // every second row is un-spanned
-    QStyleOptionViewItem option = view.viewOptions();
+    QStyleOptionViewItem option;
+    view.initViewItemOption(&option);
     int w = view.header()->sectionSizeHint(0);
     for (int i = 0; i < model.rowCount(QModelIndex()); ++i) {
         if (!view.isFirstColumnSpanned(i, QModelIndex())) {
@@ -2851,6 +2852,14 @@ void tst_QTreeView::sortByColumn()
     QCOMPARE(view.model()->data(view.model()->index(1, 0)).toString(), QString::fromLatin1("d"));
     QCOMPARE(view.model()->data(view.model()->index(0, 1)).toString(), QString::fromLatin1("e"));
     QCOMPARE(view.model()->data(view.model()->index(1, 1)).toString(), QString::fromLatin1("g"));
+
+    // a new 'sortByColumn()' should do a re-sort (e.g. due to the data changed), QTBUG-86268
+    view.setModel(&model);
+    view.sortByColumn(0, Qt::AscendingOrder);
+    QCOMPARE(view.model()->data(view.model()->index(0, 0)).toString(), QString::fromLatin1("a"));
+    model.setItem(0, 0, new QStandardItem("x"));
+    view.sortByColumn(0, Qt::AscendingOrder);
+    QCOMPARE(view.model()->data(view.model()->index(0, 0)).toString(), QString::fromLatin1("b"));
 }
 
 /*

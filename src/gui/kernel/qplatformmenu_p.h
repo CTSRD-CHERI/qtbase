@@ -57,13 +57,17 @@ QT_BEGIN_NAMESPACE
 
 // ----------------- QPlatformInterface -----------------
 
+#if !defined(Q_OS_MACOS) && defined(Q_CLANG_QDOC)
+typedef void NSMenu;
+#else
 QT_END_NAMESPACE
 Q_FORWARD_DECLARE_OBJC_CLASS(NSMenu);
 QT_BEGIN_NAMESPACE
+#endif
 
 namespace QPlatformInterface::Private {
 
-#if defined(Q_OS_MACOS)
+#if defined(Q_OS_MACOS) || defined(Q_CLANG_QDOC)
 struct Q_GUI_EXPORT QCocoaMenu
 {
     QT_DECLARE_PLATFORM_INTERFACE(QCocoaMenu)

@@ -76,6 +76,7 @@ qt_extend_target(Bootstrap
         ../../corelib/io/qurlrecode.cpp
         ../../corelib/kernel/qcoreapplication.cpp
         ../../corelib/kernel/qcoreglobaldata.cpp
+        ../../corelib/kernel/qmetacontainer.cpp
         ../../corelib/kernel/qmetatype.cpp
         ../../corelib/kernel/qsharedmemory.cpp
         ../../corelib/kernel/qsystemerror.cpp
@@ -95,6 +96,7 @@ qt_extend_target(Bootstrap
         ../../corelib/serialization/qjsonwriter.cpp
         ../../corelib/serialization/qtextstream.cpp
         ../../corelib/serialization/qxmlstream.cpp
+        ../../corelib/serialization/qxmlstreamgrammar.cpp
         ../../corelib/serialization/qxmlutils.cpp
         ../../corelib/text/qbytearray.cpp
         ../../corelib/text/qbytearraylist.cpp
@@ -103,7 +105,6 @@ qt_extend_target(Bootstrap
         ../../corelib/text/qlocale_tools.cpp
         ../../corelib/text/qregularexpression.cpp
         ../../corelib/text/qstring.cpp
-        ../../corelib/text/qstring_compat.cpp
         ../../corelib/text/qstringbuilder.cpp
         ../../corelib/text/qstringconverter.cpp
         ../../corelib/text/qstringlist.cpp
@@ -260,6 +261,7 @@ qt_extend_target(Bootstrap CONDITION MINGW AND WIN32
 # QMAKE_CFLAGS = "$$QMAKE_CFLAGS_SHSTK"
 
 # special case begin
+target_link_libraries(Bootstrap PRIVATE PlatformCommonInternal)
 qt_internal_apply_gc_binaries(Bootstrap PUBLIC)
 set_target_properties(Bootstrap PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 qt_internal_add_target_aliases(Bootstrap)

@@ -49,7 +49,7 @@ void tst_QFlags::testFlag() const
     Qt::MouseButtons btn = Qt::LeftButton | Qt::RightButton;
 
     QVERIFY(btn.testFlag(Qt::LeftButton));
-    QVERIFY(!btn.testFlag(Qt::MidButton));
+    QVERIFY(!btn.testFlag(Qt::MiddleButton));
 
     btn = { };
     QVERIFY(!btn.testFlag(Qt::LeftButton));
@@ -93,7 +93,7 @@ void tst_QFlags::testFlagMultiBits() const
 
 template <unsigned int N, typename T> bool verifyConstExpr(T n) { return n == N; }
 
-Q_DECL_RELAXED_CONSTEXPR Qt::MouseButtons testRelaxedConstExpr()
+constexpr Qt::MouseButtons testRelaxedConstExpr()
 {
     Qt::MouseButtons value;
     value = Qt::LeftButton | Qt::RightButton;
@@ -152,7 +152,7 @@ enum class MyStrictNoOpEnum { StrictZero, StrictOne, StrictTwo, StrictFour=4 };
 Q_DECLARE_FLAGS( MyStrictNoOpFlags, MyStrictNoOpEnum )
 
 static_assert( !QTypeInfo<MyStrictFlags>::isComplex );
-static_assert( !QTypeInfo<MyStrictFlags>::isStatic );
+static_assert( QTypeInfo<MyStrictFlags>::isRelocatable );
 static_assert( !QTypeInfo<MyStrictFlags>::isPointer );
 
 void tst_QFlags::classEnum()
@@ -276,11 +276,11 @@ void tst_QFlags::testSetFlags()
 
     btn.setFlag(Qt::LeftButton);
     QVERIFY(btn.testFlag(Qt::LeftButton));
-    QVERIFY(!btn.testFlag(Qt::MidButton));
+    QVERIFY(!btn.testFlag(Qt::MiddleButton));
 
     btn.setFlag(Qt::LeftButton, false);
     QVERIFY(!btn.testFlag(Qt::LeftButton));
-    QVERIFY(!btn.testFlag(Qt::MidButton));
+    QVERIFY(!btn.testFlag(Qt::MiddleButton));
 
     MyStrictFlags flags;
     flags.setFlag(MyStrictEnum::StrictOne);
@@ -322,7 +322,7 @@ Q_DECLARE_FLAGS( MyFlags, MyEnum )
 Q_DECLARE_OPERATORS_FOR_FLAGS( MyFlags )
 
 static_assert( !QTypeInfo<MyFlags>::isComplex );
-static_assert( !QTypeInfo<MyFlags>::isStatic );
+static_assert( QTypeInfo<MyFlags>::isRelocatable );
 static_assert( !QTypeInfo<MyFlags>::isPointer );
 
 QTEST_MAIN(tst_QFlags)

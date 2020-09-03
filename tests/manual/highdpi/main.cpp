@@ -749,9 +749,6 @@ public:
         int maxSize = 64;
         int sizeIncrement = 5;
 
-        // Disable high-dpi icons
-        QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps, false);
-
         // normal icon
         for (int size = minSize; size < maxSize; size += sizeIncrement) {
             QPainter p(this);
@@ -771,36 +768,6 @@ public:
                 y+=dy;
             x = ((x + dx) % maxX);
         }
-
-        x = 10;
-        y+=dy;
-
-        // Enable high-dpi icons
-        QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps, true);
-
-        // normal icon
-        for (int size = minSize; size < maxSize; size += sizeIncrement) {
-            QPainter p(this);
-            p.drawPixmap(x, y, iconNormalDpi->pixmap(size, size));
-            if (x + dx > maxX)
-                y+=dy;
-            x = ((x + dx) % maxX);
-        }
-        x = 10;
-        y+=dy;
-
-        // high-dpi icon (draw point)
-        for (int size = minSize; size < maxSize; size += sizeIncrement) {
-            QPainter p(this);
-            p.drawPixmap(x, y, iconHighDPI->pixmap(size, size));
-            if (x + dx > maxX)
-                y+=dy;
-            x = ((x + dx) % maxX);
-        }
-
-        x = 10;
-        y+=dy;
-
     }
 
 private:
@@ -1457,26 +1424,9 @@ void MetricsTest::logScreenChangeSignal(const QObject *o, const char *name, cons
 
 int main(int argc, char **argv)
 {
-#define NOSCALINGOPTION "noscaling"
-#define SCALINGOPTION "scaling"
-
     qInfo("High DPI tester %s", QT_VERSION_STR);
 
-    int preAppOptionCount = 0;
-    for (int a = 1; a < argc; ++a) {
-        if (qstrcmp(argv[a], "--" NOSCALINGOPTION) == 0) {
-            QCoreApplication::setAttribute(Qt::AA_DisableHighDpiScaling);
-            preAppOptionCount++;
-            qInfo("AA_DisableHighDpiScaling");
-        } else if (qstrcmp(argv[a], "--" SCALINGOPTION) == 0) {
-            QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-            preAppOptionCount++;
-            qInfo("AA_EnableHighDpiScaling");
-        }
-    }
-
     QApplication app(argc, argv);
-    QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
     QCoreApplication::setApplicationVersion(QT_VERSION_STR);
 
     QCommandLineParser parser;
@@ -1488,8 +1438,6 @@ int main(int argc, char **argv)
     parser.addVersionOption();
     QCommandLineOption controllerOption("interactive", "Show configuration window.");
     parser.addOption(controllerOption);
-    parser.addOption(QCommandLineOption(NOSCALINGOPTION, "Set AA_DisableHighDpiScaling"));
-    parser.addOption(QCommandLineOption(SCALINGOPTION, "Set AA_EnableHighDpiScaling"));
 
     DemoContainerList demoList;
     demoList << new DemoContainer<PixmapPainter>("pixmap", "Test pixmap painter");
@@ -1518,7 +1466,7 @@ int main(int argc, char **argv)
     //controller takes ownership of all demos
     DemoController controller(demoList, &parser);
 
-    if (parser.isSet(controllerOption) || (QCoreApplication::arguments().count() - preAppOptionCount) <= 1)
+    if (parser.isSet(controllerOption) || (QCoreApplication::arguments().count()) <= 1)
         controller.show();
 
     if (QApplication::topLevelWidgets().isEmpty())

@@ -128,15 +128,39 @@ QT_WARNING_POP
 #undef QT_DECLARE_GUI_MODULE_TYPES_ITER
 #undef QT_DECLARE_WIDGETS_MODULE_TYPES_ITER
 
+#define QMETATYPE_CONVERTER(To, From, assign_and_return) \
+    case makePair(QMetaType::To, QMetaType::From): \
+        if (onlyCheck) \
+            return true; \
+        { \
+            const From &source = *static_cast<const From *>(from); \
+            To &result = *static_cast<To *>(to); \
+            assign_and_return \
+        }
+#define QMETATYPE_CONVERTER_ASSIGN(To, From) \
+    QMETATYPE_CONVERTER(To, From, result = To(source); return true;)
+
+#define QMETATYPE_CONVERTER_FUNCTION(To, assign_and_return) \
+        { \
+            To &result = *static_cast<To *>(r); \
+            assign_and_return \
+        }
+
 class QMetaTypeModuleHelper
 {
 public:
+    static constexpr auto makePair(int from, int to) -> quint64
+    {
+        return (quint64(from) << 32) + quint64(to);
+    };
+
     virtual QtPrivate::QMetaTypeInterface *interfaceForType(int) const = 0;
-#ifndef QT_NO_DATASTREAM
-    virtual bool save(QDataStream &stream, int type, const void *data) const = 0;
-    virtual bool load(QDataStream &stream, int type, void *data) const = 0;
-#endif
+    virtual bool convert(const void *, int, void *, int) const { return false; }
 };
+
+extern Q_CORE_EXPORT const QMetaTypeModuleHelper *qMetaTypeGuiHelper;
+extern Q_CORE_EXPORT const QMetaTypeModuleHelper *qMetaTypeWidgetsHelper;
+
 
 namespace QtMetaTypePrivate {
 template<typename T>
@@ -208,18 +232,6 @@ static QT_PREPEND_NAMESPACE(QtPrivate::QMetaTypeInterface) *getInterfaceFromType
 #define QT_METATYPE_CONVERT_ID_TO_TYPE(MetaTypeName, MetaTypeId, RealName)                         \
     case QMetaType::MetaTypeName:                                                                  \
         return QtMetaTypePrivate::getInterfaceFromType<RealName>();
-
-#define QT_METATYPE_DATASTREAM_SAVE(MetaTypeName, MetaTypeId, RealName) \
-    case QMetaType::MetaTypeName: \
-        QtMetaTypePrivate::QMetaTypeFunctionHelper<RealName, QtMetaTypePrivate::TypeDefinition<RealName>::IsAvailable>::Save(stream, data); \
-        return true;
-
-#define QT_METATYPE_DATASTREAM_LOAD(MetaTypeName, MetaTypeId, RealName) \
-    case QMetaType::MetaTypeName: \
-        QtMetaTypePrivate::QMetaTypeFunctionHelper<RealName, QtMetaTypePrivate::TypeDefinition<RealName>::IsAvailable>::Load(stream, data); \
-        return true;
-
-void derefAndDestroy(QT_PREPEND_NAMESPACE(QtPrivate::QMetaTypeInterface) *d_ptr);
 
 } //namespace QtMetaTypePrivate
 

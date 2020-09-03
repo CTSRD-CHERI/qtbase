@@ -1025,7 +1025,7 @@ void QWindowsStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, 
         {
             bool vertical = false, inverted = false;
             if (const QStyleOptionProgressBar *pb = qstyleoption_cast<const QStyleOptionProgressBar *>(opt)) {
-                vertical = pb->orientation == Qt::Vertical;
+                vertical = !(pb->state & QStyle::State_Horizontal);
                 inverted = pb->invertedAppearance;
             }
 
@@ -1110,7 +1110,7 @@ void QWindowsStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPai
         if (const QStyleOptionMenuItem *menuitem = qstyleoption_cast<const QStyleOptionMenuItem *>(opt)) {
             int x, y, w, h;
             menuitem->rect.getRect(&x, &y, &w, &h);
-            int tab = menuitem->tabWidth;
+            int tab = menuitem->reservedShortcutWidth;
             bool dis = !(menuitem->state & State_Enabled);
             bool checked = menuitem->checkType != QStyleOptionMenuItem::NotCheckable
                             ? menuitem->checked : false;
@@ -1691,7 +1691,7 @@ void QWindowsStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPai
             if (!rect.isValid())
                 return;
 
-            const bool vertical = pb->orientation == Qt::Vertical;
+            const bool vertical = !(pb->state & QStyle::State_Horizontal);
             const bool inverted = pb->invertedAppearance;
 
             QTransform m;

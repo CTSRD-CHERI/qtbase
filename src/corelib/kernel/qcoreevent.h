@@ -282,7 +282,7 @@ public:
 
         PlatformSurface = 217,                  // Platform surface created or about to be destroyed
 
-        Pointer = 218,                          // QQuickPointerEvent; ### Qt 6: QPointerEvent
+        Pointer = 218,                          // Qt 5: QQuickPointerEvent; Qt 6: unused so far
 
         TabletTrackingChange = 219,             // tablet tracking state has changed
 
@@ -307,9 +307,16 @@ public:
     inline void accept() { m_accept = true; }
     inline void ignore() { m_accept = false; }
 
+    inline bool isInputEvent() const noexcept { return m_inputEvent; }
+    inline bool isPointerEvent() const noexcept { return m_pointerEvent; }
+
     static int registerEventType(int hint = -1) noexcept;
 
 protected:
+    struct InputEventTag { explicit InputEventTag() = default; };
+    QEvent(Type type, InputEventTag) : QEvent(type) { m_inputEvent = true; }
+    struct PointerEventTag { explicit PointerEventTag() = default; };
+    QEvent(Type type, PointerEventTag) : QEvent(type, InputEventTag{}) { m_pointerEvent = true; }
     QEventPrivate *d;
     ushort t;
 
@@ -317,7 +324,9 @@ private:
     ushort posted : 1;
     ushort spont : 1;
     ushort m_accept : 1;
-    ushort reserved : 13;
+    ushort m_inputEvent : 1;
+    ushort m_pointerEvent : 1;
+    ushort reserved : 11;
 
     friend class QCoreApplication;
     friend class QCoreApplicationPrivate;

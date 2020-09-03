@@ -65,9 +65,7 @@ Q_LOGGING_CATEGORY(lcPointerGrab, "qt.pointer.grab")
 
 static const QString pointDeviceName(const QEventPoint *point)
 {
-    if (!point->event())
-        return {};
-    auto device = point->event()->device();
+    const auto device = point->device();
     QString deviceName = (device ? device->name() : QLatin1String("null device"));
     deviceName.resize(16, u' '); // shorten, and align in case of sequential output
     return deviceName;
@@ -163,7 +161,14 @@ QEnterEvent::~QEnterEvent()
   \internal
 */
 QInputEvent::QInputEvent(Type type, const QInputDevice *dev, Qt::KeyboardModifiers modifiers)
-    : QEvent(type), m_dev(dev), m_modState(modifiers)
+    : QEvent(type, QEvent::InputEventTag{}), m_dev(dev), m_modState(modifiers)
+{}
+
+/*!
+  \internal
+*/
+QInputEvent::QInputEvent(QEvent::Type type, QEvent::PointerEventTag, const QInputDevice *dev, Qt::KeyboardModifiers modifiers)
+    : QEvent(type, QEvent::PointerEventTag{}), m_dev(dev), m_modState(modifiers)
 {}
 
 /*!
@@ -228,13 +233,14 @@ QInputEvent::~QInputEvent()
 
 /*!
     \internal
-    Constructs an invalid event point with the given \a id and \a parent.
+    Constructs an invalid event point with the given \a id and the \a device
+    from which it originated.
 
     This acts as a default constructor in usages like QMap<int, QEventPoint>,
     as in qgraphicsscene_p.h.
 */
-QEventPoint::QEventPoint(int id, const QPointerEvent *parent)
-    : m_parent(parent), m_pointId(id), m_state(State::Unknown), m_accept(false), m_stationaryWithModifiedProperty(false), m_reserved(0)
+QEventPoint::QEventPoint(int id, const QPointingDevice *device)
+    : m_device(device), m_pointId(id), m_state(State::Unknown), m_accept(false), m_stationaryWithModifiedProperty(false), m_reserved(0)
 {
 }
 
@@ -323,7 +329,7 @@ void QEventPoint::clearPassiveGrabbers()
 
 QPointF QEventPoint::normalizedPos() const
 {
-    auto geom = event()->device()->availableVirtualGeometry();
+    auto geom = m_device->availableVirtualGeometry();
     if (geom.isNull())
         return QPointF();
     return (globalPosition() - geom.topLeft()) / geom.width();
@@ -331,7 +337,7 @@ QPointF QEventPoint::normalizedPos() const
 
 QPointF QEventPoint::startNormalizedPos() const
 {
-    auto geom = event()->device()->availableVirtualGeometry();
+    auto geom = m_device->availableVirtualGeometry();
     if (geom.isNull())
         return QPointF();
     return (globalPressPosition() - geom.topLeft()) / geom.width();
@@ -339,14 +345,14 @@ QPointF QEventPoint::startNormalizedPos() const
 
 QPointF QEventPoint::lastNormalizedPos() const
 {
-    auto geom = event()->device()->availableVirtualGeometry();
+    auto geom = m_device->availableVirtualGeometry();
     if (geom.isNull())
         return QPointF();
     return (globalLastPosition() - geom.topLeft()) / geom.width();
 }
 
 QPointerEvent::QPointerEvent(QEvent::Type type, const QPointingDevice *dev, Qt::KeyboardModifiers modifiers)
-    : QInputEvent(type, dev, modifiers)
+    : QInputEvent(type, QEvent::PointerEventTag{}, dev, modifiers)
 {
 }
 
@@ -369,7 +375,7 @@ const QPointingDevice *QPointerEvent::pointingDevice() const
 QSinglePointEvent::QSinglePointEvent(QEvent::Type type, const QPointingDevice *dev, const QPointF &localPos, const QPointF &scenePos,
                                      const QPointF &globalPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
     : QPointerEvent(type, dev, modifiers),
-      m_point(0, this),
+      m_point(0, dev),
       m_button(button),
       m_mouseState(buttons),
       m_source(Qt::MouseEventNotSynthesized),
@@ -735,7 +741,7 @@ Qt::MouseEventFlags QMouseEvent::flags() const
 
     Returns the button state when the event was generated. The button
     state is a combination of Qt::LeftButton, Qt::RightButton,
-    Qt::MidButton using the OR operator. For mouse move events,
+    Qt::MiddleButton using the OR operator. For mouse move events,
     this is all buttons that are pressed down. For mouse press and
     double click events this includes the button that caused the
     event. For mouse release events this excludes the button that
@@ -1279,6 +1285,15 @@ Qt::KeyboardModifiers QKeyEvent::modifiers() const
     return QInputEvent::modifiers();
 }
 
+/*!
+    \fn QKeyCombination QKeyEvent::keyCombination() const
+
+    Returns a QKeyCombination object containing both the key() and
+    the modifiers() carried by this event.
+
+    \since 6.0
+*/
+
 #if QT_CONFIG(shortcut)
 /*!
     \fn bool QKeyEvent::matches(QKeySequence::StandardKey key) const
@@ -1504,12 +1519,16 @@ QMoveEvent::~QMoveEvent()
 
     \ingroup events
 
-    Expose events are sent to windows when an area of the window is invalidated,
-    for example when window exposure in the windowing system changes.
+    Expose events are sent to windows when they move between the un-exposed and
+    exposed states.
 
-    A Window with a client area that is completely covered by another window, or
-    is otherwise not visible may be considered obscured by Qt and may in such
-    cases not receive expose events.
+    An exposed window is potentially visible to the user. If the window is moved
+    off screen, is made totally obscured by another window, is minimized, or
+    similar, an expose event is sent to the window, and isExposed() might
+    change to false.
+
+    Expose events should not be used to paint. Handle QPaintEvent
+    instead.
 
     The event handler QWindow::exposeEvent() receives expose events.
 */
@@ -2378,7 +2397,7 @@ QTabletEvent::QTabletEvent(Type type, const QPointingDevice *dev, const QPointF 
     : QSinglePointEvent(type, dev, pos, pos, globalPos, button, buttons, keyState),
       m_xTilt(xTilt),
       m_yTilt(yTilt),
-      m_zTilt(z),
+      m_z(z),
       m_tangential(tangentialPressure)
 {
     QMutableEventPoint &mut = QMutableEventPoint::from(m_point);
@@ -3828,7 +3847,10 @@ QDebug operator<<(QDebug dbg, const QEvent *e)
     const QEvent::Type type = e->type();
     switch (type) {
     case QEvent::Expose:
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         dbg << "QExposeEvent(" << static_cast<const QExposeEvent *>(e)->region() << ')';
+QT_WARNING_POP
         break;
     case QEvent::Paint:
         dbg << "QPaintEvent(" << static_cast<const QPaintEvent *>(e)->region() << ')';
@@ -4243,7 +4265,7 @@ QTouchEvent::QTouchEvent(QEvent::Type eventType,
 {
     for (QEventPoint &point : m_touchPoints) {
         m_touchPointStates |= point.state();
-        QMutableEventPoint::from(point).setParent(this);
+        QMutableEventPoint::from(point).setDevice(device);
     }
 }
 
@@ -4266,7 +4288,7 @@ QTouchEvent::QTouchEvent(QEvent::Type eventType,
       m_touchPoints(touchPoints)
 {
     for (QEventPoint &point : m_touchPoints)
-        QMutableEventPoint::from(point).setParent(this);
+        QMutableEventPoint::from(point).setDevice(device);
 }
 
 /*!
