@@ -1336,7 +1336,7 @@ QString QPropertyBindingError::description() const
   If the aliased property doesn't exist, all other method calls are ignored.
 */
 
-struct QBindingStorageData
+struct alignas(max_align_t) QBindingStorageData
 {
     size_t size = 0;
     size_t used = 0;
@@ -1354,7 +1354,7 @@ struct QBindingStoragePrivate
         QPropertyBindingData bindingData;
     };
     static_assert(alignof(Pair) == alignof(void *));
-    static_assert(alignof(size_t) == alignof(void *));
+    static_assert(alignof(QBindingStorageData) >= alignof(void *));
 
     QBindingStorageData *&d;
 
