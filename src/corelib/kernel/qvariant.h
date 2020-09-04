@@ -410,7 +410,7 @@ class Q_CORE_EXPORT QVariant
             }
             void *data = operator new(size);
             auto *ps = new (data) QVariant::PrivateShared();
-            ps->offset = int(((quintptr(ps) + sizeof(PrivateShared) + align - 1) & ~(align - 1)) - quintptr(ps));
+            ps->offset = qAlignUp(qptraddr(ps) + sizeof(PrivateShared), align) - qptraddr(ps);
             return ps;
         }
         static void free(PrivateShared *p)
