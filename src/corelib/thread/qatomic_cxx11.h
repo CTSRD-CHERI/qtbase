@@ -217,6 +217,17 @@ template <> constexpr inline bool QAtomicTraits<8>::isLockFree()
 #  endif
 #endif
 
+#if defined(__CHERI__) && __SIZEOF_POINTER__ == 16
+template<> struct QAtomicOpsSupport<16> { enum { IsSupported = 1 }; };
+#  define Q_ATOMIC_INT128_IS_SUPPORTED
+#  define Q_ATOMIC_INT128_REFERENCE_COUNTING_IS_ALWAYS_NATIVE
+#  define Q_ATOMIC_INT128_TEST_AND_SET_IS_ALWAYS_NATIVE
+#  define Q_ATOMIC_INT128_FETCH_AND_STORE_IS_ALWAYS_NATIVE
+#  define Q_ATOMIC_INT128_FETCH_AND_ADD_IS_ALWAYS_NATIVE
+template <> constexpr inline bool QAtomicTraits<16>::isLockFree()
+{ return true; }
+#endif
+
 template <typename X> struct QAtomicOps
 {
     typedef std::atomic<X> Type;
