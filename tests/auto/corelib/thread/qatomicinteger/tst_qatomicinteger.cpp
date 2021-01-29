@@ -352,6 +352,8 @@ void tst_QAtomicIntegerXX::loadAcquireStoreRelease()
 
 void tst_QAtomicIntegerXX::refDeref()
 {
+#if !(defined(QATOMIC_TEST_UINTPTR) && defined(__CHERI_PURE_CAPABILITY__))
+    // Missing support for capability RMW operations
     QFETCH(LargeInt, value);
     const bool needToPreventOverflow  = TypeIsSigned && value == std::numeric_limits<T>::max();
     const bool needToPreventUnderflow = TypeIsSigned && value == std::numeric_limits<T>::min();
@@ -394,6 +396,7 @@ void tst_QAtomicIntegerXX::refDeref()
     QCOMPARE(atomic++, prevValue);
     }
     QCOMPARE(atomic.loadRelaxed(), T(value));
+#endif
 }
 
 void tst_QAtomicIntegerXX::testAndSet()
@@ -492,6 +495,8 @@ void tst_QAtomicIntegerXX::fetchAndStore()
 
 void tst_QAtomicIntegerXX::fetchAndAdd()
 {
+#if !(defined(QATOMIC_TEST_UINTPTR) && defined(__CHERI_PURE_CAPABILITY__))
+    // Missing support for capability RMW operations
     QFETCH(LargeInt, value);
     QAtomicInteger<T> atomic(value);
 
@@ -569,10 +574,13 @@ void tst_QAtomicIntegerXX::fetchAndAdd()
     QCOMPARE(atomic += parcel2, newValue2);
     QCOMPARE(atomic += parcel1, T(value));
     }
+#endif
 }
 
 void tst_QAtomicIntegerXX::fetchAndSub()
 {
+#if !(defined(QATOMIC_TEST_UINTPTR) && defined(__CHERI_PURE_CAPABILITY__))
+    // Missing support for capability RMW operations
     QFETCH(LargeInt, value);
     QAtomicInteger<T> atomic(value);
 
@@ -650,10 +658,13 @@ void tst_QAtomicIntegerXX::fetchAndSub()
     QCOMPARE(atomic -= parcel2, newValue2);
     QCOMPARE(atomic -= parcel1, T(value));
     }
+#endif
 }
 
 void tst_QAtomicIntegerXX::fetchAndOr()
 {
+#if !(defined(QATOMIC_TEST_UINTPTR) && defined(__CHERI_PURE_CAPABILITY__))
+    // Missing support for capability RMW operations
     QFETCH(LargeInt, value);
     QAtomicInteger<T> atomic(value);
 
@@ -692,10 +703,13 @@ void tst_QAtomicIntegerXX::fetchAndOr()
     QCOMPARE(atomic |= zero, T(value));
     QCOMPARE(atomic |= one, T(value | 1));
     QCOMPARE(atomic |= minusOne, minusOne);
+#endif
 }
 
 void tst_QAtomicIntegerXX::fetchAndAnd()
 {
+#if !(defined(QATOMIC_TEST_UINTPTR) && defined(__CHERI_PURE_CAPABILITY__))
+    // Missing support for capability RMW operations
     QFETCH(LargeInt, value);
     QAtomicInteger<T> atomic(value);
 
@@ -738,10 +752,13 @@ void tst_QAtomicIntegerXX::fetchAndAnd()
     QCOMPARE(atomic &= minusOne, T(value));
     QCOMPARE(atomic &= f, T(value & 0xf));
     QCOMPARE(atomic &= zero, zero);
+#endif
 }
 
 void tst_QAtomicIntegerXX::fetchAndXor()
 {
+#if !(defined(QATOMIC_TEST_UINTPTR) && defined(__CHERI_PURE_CAPABILITY__))
+    // Missing support for capability RMW operations
     QFETCH(LargeInt, value);
     QAtomicInteger<T> atomic(value);
 
@@ -798,6 +815,7 @@ void tst_QAtomicIntegerXX::fetchAndXor()
     QCOMPARE(atomic ^= pattern, T(value));
     QCOMPARE(atomic ^= minusOne, T(~value));
     QCOMPARE(atomic ^= minusOne, T(value));
+#endif
 }
 
 #include "tst_qatomicinteger.moc"

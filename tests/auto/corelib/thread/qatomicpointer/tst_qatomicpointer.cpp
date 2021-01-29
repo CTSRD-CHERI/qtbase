@@ -512,6 +512,7 @@ void tst_QAtomicPointer::fetchAndAdd_data()
 
 void tst_QAtomicPointer::fetchAndAdd()
 {
+#ifndef __CHERI_PURE_CAPABILITY__ // Fetch-add on pointers is not implemented yet
     QFETCH(int, valueToAdd);
 
     char c;
@@ -581,6 +582,7 @@ void tst_QAtomicPointer::fetchAndAdd()
         QCOMPARE(pointer3.fetchAndAddOrdered(-valueToAdd), pi + valueToAdd);
         QCOMPARE(pointer3.loadRelaxed(), pi);
     }
+#endif // __CHERI_PURE_CAPABILITY__
 }
 
 template <typename T> void constAndVolatile_helper()
@@ -666,6 +668,7 @@ template <typename T> static void operators_helper()
         QCOMPARE(Ptr(atomic), one);
     }
 
+#ifndef __CHERI_PURE_CAPABILITY__ // RMW not implemented yet
     QAtomicPointer<T> atomic = zero;
     Ptr x = ++atomic;
     QCOMPARE(Ptr(atomic), x);
@@ -690,6 +693,7 @@ template <typename T> static void operators_helper()
     x = (atomic -= 1);
     QCOMPARE(Ptr(atomic), x);
     QCOMPARE(Ptr(atomic), zero);
+#endif
 }
 
 struct Big { double d[10]; };
