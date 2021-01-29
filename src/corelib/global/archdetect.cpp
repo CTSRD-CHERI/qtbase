@@ -95,7 +95,15 @@
 #endif
 
 // pointer type
-#if defined(Q_OS_WIN64) || (defined(Q_OS_WINRT) && defined(_M_X64))
+#if defined(__CHERI_PURE_CAPABILITY__)
+#  if QT_POINTER_SIZE - 0 == 16
+#    define ARCH_POINTER "l64pc128"
+#  elif QT_POINTER_SIZE - 0 == 8
+#    define ARCH_POINTER "il32pc64"
+#  else
+#    error "Unsupported pure-capability pointer size"
+#  endif
+#elif defined(Q_OS_WIN64) || (defined(Q_OS_WINRT) && defined(_M_X64))
 #  define ARCH_POINTER "llp64"
 #elif defined(__LP64__) || QT_POINTER_SIZE - 0 == 8
 #  define ARCH_POINTER "lp64"
