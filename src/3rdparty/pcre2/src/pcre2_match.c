@@ -584,6 +584,8 @@ match(PCRE2_SPTR start_eptr, PCRE2_SPTR start_ecode, PCRE2_SIZE *ovector,
   match_block *mb)
 {
 /* Frame-handling variables */
+if (!__builtin_is_aligned(frame_size, sizeof(void*)))
+  abort();
 
 heapframe *F;           /* Current frame pointer */
 heapframe *N = NULL;    /* Temporary frame pointers */
@@ -6603,6 +6605,8 @@ correct when calling match() more than once for non-anchored patterns. */
 
 frame_size = offsetof(heapframe, ovector) +
   re->top_bracket * 2 * sizeof(PCRE2_SIZE);
+if (!__builtin_is_aligned(frame_size, sizeof(void*)))
+  abort();
 
 /* Limits set in the pattern override the match context only if they are
 smaller. */
