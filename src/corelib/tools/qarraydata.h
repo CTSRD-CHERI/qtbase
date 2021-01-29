@@ -96,7 +96,7 @@ struct Q_CORE_EXPORT QArrayData
         // Q_ASSERT(offset > 0 && offset < 100 && "Globals should use a pointer!");
         // Seems like the generated QMetaObject tables use larger offsets so just assert that the length is sensible
         Q_ASSERT(offset < __builtin_cheri_length_get(obj));
-        ret = __builtin_cheri_offset_increment(obj, qint64(offset));
+        ret = const_cast<void *>(__builtin_cheri_offset_increment(obj, qint64(offset)));
         qarraydata_dbg("Remaining bytes in buffer: %ld (obj = %#p), obj->alloc=%d, obj->size=%d\n",
             cheri_bytes_remaining(ret), static_cast<const void *>(obj), obj->alloc, obj->size);
         // If we have an allocation set the bounds of data() to the size of the allocation so that modifying code
