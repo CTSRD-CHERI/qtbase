@@ -216,13 +216,13 @@ void *QXcbNativeInterface::nativeResourceForScreen(const QByteArray &resourceStr
         result = appUserTime(xcbScreen);
         break;
     case ScreenHintStyle:
-        result = reinterpret_cast<void *>(xcbScreen->hintStyle() + 1);
+        result = reinterpret_cast<void *>(static_cast<std::intptr_t>(xcbScreen->hintStyle() + 1));
         break;
     case ScreenSubpixelType:
-        result = reinterpret_cast<void *>(xcbScreen->subpixelType() + 1);
+        result = reinterpret_cast<void *>(static_cast<std::intptr_t>(xcbScreen->subpixelType() + 1));
         break;
     case ScreenAntialiasingEnabled:
-        result = reinterpret_cast<void *>(xcbScreen->antialiasingEnabled() + 1);
+        result = reinterpret_cast<void *>(static_cast<std::intptr_t>(xcbScreen->antialiasingEnabled() + 1));
         break;
     case TrayWindow:
         if (QXcbSystemTrayTracker *s = systemTrayTracker(screen))
@@ -232,7 +232,7 @@ void *QXcbNativeInterface::nativeResourceForScreen(const QByteArray &resourceStr
         result = getTimestamp(xcbScreen);
         break;
     case RootWindow:
-        result = reinterpret_cast<void *>(xcbScreen->root());
+        result = reinterpret_cast<void *>(static_cast<std::intptr_t>(xcbScreen->root()));
         break;
     case CompositingEnabled:
         if (QXcbVirtualDesktop *vd = xcbScreen->virtualDesktop())
@@ -430,8 +430,8 @@ void *QXcbNativeInterface::x11Screen()
 {
     QXcbIntegration *integration = QXcbIntegration::instance();
     QXcbConnection *defaultConnection = integration->defaultConnection();
-    if (defaultConnection)
-        return reinterpret_cast<void *>(defaultConnection->primaryScreenNumber());
+    if (defaultConnection) 
+        return reinterpret_cast<void *>(static_cast<std::intptr_t>(defaultConnection->primaryScreenNumber()));
     return 0;
 }
 
@@ -440,7 +440,7 @@ void *QXcbNativeInterface::rootWindow()
     QXcbIntegration *integration = QXcbIntegration::instance();
     QXcbConnection *defaultConnection = integration->defaultConnection();
     if (defaultConnection)
-        return reinterpret_cast<void *>(defaultConnection->rootWindow());
+        return reinterpret_cast<void *>(static_cast<std::intptr_t>(defaultConnection->rootWindow()));
     return 0;
 }
 
