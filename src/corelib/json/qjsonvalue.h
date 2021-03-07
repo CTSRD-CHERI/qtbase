@@ -158,7 +158,11 @@ private:
     void detach();
 
     union {
+#ifdef __CHERI_PURE_CAPABILITY__
+        quintptr ui;
+#else
         quint64 ui;
+#endif
         bool b;
         double dbl;
         QStringData *stringData;
