@@ -288,6 +288,12 @@ public:
                 QChar fillChar = QLatin1Char(' ')) const;
     Q_REQUIRED_RESULT QString arg(QChar a, int fieldWidth = 0,
                 QChar fillChar = QLatin1Char(' ')) const;
+#ifdef __CHERI_PURE_CAPABILITY__
+	Q_REQUIRED_RESULT QString arg(qintptr a, int fieldWidth = 0, int base = 10,
+				QChar fillChar = QLatin1Char(' ')) const;
+	Q_REQUIRED_RESULT QString arg(quintptr a, int fieldWidth = 0, int base= 10,
+				QChar fillChar = QLatin1Char(' ')) const;
+#endif
 #if QT_STRINGVIEW_LEVEL < 2
     Q_REQUIRED_RESULT QString arg(const QString &a, int fieldWidth = 0,
                 QChar fillChar = QLatin1Char(' ')) const;
@@ -653,10 +659,9 @@ public:
     static QString number(qlonglong, int base=10);
     static QString number(qulonglong, int base=10);
     static QString number(double, char f='g', int prec=6);
-#ifdef __CHERI__
-    // XXXAR: disable these for now
-    static QString number(__uintcap_t, int base = 10) = delete;
-    static QString number(__intcap_t, int base = 10) = delete;
+#ifdef __CHERI_PURE_CAPABILITY__
+    static QString number(quintptr, int base = 10);
+    static QString number(qintptr, int base = 10);
 #endif
 
     friend Q_CORE_EXPORT bool operator==(const QString &s1, const QString &s2) Q_DECL_NOTHROW;
@@ -973,6 +978,12 @@ inline QString QString::arg(short a, int fieldWidth, int base, QChar fillChar) c
 { return arg(qlonglong(a), fieldWidth, base, fillChar); }
 inline QString QString::arg(ushort a, int fieldWidth, int base, QChar fillChar) const
 { return arg(qulonglong(a), fieldWidth, base, fillChar); }
+#ifdef __CHERI_PURE_CAPABILITY__
+inline QString QString::arg(qintptr a, int fieldWidth, int base, QChar fillChar) const
+{ return arg(qlonglong(a), fieldWidth, base, fillChar); }
+inline QString QString::arg(quintptr a, int fieldWidth, int base, QChar fillChar) const
+{ return arg(qulonglong(a), fieldWidth, base, fillChar); }
+#endif
 inline QString QString::arg(const QString &a1, const QString &a2) const
 { const QString *args[2] = { &a1, &a2 }; return multiArg(2, args); }
 inline QString QString::arg(const QString &a1, const QString &a2, const QString &a3) const
