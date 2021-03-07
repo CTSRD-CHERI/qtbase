@@ -734,6 +734,13 @@ Q_DECL_CONST_FUNCTION QT_POPCOUNT_CONSTEXPR inline uint qPopulationCount(long un
     return qPopulationCount(static_cast<quint64>(v));
 }
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+Q_DECL_CONST_FUNCTION QT_POPCOUNT_CONSTEXPR inline uint qPopulationCount(quintptr v) Q_DECL_NOTHROW
+{
+    return qPopulationCount(static_cast<quint64>(v));
+}
+#endif
+
 #if defined(Q_CC_GNU) && !defined(Q_CC_CLANG)
 #undef QALGORITHMS_USE_BUILTIN_POPCOUNT
 #endif
@@ -803,6 +810,13 @@ Q_DECL_RELAXED_CONSTEXPR inline uint qCountTrailingZeroBits(unsigned long v) Q_D
 {
     return qCountTrailingZeroBits(QIntegerForSizeof<long>::Unsigned(v));
 }
+
+#if defined(__CHERI_PURE_CAPABILITY__)
+Q_DECL_RELAXED_CONSTEXPR inline uint qCountTrailingZeroBits(quintptr v) Q_DECL_NOTHROW
+{
+	return qCountTrailingZeroBits(static_cast<quint64>(v));
+}
+#endif
 
 Q_DECL_RELAXED_CONSTEXPR inline uint qCountLeadingZeroBits(quint32 v) Q_DECL_NOTHROW
 {
