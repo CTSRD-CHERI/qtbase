@@ -178,7 +178,7 @@ static inline QByteArray typeNameFromTypeInfo(const QMetaObject *mo, uint typeIn
     } else {
         // ### Use the QMetaType::typeName() that returns QByteArray
         const char *t = QMetaType::typeName(typeInfo);
-        return QByteArray::fromRawData(t, qstrlen(t));
+        return QByteArray::fromRawData(t, qstrlen(t) + 1);
     }
 }
 
