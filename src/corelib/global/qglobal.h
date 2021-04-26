@@ -556,10 +556,10 @@ namespace QtPrivate {
 
 
 /*
-  quintptr and qptrdiff is guaranteed to be the same size as a pointer, i.e.
+  quintptr and qintptr is guaranteed to be the same size as a pointer, i.e.
 
       sizeof(void *) == sizeof(quintptr)
-      && sizeof(void *) == sizeof(qptrdiff)
+      && sizeof(void *) == sizeof(qintptr)
 
   size_t and qsizetype are not guaranteed to be the same size as a pointer, but
   they usually are.
@@ -569,16 +569,26 @@ template <>    struct QIntegerForSize<1> { typedef quint8  Unsigned; typedef qin
 template <>    struct QIntegerForSize<2> { typedef quint16 Unsigned; typedef qint16 Signed; };
 template <>    struct QIntegerForSize<4> { typedef quint32 Unsigned; typedef qint32 Signed; };
 template <>    struct QIntegerForSize<8> { typedef quint64 Unsigned; typedef qint64 Signed; };
-#if defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
+#if defined(__CHERI_PURE_CAPABILITY__)
+template <>    struct QIntegerForSize<sizeof(void*)> { typedef __uintcap_t Unsigned; typedef __intcap_t Signed; };
+
+#elif defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
 template <>    struct QIntegerForSize<16> { __extension__ typedef unsigned __int128 Unsigned; __extension__ typedef __int128 Signed; };
 #endif
 template <class T> struct QIntegerForSizeof: QIntegerForSize<sizeof(T)> { };
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
 typedef QIntegerForSizeof<void*>::Unsigned quintptr;
-typedef QIntegerForSizeof<void*>::Signed qptrdiff;
-typedef qptrdiff qintptr;
+typedef QIntegerForSizeof<void*>::Signed qintptr;
+// XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
+typedef ptrdiff_t qptrdiff;
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
+#ifdef __CHERI__
+// TODO: use __memory_address
+typedef qregisteruint qvaddr;
+#else
+typedef quintptr qvaddr;
+#endif
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
@@ -990,6 +1000,17 @@ Q_CORE_EXPORT void *qMallocAligned(size_t size, size_t alignment) Q_ALLOC_SIZE(1
 Q_CORE_EXPORT void *qReallocAligned(void *ptr, size_t size, size_t oldsize, size_t alignment) Q_ALLOC_SIZE(2);
 Q_CORE_EXPORT void qFreeAligned(void *ptr);
 
+template<typename T>
+inline bool qIsAligned(T ptr, size_t alignment) {
+    Q_ASSERT_X((alignment & (alignment - 1)) == 0, "qIsAligned",
+               "alignment was not a power of two");
+#if QT_HAS_BUILTIN(__builtin_is_aligned)
+    return __builtin_is_aligned(ptr, alignment);
+#else
+    return (qvaddr(ptr) & (alignment - 1)) == 0;
+#endif
+}
+
 
 /*
    Avoid some particularly useless warnings from some stupid compilers.
@@ -1274,6 +1295,59 @@ Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") void 
 Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") int qrand();
 #endif
 
+
+template<unsigned lowBitsMask>
+inline qvaddr qGetLowPointerBits(quintptr ptr) {
+    Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Work around https://github.com/CTSRD-CHERI/clang/issues/189
+    // which caused QMutexLocker::unlock() to always be a no-op
+    QT_WARNING_PUSH
+    QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
+    // The additional bits are stored using bitwise or -> they are stored in the
+    // offset field. Note: extracting them with bitwise and returns a
+    // LHS-derived capability, so we only want to return the offset of that
+    // result. The simple approach of `if ((x & 3) == 3)` would always return
+    // false since the LHS of the == is a valid capability with offset 3 and
+    // the RHS is an untagged intcap_t with offset 3
+    // See https://github.com/CTSRD-CHERI/clang/issues/189
+    quintptr result = ptr & lowBitsMask;
+    // Return the offset or the address depending on the compiler mode
+    return static_cast<uint64_t>(result);
+    QT_WARNING_POP
+#else
+    return ptr & lowBitsMask;
+#endif
+}
+
+template<unsigned lowBitsMask>
+inline quintptr qClearLowPointerBits(quintptr ptr) {
+    Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
+    constexpr qvaddr clearingMask = ~qvaddr(lowBitsMask);
+    Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
+#ifdef __CHERI_PURE_CAPABILITY__
+    // See https://github.com/CTSRD-CHERI/clang/issues/189
+    QT_WARNING_PUSH
+    QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
+    quintptr result = ptr & clearingMask;
+    // Bitwise operations on uintcap_t always operate on the offset field
+    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(ptr)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
+    return result;
+    QT_WARNING_POP
+#else
+    return ptr & clearingMask;
+#endif
+}
+
+// This one is not a template since unlike the mask values the bits parameter
+// might not be a compile-time constant
+// XXXAR: this function is not actually needed since bitwise or works
+// as expected but I added it for symmetry.
+inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
+    Q_ASSERT(bits <= 31 && "Cannot use more than the low 5 pointer bits");
+    return ptr | bits;
+}
+
 #define QT_MODULE(x)
 
 #if !defined(QT_BOOTSTRAPPED) && defined(QT_REDUCE_RELOCATIONS) && defined(__ELF__) && \
@@ -1289,6 +1363,16 @@ template <typename T> struct QEnableIf<true, T> { typedef T Type; };
 }
 
 QT_END_NAMESPACE
+
+#ifdef __CHERI__
+#define cheri_debug(...) fprintf(stderr, __VA_ARGS__)
+inline qptrdiff cheri_bytes_remaining(void* __capability ptr)
+{
+    return __builtin_cheri_length_get(ptr) - __builtin_cheri_offset_get(ptr);
+}
+#else
+#define cheri_debug(...)
+#endif
 
 // We need to keep QTypeInfo, QSysInfo, QFlags, qDebug & family in qglobal.h for compatibility with Qt 4.
 // Be careful when changing the order of these files.

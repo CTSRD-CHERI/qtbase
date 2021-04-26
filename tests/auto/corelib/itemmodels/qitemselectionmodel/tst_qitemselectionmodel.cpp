@@ -156,7 +156,7 @@ QDataStream &operator>>(QDataStream &s, QModelIndex &output)
     s >> r;
     s >> c;
     s >> ptr;
-    output = QStreamHelper::create(r, c, reinterpret_cast<void *>(ptr));
+    output = QStreamHelper::create(r, c, reinterpret_cast<void *>((quintptr)ptr));
     return s;
 }
 

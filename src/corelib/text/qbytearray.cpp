@@ -65,7 +65,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define IS_RAW_DATA(d) ((d)->offset != sizeof(QByteArrayData))
+#define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QByteArrayData))
 
 QT_BEGIN_NAMESPACE
 
@@ -1866,11 +1866,17 @@ void QByteArray::expand(int i)
 QByteArray QByteArray::nulTerminated() const
 {
     // is this fromRawData?
-    if (!IS_RAW_DATA(d))
+    if (!IS_RAW_DATA(d)) {
+        // XXXAR: for CHERI we need hack in data() to treat sharedNull as having length 1
+        qarraydata_dbg("QByteArray::nulTerminated() IS_RAW_DATA: %#p -- data()= %#p\n", static_cast<const void*>(d), d->data());
         return *this;           // no, then we're sure we're zero terminated
+    }
 
+    qarraydata_dbg("QByteArray::nulTerminated() not raw data: %#p, data()= %#p\n", static_cast<const void*>(d), d->data());
     QByteArray copy(*this);
+    qarraydata_dbg("QByteArray::nulTerminated() not raw data copy: %#p, copy.data() = %#p\n", static_cast<const void*>(copy.d), copy.d->data());
     copy.detach();
+    qarraydata_dbg("QByteArray::nulTerminated() copy detached: %#p -- copy.data() = %#p\n", static_cast<const void*>(copy.d), copy.d->data());
     return copy;
 }
 
@@ -4524,10 +4530,30 @@ QByteArray &QByteArray::setRawData(const char *data, uint size)
     } else {
         if (data) {
             d->size = size;
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = data - reinterpret_cast<char *>(d);
+#else
+            d->setPointer(data);
+#endif
         } else {
+            // If we get passed a null pointer we still ensure that data()
+            // returns a zero-length null terminated string
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = sizeof(QByteArrayData);
+#else
+            d->setOffset(sizeof(QByteArrayData));
+#endif
             d->size = 0;
+            // If d->alloc is zero set it to one to allow writing to the first byte of
+            // d->data(). On capability architectures like CHERI data() will return
+            // a capability with length set to max(alloc, size) and if both of these are
+            // zero we will get a trap when attempting to write the '\0'.
+            // FIXME: Due to the way that malloc works we should generally have at least
+            // one free byte after the QByteArrayData object but we should probably
+            // actually check that there is enough allocated space.
+            if (d->alloc == 0)
+                d->alloc = 1;
+            *d->data() = 0;
         }
     }
     return *this;

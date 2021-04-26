@@ -510,7 +510,8 @@
          typedef unsigned __int64 png_ptruint;
 #     endif
 #  else
-      typedef unsigned long png_ptruint;
+#     include <stdint.h>
+      typedef uintptr_t png_ptruint;
 #  endif
 #  define png_constcast(type, value) ((type)(png_ptruint)(const void*)(value))
 #  define png_aligncast(type, value) ((void*)(value))

@@ -3115,7 +3115,7 @@ static inline qint64 getMSecs(const QDateTimeData &d)
     if (d.isShort()) {
         // same as, but producing better code
         //return d.data.msecs;
-        return qintptr(d.d) >> 8;
+        return qvaddr(d.d) >> 8;
     }
     return d->m_msecs;
 }
@@ -3125,7 +3125,7 @@ static inline QDateTimePrivate::StatusFlags getStatus(const QDateTimeData &d)
     if (d.isShort()) {
         // same as, but producing better code
         //return StatusFlag(d.data.status);
-        return QDateTimePrivate::StatusFlag(qintptr(d.d) & 0xFF);
+        return QDateTimePrivate::StatusFlag(qvaddr(d.d) & 0xFF);
     }
     return d->m_status;
 }
@@ -4288,7 +4288,12 @@ void QDateTime::setMSecsSinceEpoch(qint64 msecs)
 
     if (msecsCanBeSmall(msecs) && d.isShort()) {
         // we can keep short
+#ifndef __CHERI_PURE_CAPABILITY__
+        // XXXAR: compiler crash
         d.data.msecs = qintptr(msecs);
+#else
+        d.data.msecs = msecs;
+#endif
         d.data.status = status;
     } else {
         d.detach();

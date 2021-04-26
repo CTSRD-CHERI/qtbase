@@ -95,7 +95,11 @@ struct Element
     }
 };
 Q_DECLARE_OPERATORS_FOR_FLAGS(Element::ValueFlags)
+#ifdef __CHERI_PURE_CAPABILITY__
+Q_STATIC_ASSERT(sizeof(Element) == 32);
+#else
 Q_STATIC_ASSERT(sizeof(Element) == 16);
+#endif
 
 struct ByteData
 {

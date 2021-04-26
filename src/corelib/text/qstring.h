@@ -802,6 +802,11 @@ public:
     static QString number(qlonglong, int base=10);
     static QString number(qulonglong, int base=10);
     static QString number(double, char f='g', int prec=6);
+#ifdef __CHERI__
+    // XXXAR: disable these for now
+    static QString number(__uintcap_t, int base = 10) = delete;
+    static QString number(__intcap_t, int base = 10) = delete;
+#endif
 
     friend Q_CORE_EXPORT bool operator==(const QString &s1, const QString &s2) noexcept;
     friend Q_CORE_EXPORT bool operator<(const QString &s1, const QString &s2) noexcept;
@@ -1085,7 +1090,7 @@ inline QChar *QString::data()
 inline const QChar *QString::constData() const
 { return reinterpret_cast<const QChar*>(d->data()); }
 inline void QString::detach()
-{ if (d->ref.isShared() || (d->offset != sizeof(QStringData))) reallocData(uint(d->size) + 1u); }
+{ if (d->ref.isShared() || (d->dataOffset() != sizeof(QStringData))) reallocData(uint(d->size) + 1u); }
 inline bool QString::isDetached() const
 { return !d->ref.isShared(); }
 inline void QString::clear()

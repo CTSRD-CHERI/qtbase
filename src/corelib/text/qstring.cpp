@@ -100,7 +100,7 @@
 #define ULLONG_MAX quint64_C(18446744073709551615)
 #endif
 
-#define IS_RAW_DATA(d) ((d)->offset != sizeof(QStringData))
+#define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QStringData))
 
 QT_BEGIN_NAMESPACE
 
@@ -1001,9 +1001,9 @@ static int ucstrncmp(const QChar *a, const QChar *b, size_t l)
         return 0;
 
     // check alignment
-    if ((reinterpret_cast<quintptr>(a) & 2) == (reinterpret_cast<quintptr>(b) & 2)) {
+    if ((reinterpret_cast<qvaddr>(a) & 2) == (reinterpret_cast<qvaddr>(b) & 2)) {
         // both addresses have the same alignment
-        if (reinterpret_cast<quintptr>(a) & 2) {
+        if (reinterpret_cast<qvaddr>(a) & 2) {
             // both addresses are not aligned to 4-bytes boundaries
             // compare the first character
             if (*a != *b)
@@ -2372,9 +2372,11 @@ void QString::reallocData(uint alloc, bool grow)
             Data::deallocate(d);
         d = x;
     } else {
+        qarraydata_dbg("%s: %d, d=%#p\n", __func__, alloc, d);
         Data *p = Data::reallocateUnaligned(d, alloc, allocOptions);
         Q_CHECK_PTR(p);
         d = p;
+        qarraydata_dbg("%s: p->alloc = %d, resulting p=%#p, %ld bytes in p, %ld bytes in data()\n", __func__, p->alloc, p, cheri_bytes_remaining(p), cheri_bytes_remaining(p->data()));
     }
 }
 
@@ -2680,10 +2682,17 @@ QString &QString::append(const QString &str)
         if (d == Data::sharedNull()) {
             operator=(str);
         } else {
-            if (d->ref.isShared() || uint(d->size + str.d->size) + 1u > d->alloc)
+            if (d->ref.isShared() || uint(d->size + str.d->size) + 1u > d->alloc) {
+                qarraydata_dbg("%s: d=%#p, reallocating to %d\n", Q_FUNC_INFO, static_cast<void*>(d), uint(d->size + str.d->size) + 1u);
                 reallocData(uint(d->size + str.d->size) + 1u, true);
+                qarraydata_dbg("%s: after realloc: d=%#p\n", Q_FUNC_INFO, static_cast<void*>(d));
+            }
+            qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d\n", Q_FUNC_INFO,
+                static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size);
             memcpy(d->data() + d->size, str.d->data(), str.d->size * sizeof(QChar));
             d->size += str.d->size;
+            qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d, remaining = %ld\n", Q_FUNC_INFO,
+                 static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size, cheri_bytes_remaining(d->data()));
             d->data()[d->size] = '\0';
         }
     }
@@ -2699,10 +2708,17 @@ QString &QString::append(const QString &str)
 QString &QString::append(const QChar *str, int len)
 {
     if (str && len > 0) {
-        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc)
+        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc) {
+            qarraydata_dbg("%s: d=%#p, reallocating to %d\n", Q_FUNC_INFO, static_cast<void*>(d), uint(d->size + len) + 1u);
             reallocData(uint(d->size + len) + 1u, true);
+            qarraydata_dbg("%s: after realloc: d=%#p\n", Q_FUNC_INFO, static_cast<void*>(d));
+        }
+        qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d\n", Q_FUNC_INFO,
+            static_cast<void*>(d),  static_cast<void*>(d->data()), d->alloc, d->size);
         memcpy(d->data() + d->size, str, len * sizeof(QChar));
         d->size += len;
+        qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d, remaining = %ld\n",
+             Q_FUNC_INFO, static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size, cheri_bytes_remaining(d->data()));
         d->data()[d->size] = '\0';
     }
     return *this;
@@ -5259,7 +5275,7 @@ QByteArray QString::toLatin1_helper_inplace(QString &s)
     s.d = QString().d;
 
     // do the in-place conversion
-    uchar *dst = reinterpret_cast<uchar *>(ba_d->data());
+    uchar *dst = static_cast<uchar *>(ba_d->boundedData<sizeof(uchar)>());
     qt_to_latin1(dst, data, length);
     dst[length] = '\0';
 
@@ -9454,9 +9470,17 @@ QString &QString::setRawData(const QChar *unicode, int size)
     } else {
         if (unicode) {
             d->size = size;
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = reinterpret_cast<const char *>(unicode) - reinterpret_cast<char *>(d);
+#else
+            d->setPointer(unicode);
+#endif
         } else {
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = sizeof(QStringData);
+#else
+            d->setOffset(sizeof(QStringData));
+#endif
             d->size = 0;
         }
     }

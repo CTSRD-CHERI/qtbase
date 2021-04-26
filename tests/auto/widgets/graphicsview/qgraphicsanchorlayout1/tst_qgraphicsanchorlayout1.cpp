@@ -154,7 +154,7 @@ public:
         {
             setContentsMargins( 0,0,0,0 );
             if (name.isEmpty())
-                setData(0, QLatin1Char('w') + QString::number(quintptr(this)));
+                setData(0, QLatin1Char('w') + QString::number(qvaddr(this)));
             else
                 setData(0, name);
         }

@@ -395,6 +395,11 @@ public:
     Q_REQUIRED_RESULT static QByteArray number(qlonglong, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qulonglong, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(double, char f = 'g', int prec = 6);
+#ifdef __CHERI__
+    // XXXAR: disable these for now
+    Q_REQUIRED_RESULT static QByteArray number(__uintcap_t, int base = 10) = delete;
+    Q_REQUIRED_RESULT static QByteArray number(__intcap_t, int base = 10) = delete;
+#endif
     Q_REQUIRED_RESULT static QByteArray fromRawData(const char *, int size);
 
     class FromBase64Result;
@@ -518,7 +523,7 @@ inline const char *QByteArray::data() const
 inline const char *QByteArray::constData() const
 { return d->data(); }
 inline void QByteArray::detach()
-{ if (d->ref.isShared() || (d->offset != sizeof(QByteArrayData))) reallocData(uint(d->size) + 1u, d->detachFlags()); }
+{ if (d->ref.isShared() || (d->dataOffset() != sizeof(QByteArrayData))) reallocData(uint(d->size) + 1u, d->detachFlags()); }
 inline bool QByteArray::isDetached() const
 { return !d->ref.isShared(); }
 inline QByteArray::QByteArray(const QByteArray &a) noexcept : d(a.d)

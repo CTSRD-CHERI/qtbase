@@ -43,6 +43,16 @@
 #include <QtCore/qrefcount.h>
 #include <string.h>
 
+#ifdef __CHERI_PURE_CAPABILITY__
+#undef QARRAYDATA_DEBUG_OUTPUT
+#endif
+#ifdef QARRAYDATA_DEBUG_OUTPUT
+#include <cstdio>
+#define qarraydata_dbg(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define qarraydata_dbg(...) do {} while(false)
+#endif
+
 QT_BEGIN_NAMESPACE
 
 struct Q_CORE_EXPORT QArrayData
@@ -52,20 +62,85 @@ struct Q_CORE_EXPORT QArrayData
     uint alloc : 31;
     uint capacityReserved : 1;
 
+#ifndef __CHERI_PURE_CAPABILITY__
     qptrdiff offset; // in bytes from beginning of header
-
-    void *data()
-    {
-        Q_ASSERT(size == 0
-                || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<char *>(this) + offset;
+    inline qptrdiff dataOffset() const { return offset; }
+#else
+    // FIXME: See if we can make this work somehow without runtime relocs
+    // See https://woboq.com/blog/qstringliteral.html
+    qintptr _internal_cheri_offset;
+    void setOffset(qptrdiff offset) {
+        Q_ASSERT(offset > 0 && offset < 100 && "Globals should use a pointer!");
+        _internal_cheri_offset = offset;
     }
-
-    const void *data() const
+    void setPointer(const void *data) {
+        Q_ASSERT(__builtin_cheri_tag_get(data) && "Setting untagged pointer?");
+        _internal_cheri_offset = reinterpret_cast<quintptr>(data);
+    }
+    inline qptrdiff dataOffset() const {
+        void *ptr = reinterpret_cast<void *>(_internal_cheri_offset);
+        if (__builtin_cheri_tag_get(ptr))
+            return static_cast<const char*>(ptr) - reinterpret_cast<const char*>(this);
+        // otherwise just return the offset:
+        return _internal_cheri_offset;
+    }
+    static inline void *cheri_get_arraydata(const QArrayData* obj, quintptr offset, size_t objsize)
     {
+        // For CHERI we can't just always add the offset to this since that may be be out-of-bounds
+        void * ret = reinterpret_cast<void *>(offset);
+        qarraydata_dbg("%s(%#p, %zd): %#p\n", __func__, static_cast<const void *>(obj), objsize, ret);
+        if (__builtin_cheri_tag_get(ret))
+            return ret; // valid pointer so can just return
+
+        // 100 is just a guess for sizeof(QArrayData + alignment)
+        // Q_ASSERT(offset > 0 && offset < 100 && "Globals should use a pointer!");
+        // Seems like the generated QMetaObject tables use larger offsets so just assert that the length is sensible
+        Q_ASSERT(offset < __builtin_cheri_length_get(obj));
+        ret = const_cast<char *>(reinterpret_cast<const char *>(obj) + qint64(offset));
+        qarraydata_dbg("Remaining bytes in buffer: %ld (obj = %#p), obj->alloc=%d, obj->size=%d\n",
+            cheri_bytes_remaining(ret), static_cast<const void *>(obj), obj->alloc, obj->size);
+        // If we have an allocation set the bounds of data() to the size of the allocation so that modifying code
+        // like QString::append() works
+        // TODO: for the const overload this should probably always be just the size to avoid accidental modification?
+        size_t bounds = (obj->alloc ? obj->alloc : obj->size) * objsize;
+        // Global static constants have alloc == 0 and size == N - 1 but lots of code expects
+        // that they can be passed to printf() since they have a null terminator (this is true at least for QByteArray)
+        // Note: this also handles the case of QByteArray::sharedNull()
+        // TODO: is this also required for objsize != 1 ?
+        if (objsize == 1 && obj->alloc == 0 && obj->ref.isStatic()) {
+            qarraydata_dbg("%s: Adding extra null byte to size since data is static\n", __func__);
+            bounds += objsize;
+        }
+#ifndef QT_CHERI_NO_SET_BOUNDS
+        ret = __builtin_cheri_bounds_set(ret, bounds);
+#endif
+        qarraydata_dbg("%s with size(%zd): %#p\n", __func__, bounds, ret);
+        return ret;
+    }
+#endif
+    template<size_t objsize = 1>
+    void *boundedData()
+    {
+#ifndef __CHERI_PURE_CAPABILITY__
         Q_ASSERT(size == 0
                 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<const char *>(this) + offset;
+        return reinterpret_cast<void *>(reinterpret_cast<char *>(this) + offset);
+#else
+        Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
+        return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
+#endif
+    }
+    template<size_t objsize = 1>
+    const void *boundedData() const
+    {
+#ifndef __CHERI_PURE_CAPABILITY__
+        Q_ASSERT(size == 0
+                || offset < 0 || size_t(offset) >= sizeof(QArrayData));
+        return reinterpret_cast<const void *>(reinterpret_cast<const char *>(this) + offset);
+#else
+        Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
+        return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
+#endif
     }
 
     // This refers to array data mutability, not "header data" represented by
@@ -205,8 +280,8 @@ struct QTypedArrayData
     typedef const T* const_iterator;
 #endif
 
-    T *data() { return static_cast<T *>(QArrayData::data()); }
-    const T *data() const { return static_cast<const T *>(QArrayData::data()); }
+    T *data() { return static_cast<T *>(QArrayData::boundedData<sizeof(T)>()); }
+    const T *data() const { return static_cast<const T *>(QArrayData::boundedData<sizeof(T)>()); }
 
     iterator begin(iterator = iterator()) { return data(); }
     iterator end(iterator = iterator()) { return data() + size; }
@@ -243,12 +318,16 @@ struct QTypedArrayData
             AllocationOptions options = Default)
     {
         Q_STATIC_ASSERT(sizeof(QTypedArrayData) == sizeof(QArrayData));
+        Q_ASSERT(data && "Creating rawData from NULL");
         QTypedArrayData *result = allocate(0, options | RawData);
         if (result) {
             Q_ASSERT(!result->ref.isShared()); // No shared empty, please!
-
+#ifndef __CHERI_PURE_CAPABILITY__
             result->offset = reinterpret_cast<const char *>(data)
                 - reinterpret_cast<const char *>(result);
+#else
+            result->setPointer(__builtin_cheri_bounds_set(data, n * sizeof(T)));
+#endif
             result->size = int(n);
         }
         return result;
