@@ -196,12 +196,12 @@ class QVersionNumber
         void setInlineData(const int *data, int len)
         {
             dummy = 1 + len * 2;
-#if Q_BYTE_ORDER == Q_LITTLE_ENDIAN
+#if Q_BYTE_ORDER == Q_LITTLE_ENDIAN && !defined(__CHERI_PURE_CAPABILITY__)
             for (int i = 0; i < len; ++i)
-                dummy |= qvaddr(data[i] & 0xFF) << (8 * (i + 1));
-#elif Q_BYTE_ORDER == Q_BIG_ENDIAN
+                dummy |= quintptr(data[i] & 0xFF) << (8 * (i + 1));
+#elif Q_BYTE_ORDER == Q_BIG_ENDIAN && !defined(__CHERI_PURE_CAPABILITY__)
             for (int i = 0; i < len; ++i)
-                dummy |= qvaddr(data[i] & 0xFF) << (8 * (sizeof(void *) - i - 1));
+                dummy |= quintptr(data[i] & 0xFF) << (8 * (sizeof(void *) - i - 1));
 #else
             // the code above is equivalent to:
             setInlineSize(len);
