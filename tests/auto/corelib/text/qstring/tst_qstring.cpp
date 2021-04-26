@@ -612,7 +612,7 @@ QString verifyZeroTermination(const QString &str)
 
     // Skip if isStatic() or fromRawData(), as those offer no guarantees
     if (strDataPtr->ref.isStatic()
-            || strDataPtr->offset != QString().data_ptr()->offset)
+        || strDataPtr->dataOffset() != QString().data_ptr()->dataOffset())
         return str;
 
     int strSize = str.size();
@@ -6715,7 +6715,7 @@ void tst_QString::literals()
     QVERIFY(str.length() == 4);
     QVERIFY(str == QLatin1String("abcd"));
     QVERIFY(str.data_ptr()->ref.isStatic());
-    QVERIFY(str.data_ptr()->offset == sizeof(QStringData));
+    QVERIFY(str.data_ptr()->dataOffset() == sizeof(QStringData));
 
     const QChar *s = str.constData();
     QString str2 = str;

@@ -4538,11 +4538,7 @@ QByteArray &QByteArray::setRawData(const char *data, uint size)
         } else {
             // If we get passed a null pointer we still ensure that data()
             // returns a zero-length null terminated string
-#ifndef __CHERI_PURE_CAPABILITY__
-            d->offset = sizeof(QByteArrayData);
-#else
             d->setOffset(sizeof(QByteArrayData));
-#endif
             d->size = 0;
             // If d->alloc is zero set it to one to allow writing to the first byte of
             // d->data(). On capability architectures like CHERI data() will return

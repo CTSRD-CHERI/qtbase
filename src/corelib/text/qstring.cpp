@@ -9476,11 +9476,7 @@ QString &QString::setRawData(const QChar *unicode, int size)
             d->setPointer(unicode);
 #endif
         } else {
-#ifndef __CHERI_PURE_CAPABILITY__
-            d->offset = sizeof(QStringData);
-#else
             d->setOffset(sizeof(QStringData));
-#endif
             d->size = 0;
         }
     }

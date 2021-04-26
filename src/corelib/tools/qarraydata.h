@@ -65,12 +65,12 @@ struct Q_CORE_EXPORT QArrayData
 #ifndef __CHERI_PURE_CAPABILITY__
     qptrdiff offset; // in bytes from beginning of header
     inline qptrdiff dataOffset() const { return offset; }
+    void setOffset(qptrdiff offset) { this->offset = offset; }
 #else
     // FIXME: See if we can make this work somehow without runtime relocs
     // See https://woboq.com/blog/qstringliteral.html
     qintptr _internal_cheri_offset;
     void setOffset(qptrdiff offset) {
-        Q_ASSERT(offset > 0 && offset < 100 && "Globals should use a pointer!");
         _internal_cheri_offset = offset;
     }
     void setPointer(const void *data) {

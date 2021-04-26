@@ -243,16 +243,9 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
         header->size = 0;
         header->alloc = capacity;
         header->capacityReserved = bool(options & CapacityReserved);
-	// FIMXE: should always store the bounded pointer for purecap to make this
-	// more efficient.
-#ifndef __CHERI_PURE_CAPABILITY__
-        // XXXAR: this would not have needed changing with a vaddr-based compiler
-        header->offset = reinterpret_cast<const char*>(data) - reinterpret_cast<const char*>(header);
-#else
-        // TODO: if we store the pointer here we can't use ::realloc, so always
-        // store an offset except for fromRawData()
+        // XXX: always store the bounded pointer for purecap to make this more efficient?
+        // We always use an offset except for fromRawData()
         header->setOffset(reinterpret_cast<const char*>(data) - reinterpret_cast<const char*>(header));
-#endif
     }
 
     return header;
