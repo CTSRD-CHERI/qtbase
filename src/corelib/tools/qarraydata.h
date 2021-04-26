@@ -118,24 +118,22 @@ struct Q_CORE_EXPORT QArrayData
         return ret;
     }
 #endif
-    template<size_t objsize = 1>
-    void *boundedData()
+    void *boundedData(size_t objsize)
     {
 #ifndef __CHERI_PURE_CAPABILITY__
-        Q_ASSERT(size == 0
-                || offset < 0 || size_t(offset) >= sizeof(QArrayData));
+        Q_UNUSED(objsize);
+        Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
         return reinterpret_cast<void *>(reinterpret_cast<char *>(this) + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
         return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
 #endif
     }
-    template<size_t objsize = 1>
-    const void *boundedData() const
+    const void *boundedData(size_t objsize) const
     {
 #ifndef __CHERI_PURE_CAPABILITY__
-        Q_ASSERT(size == 0
-                || offset < 0 || size_t(offset) >= sizeof(QArrayData));
+        Q_UNUSED(objsize);
+        Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
         return reinterpret_cast<const void *>(reinterpret_cast<const char *>(this) + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
@@ -280,8 +278,8 @@ struct QTypedArrayData
     typedef const T* const_iterator;
 #endif
 
-    T *data() { return static_cast<T *>(QArrayData::boundedData<sizeof(T)>()); }
-    const T *data() const { return static_cast<const T *>(QArrayData::boundedData<sizeof(T)>()); }
+    T *data() { return static_cast<T *>(QArrayData::boundedData(sizeof(T))); }
+    const T *data() const { return static_cast<const T *>(QArrayData::boundedData(sizeof(T))); }
 
     iterator begin(iterator = iterator()) { return data(); }
     iterator end(iterator = iterator()) { return data() + size; }

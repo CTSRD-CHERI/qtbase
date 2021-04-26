@@ -5275,7 +5275,7 @@ QByteArray QString::toLatin1_helper_inplace(QString &s)
     s.d = QString().d;
 
     // do the in-place conversion
-    uchar *dst = static_cast<uchar *>(ba_d->boundedData<sizeof(uchar)>());
+    uchar *dst = static_cast<uchar *>(ba_d->boundedData(sizeof(uchar)));
     qt_to_latin1(dst, data, length);
     dst[length] = '\0';
 

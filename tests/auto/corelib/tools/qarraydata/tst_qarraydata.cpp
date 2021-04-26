@@ -218,9 +218,10 @@ void tst_QArrayData::staticData()
     QCOMPARE(intArray.header.size, 10);
     QCOMPARE(doubleArray.header.size, 10);
 
-    QCOMPARE(charArray.header.boundedData<sizeof(char)>(), reinterpret_cast<void *>(&charArray.data));
-    QCOMPARE(intArray.header.boundedData<sizeof(int)>(), reinterpret_cast<void *>(&intArray.data));
-    QCOMPARE(doubleArray.header.boundedData<sizeof(double)>(), reinterpret_cast<void *>(&doubleArray.data));
+    QCOMPARE(charArray.header.boundedData(sizeof(char)), reinterpret_cast<void *>(&charArray.data));
+    QCOMPARE(intArray.header.boundedData(sizeof(int)), reinterpret_cast<void *>(&intArray.data));
+    QCOMPARE(doubleArray.header.boundedData(sizeof(double)),
+             reinterpret_cast<void *>(&doubleArray.data));
 }
 
 void tst_QArrayData::simpleVector()
@@ -736,7 +737,7 @@ void tst_QArrayData::allocate()
 
         // Check that the allocated array can be used. Best tested with a
         // memory checker, such as valgrind, running.
-        ::memset(data->boundedData(), 'A', objectSize * capacity);
+        ::memset(data->boundedData(objectSize), 'A', objectSize * capacity);
     }
 }
 
@@ -761,7 +762,7 @@ void tst_QArrayData::reallocate()
                                             QArrayData::AllocationOptions(allocateOptions) & ~QArrayData::Grow);
     keeper.headers.append(data);
 
-    memset(data->boundedData(), 'A', objectSize * capacity);
+    memset(data->boundedData(objectSize), 'A', objectSize * capacity);
     data->size = capacity;
 
     // now try to reallocate
@@ -784,7 +785,7 @@ void tst_QArrayData::reallocate()
 #endif
 
     for (int i = 0; i < capacity; ++i)
-        QCOMPARE(static_cast<char *>(data->boundedData())[i], 'A');
+        QCOMPARE(static_cast<char *>(data->boundedData(objectSize))[i], 'A');
 }
 
 class Unaligned
@@ -810,12 +811,12 @@ void tst_QArrayData::alignment()
     // Typically, this alignment is sizeof(void *) and ensured by malloc.
     size_t minAlignment = qMax(alignment, Q_ALIGNOF(QArrayData));
 
-    Deallocator keeper(sizeof(Unaligned), minAlignment);
+    constexpr size_t objectSize = sizeof(Unaligned);
+    Deallocator keeper(objectSize, minAlignment);
     keeper.headers.reserve(100);
 
     for (int i = 0; i < 100; ++i) {
-        QArrayData *data = QArrayData::allocate(sizeof(Unaligned),
-                minAlignment, 8, QArrayData::Default);
+        QArrayData *data = QArrayData::allocate(objectSize, minAlignment, 8, QArrayData::Default);
         keeper.headers.append(data);
 
         QVERIFY(data);
@@ -829,11 +830,11 @@ void tst_QArrayData::alignment()
                     + minAlignment - Q_ALIGNOF(QArrayData)));
 
         // Data is aligned
-        QCOMPARE(qvaddr(qvaddr(data->boundedData()) % alignment), qvaddr(0u));
+        QCOMPARE(qvaddr(qvaddr(data->boundedData(objectSize)) % alignment), qvaddr(0u));
 
         // Check that the allocated array can be used. Best tested with a
         // memory checker, such as valgrind, running.
-        ::memset(data->boundedData(), 'A', sizeof(Unaligned) * 8);
+        ::memset(data->boundedData(objectSize), 'A', objectSize * 8);
     }
 }
 
@@ -896,7 +897,7 @@ void tst_QArrayData::typedData()
 
         // Check that the allocated array can be used. Best tested with a
         // memory checker, such as valgrind, running.
-        ::memset(array->boundedData<sizeof(char)>(), 0, 10 * sizeof(char));
+        ::memset(array->boundedData(sizeof(char)), 0, 10 * sizeof(char));
 
         keeper.headers.clear();
         QTypedArrayData<short>::deallocate(array);
@@ -916,7 +917,7 @@ void tst_QArrayData::typedData()
 
         // Check that the allocated array can be used. Best tested with a
         // memory checker, such as valgrind, running.
-        ::memset(array->boundedData<sizeof(short)>(), 0, 10 * sizeof(short));
+        ::memset(array->boundedData(sizeof(short)), 0, 10 * sizeof(short));
 
         keeper.headers.clear();
         QTypedArrayData<short>::deallocate(array);
@@ -936,7 +937,7 @@ void tst_QArrayData::typedData()
 
         // Check that the allocated array can be used. Best tested with a
         // memory checker, such as valgrind, running.
-        ::memset(array->boundedData<sizeof(double)>(), 0, 10 * sizeof(double));
+        ::memset(array->boundedData(sizeof(double)), 0, 10 * sizeof(double));
 
         keeper.headers.clear();
         QTypedArrayData<double>::deallocate(array);

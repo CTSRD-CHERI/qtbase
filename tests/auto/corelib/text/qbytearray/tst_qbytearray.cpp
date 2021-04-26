@@ -190,7 +190,7 @@ QByteArray verifyZeroTermination(const QByteArray &ba)
 
     // Skip if isStatic() or fromRawData(), as those offer no guarantees
     if (baDataPtr->ref.isStatic()
-            || baDataPtr->offset != QByteArray().data_ptr()->offset)
+        || baDataPtr->dataOffset() != QByteArray().data_ptr()->dataOffset())
         return ba;
 
     int baSize = ba.size();
@@ -2302,7 +2302,7 @@ void tst_QByteArray::literals()
     QVERIFY(str.length() == 4);
     QVERIFY(str == "abcd");
     QVERIFY(str.data_ptr()->ref.isStatic());
-    QVERIFY(str.data_ptr()->offset == sizeof(QByteArrayData));
+    QVERIFY(str.data_ptr()->dataOffset() == sizeof(QByteArrayData));
 
     const char *s = str.constData();
     QByteArray str2 = str;
