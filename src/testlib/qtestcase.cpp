@@ -212,13 +212,13 @@ static void stackTrace()
     if (debuggerPresent() || hasSystemCrashReporter())
         return;
 
-#if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+#if defined(Q_OS_LINUX) || defined(Q_OS_MACOS) || defined(Q_OS_FREEBSD)
     const int msecsFunctionTime = qRound(QTestLog::msecsFunctionTime());
     const int msecsTotalTime = qRound(QTestLog::msecsTotalTime());
     fprintf(stderr, "\n=== Received signal at function time: %dms, total time: %dms, dumping stack ===\n",
             msecsFunctionTime, msecsTotalTime);
 #endif
-#ifdef Q_OS_LINUX
+#if defined(Q_OS_LINUX) || defined(Q_OS_FREEBSD)
     char cmd[512];
     qsnprintf(cmd, 512, "gdb --pid %d 1>&2 2>/dev/null <<EOF\n"
                          "set prompt\n"
