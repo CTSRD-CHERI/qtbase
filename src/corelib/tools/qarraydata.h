@@ -65,7 +65,7 @@ struct Q_CORE_EXPORT QArrayData
 #ifndef __CHERI_PURE_CAPABILITY__
     qptrdiff offset; // in bytes from beginning of header
     inline qptrdiff dataOffset() const { return offset; }
-    void setOffset(qptrdiff offset) { this->offset = offset; }
+    void setOffset(qptrdiff newOffset) { offset = newOffset; }
 #else
     // FIXME: See if we can make this work somehow without runtime relocs
     // See https://woboq.com/blog/qstringliteral.html
