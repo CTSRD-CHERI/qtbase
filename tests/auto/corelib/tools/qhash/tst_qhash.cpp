@@ -1189,9 +1189,14 @@ void tst_QHash::keyValueIterator()
 void tst_QHash::rehash_isnt_quadratic()
 {
     // this test should be incredibly slow if rehash() is quadratic
+#if Q_PROCESSOR_X86
+    constexpr int numIterations = 500000;
+#else
+    constexpr int numIterations = 10000;
+#endif
     for (int j = 0; j < 5; ++j) {
         QHash<int, int> testHash;
-        for (int i = 0; i < 500000; ++i)
+        for (int i = 0; i < numIterations; ++i)
             testHash.insertMulti(1, 1);
     }
 }
