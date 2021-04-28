@@ -10,10 +10,11 @@ SUBDIRS = lib \
     tst.depends += almostplugin
     SUBDIRS += almostplugin
 }
-macos:qtConfig(private_tests):qtHaveModule(gui) {
-    tst.depends += machtest
-    SUBDIRS += machtest
-}
+# Broken on recent macOS since we can no longer build i386 binaries.
+#macos:qtConfig(private_tests):qtHaveModule(gui) {
+#    tst.depends += machtest
+#    SUBDIRS += machtest
+#}
 
 # no special install rule for subdir
 INSTALLS =
