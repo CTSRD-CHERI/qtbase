@@ -527,6 +527,7 @@ void tst_QDate::startOfDay_endOfDay()
     } while (isSystem);
     if (end.isValid())
         QCOMPARE(date.addDays(1).startOfDay(Qt::LocalTime).addMSecs(-1), back);
+    // FIXME: this test fails with BST time zone (at least on macOS)
     if (start.isValid())
         QCOMPARE(date.addDays(-1).endOfDay(Qt::LocalTime).addMSecs(1), front);
     if (!isSystem) {
