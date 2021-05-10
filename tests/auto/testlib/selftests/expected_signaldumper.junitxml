@@ -136,18 +136,18 @@
     <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) nestedSignal ()" tag="queued" -->
   </testcase>
   <testcase name="variousTypes" result="pass" time="@TEST_DURATION@">
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qStringSignal (QString(Test string))" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qStringRefSignal ((QString&amp;)@_POINTER_)" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qStringConstRefSignal (QString(Test string))" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qByteArraySignal (QByteArray(Test bytearray))" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qListSignal (QList&lt;int&gt;())" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorSignal (QVector&lt;int&gt;())" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorRefSignal ((QVector&lt;int&gt;&amp;)@_POINTER_)" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorConstRefSignal (QVector&lt;int&gt;())" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorConstPointerSignal ((const QVector&lt;int&gt;*)_POINTER_)" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorPointerConstSignal ()" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVariantSignal (QVariant())" -->
-    <!--  type="info" message="Signal: SignalSlotClass(_POINTER_) qVariantSignal (QVariant())" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qStringSignal (QString(Test string))" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qStringRefSignal ((QString&amp;)@_POINTER_)" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qStringConstRefSignal (QString(Test string))" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qByteArraySignal (QByteArray(Test bytearray))" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qListSignal (QList&lt;int&gt;())" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorSignal (QVector&lt;int&gt;())" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorRefSignal ((QVector&lt;int&gt;&amp;)@_POINTER_)" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorConstRefSignal (QVector&lt;int&gt;())" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorConstPointerSignal ((const QVector&lt;int&gt;*)_POINTER_)" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVectorPointerConstSignal ()" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVariantSignal (QVariant())" -->
+    <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) qVariantSignal (QVariant())" -->
   </testcase>
   <testcase name="deletingSender" result="pass" time="@TEST_DURATION@">
     <!-- type="info" message="Signal: SignalSlotClass(_POINTER_) signalWithoutParameters ()" -->
