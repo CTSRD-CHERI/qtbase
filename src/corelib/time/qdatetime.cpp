@@ -3115,7 +3115,7 @@ static inline qint64 getMSecs(const QDateTimeData &d)
     if (d.isShort()) {
         // same as, but producing better code
         //return d.data.msecs;
-        return qvaddr(d.d) >> 8;
+        return qptrdiff(d.d) >> 8;
     }
     return d->m_msecs;
 }
@@ -3125,7 +3125,7 @@ static inline QDateTimePrivate::StatusFlags getStatus(const QDateTimeData &d)
     if (d.isShort()) {
         // same as, but producing better code
         //return StatusFlag(d.data.status);
-        return QDateTimePrivate::StatusFlag(qvaddr(d.d) & 0xFF);
+        return QDateTimePrivate::StatusFlag(qptrdiff(d.d) & 0xFF);
     }
     return d->m_status;
 }
