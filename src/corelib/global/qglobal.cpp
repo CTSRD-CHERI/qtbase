@@ -3384,9 +3384,7 @@ Q_NORETURN void qTerminate() noexcept
 */
 void qt_assert(const char *assertion, const char *file, int line) noexcept
 {
-    fprintf(stderr, "ASSERT: \"%s\" in file %s, line %d\n", assertion, file, line);
-    abort();
-    // QMessageLogger(file, line, nullptr).fatal("ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
+    QMessageLogger(file, line, nullptr).fatal("ASSERT: \"%s\" in file %s, line %d", assertion, file, line);
 }
 
 /*
@@ -3394,9 +3392,7 @@ void qt_assert(const char *assertion, const char *file, int line) noexcept
 */
 void qt_assert_x(const char *where, const char *what, const char *file, int line) noexcept
 {
-    fprintf(stderr, "ASSERT failure in %s: \"%s\", file %s, line %d\n", where, what, file, line);
-    abort();
-    // QMessageLogger(file, line, nullptr).fatal("ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
+    QMessageLogger(file, line, nullptr).fatal("ASSERT failure in %s: \"%s\", file %s, line %d", where, what, file, line);
 }
 
 
