@@ -232,8 +232,7 @@ headersclean:!internal_module {
 
             clang_ver = $${QT_CLANG_MAJOR_VERSION}.$${QT_CLANG_MINOR_VERSION}
             versionAtLeast(clang_ver, 3.8): hcleanFLAGS += -Wdouble-promotion
-            # New -Wshadow warning breaks the build
-            versionAtLeast(clang_ver, 7.0): hcleanFLAGS -= -Wshadow
+
             !clang {
                 # options accepted only by GCC
 
