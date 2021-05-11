@@ -209,12 +209,12 @@ struct QGlyphLayout
     int numGlyphs;
 
     inline QGlyphLayout()
-        : numGlyphs(0),
-          offsets(Q_NULLPTR),
+        : offsets(Q_NULLPTR),
           glyphs(Q_NULLPTR),
           advances(Q_NULLPTR),
           justifications(Q_NULLPTR),
-          attributes(Q_NULLPTR)
+          attributes(Q_NULLPTR),
+          numGlyphs(0)
     {
     }
 
