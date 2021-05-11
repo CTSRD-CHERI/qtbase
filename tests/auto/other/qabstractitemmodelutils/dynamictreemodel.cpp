@@ -72,7 +72,7 @@ QModelIndex DynamicTreeModel::index(int row, int column, const QModelIndex &pare
 
     qint64 id = rowIds.at(row);
 
-    return createIndex(row, column, reinterpret_cast<void *>(id));
+    return createIndex(row, column, reinterpret_cast<void *>(qintptr(id)));
 }
 
 qint64 DynamicTreeModel::findParentId(qint64 searchId) const
@@ -109,7 +109,7 @@ QModelIndex DynamicTreeModel::parent(const QModelIndex &index) const
 
     int row = childList.indexOf(parentId);
 
-    return createIndex(row, column, reinterpret_cast<void *>(parentId));
+    return createIndex(row, column, reinterpret_cast<void *>(qintptr(parentId)));
 }
 
 int DynamicTreeModel::rowCount(const QModelIndex &index) const
