@@ -310,6 +310,12 @@ public:
     Q_REQUIRED_RESULT inline QChar back() const { return at(size() - 1); }
     Q_REQUIRED_RESULT inline QCharRef back();
 
+#if __has_feature(capabilities)
+    Q_REQUIRED_RESULT QString arg(__intcap_t a, int fieldwidth=0, int base=10,
+                QChar fillChar = QLatin1Char(' ')) const;
+    Q_REQUIRED_RESULT QString arg(__uintcap_t a, int fieldwidth=0, int base=10,
+                QChar fillChar = QLatin1Char(' ')) const;
+#endif
     Q_REQUIRED_RESULT QString arg(qlonglong a, int fieldwidth=0, int base=10,
                 QChar fillChar = QLatin1Char(' ')) const;
     Q_REQUIRED_RESULT QString arg(qulonglong a, int fieldwidth=0, int base=10,
@@ -801,12 +807,11 @@ public:
     static QString number(ulong, int base=10);
     static QString number(qlonglong, int base=10);
     static QString number(qulonglong, int base=10);
-    static QString number(double, char f='g', int prec=6);
-#ifdef __CHERI__
-    // XXXAR: disable these for now
-    static QString number(__uintcap_t, int base = 10) = delete;
-    static QString number(__intcap_t, int base = 10) = delete;
+#if __has_feature(capabilities)
+    static QString number(__intcap_t, int base=10);
+    static QString number(__uintcap_t, int base=10);
 #endif
+    static QString number(double, char f='g', int prec=6);
 
     friend Q_CORE_EXPORT bool operator==(const QString &s1, const QString &s2) noexcept;
     friend Q_CORE_EXPORT bool operator<(const QString &s1, const QString &s2) noexcept;
@@ -1125,6 +1130,12 @@ inline QString QString::arg(short a, int fieldWidth, int base, QChar fillChar) c
 { return arg(qlonglong(a), fieldWidth, base, fillChar); }
 inline QString QString::arg(ushort a, int fieldWidth, int base, QChar fillChar) const
 { return arg(qulonglong(a), fieldWidth, base, fillChar); }
+#if __has_feature(capabilities)
+inline QString QString::arg(__intcap_t a, int fieldWidth, int base, QChar fillChar) const
+{ return arg(qlonglong(a), fieldWidth, base, fillChar); }
+inline QString QString::arg(__uintcap_t a, int fieldWidth, int base, QChar fillChar) const
+{ return arg(qulonglong(a), fieldWidth, base, fillChar); }
+#endif
 #if QT_STRINGVIEW_LEVEL < 2
 inline QString QString::arg(const QString &a1, const QString &a2) const
 { return qToStringViewIgnoringNull(*this).arg(a1, a2); }

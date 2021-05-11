@@ -7814,6 +7814,38 @@ QString QString::number(double n, char f, int prec)
     return QLocaleData::c()->doubleToString(n, prec, form, -1, flags);
 }
 
+#if __has_feature(capabilities)
+/*!
+    \overload
+*/
+QString QString::number(__uintcap_t n, int base)
+{
+#if defined(QT_CHECK_RANGE)
+    if (base < 2 || base > 36) {
+        qWarning("QString::setNum: Invalid base (%d)", base);
+        base = 10;
+    }
+#endif
+    qulonglong v = n;
+    return QLocaleData::c()->unsLongLongToString(v, -1, base);
+}
+
+/*!
+    \overload
+*/
+QString QString::number(__intcap_t n, int base)
+{
+#if defined(QT_CHECK_RANGE)
+    if (base < 2 || base > 36) {
+        qWarning("QString::setNum: Invalid base (%d)", base);
+        base = 10;
+    }
+#endif
+    qlonglong v = n;
+    return QLocaleData::c()->longLongToString(v, -1, base);
+}
+#endif // __has_feature(capabilities)
+
 namespace {
 template<class ResultList, class StringSource>
 static ResultList splitString(const StringSource &source, const QChar *sep,
