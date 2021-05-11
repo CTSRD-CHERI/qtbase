@@ -394,12 +394,11 @@ public:
     Q_REQUIRED_RESULT static QByteArray number(uint, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qlonglong, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qulonglong, int base = 10);
-    Q_REQUIRED_RESULT static QByteArray number(double, char f = 'g', int prec = 6);
-#ifdef __CHERI__
-    // XXXAR: disable these for now
-    Q_REQUIRED_RESULT static QByteArray number(__uintcap_t, int base = 10) = delete;
-    Q_REQUIRED_RESULT static QByteArray number(__intcap_t, int base = 10) = delete;
+#if __has_feature(capabilities)
+    Q_REQUIRED_RESULT static QByteArray number(__intcap_t, int base = 10);
+    Q_REQUIRED_RESULT static QByteArray number(__uintcap_t, int base = 10);
 #endif
+    Q_REQUIRED_RESULT static QByteArray number(double, char f = 'g', int prec = 6);
     Q_REQUIRED_RESULT static QByteArray fromRawData(const char *, int size);
 
     class FromBase64Result;

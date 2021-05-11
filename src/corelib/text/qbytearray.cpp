@@ -4423,6 +4423,24 @@ QByteArray QByteArray::number(qulonglong n, int base)
     return s;
 }
 
+#if __has_feature(capabilities)
+/*!
+    \overload
+*/
+QByteArray QByteArray::number(__intcap_t n, int base)
+{
+    return QByteArray::number(qlonglong(n), base);
+}
+
+/*!
+    \overload
+*/
+QByteArray QByteArray::number(__uintcap_t n, int base)
+{
+    return QByteArray::number(qulonglong(n), base);
+}
+#endif
+
 /*!
     \overload
 
