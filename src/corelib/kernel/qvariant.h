@@ -223,7 +223,7 @@ class Q_CORE_EXPORT QVariant
     QVariant(bool b);
     QVariant(double d);
     QVariant(float f);
-#ifdef __CHERI__
+#if __has_feature(capabilities)
     QVariant(__intcap_t c);
     QVariant(__uintcap_t c);
 #endif
@@ -431,7 +431,7 @@ class Q_CORE_EXPORT QVariant
             qulonglong ull;
             QObject *o;
             void *ptr;
-#ifdef __CHERI__
+#if __has_feature(capabilities)
             __intcap_t intcap;
             __uintcap_t uintcap;
 #endif

@@ -2739,7 +2739,7 @@ TO_STRING_FLOAT(qfloat16, %.3g)
 TO_STRING_FLOAT(float, %g)
 TO_STRING_FLOAT(double, %.12g)
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 template <> Q_TESTLIB_EXPORT char *QTest::toString<__uintcap_t>(const __uintcap_t &t)
 {
     char *msg = new char[128];

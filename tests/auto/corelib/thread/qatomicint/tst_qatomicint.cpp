@@ -188,7 +188,7 @@ void tst_QAtomicInt::warningFreeHelper()
     constexprFunctionsHelperTemplate<QBasicAtomicInteger<qintptr> >();
     constexprFunctionsHelperTemplate<QBasicAtomicInteger<quintptr> >();
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
     warningFreeHelperTemplate<int, QBasicAtomicInteger<__intcap_t> >();
     warningFreeHelperTemplate<unsigned int, QBasicAtomicInteger<__uintcap_t> >();
     constexprFunctionsHelperTemplate<QBasicAtomicInteger<__intcap_t> >();

@@ -583,7 +583,7 @@ typedef QIntegerForSizeof<void*>::Signed qintptr;
 // XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
 typedef ptrdiff_t qptrdiff;
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 // TODO: use __memory_address
 typedef qregisteruint qvaddr;
 #else
@@ -1364,7 +1364,7 @@ template <typename T> struct QEnableIf<true, T> { typedef T Type; };
 
 QT_END_NAMESPACE
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 #define cheri_debug(...) fprintf(stderr, __VA_ARGS__)
 inline qptrdiff cheri_bytes_remaining(void* __capability ptr)
 {

@@ -440,7 +440,7 @@ namespace QTest
     QTEST_COMPARE_DECL(signed char)
     QTEST_COMPARE_DECL(unsigned char)
     QTEST_COMPARE_DECL(bool)
-#ifdef __CHERI__
+#if __has_feature(capabilities)
     QTEST_COMPARE_DECL(__intcap_t)
     QTEST_COMPARE_DECL(__uintcap_t)
 #endif
@@ -466,7 +466,7 @@ namespace QTest
         return qCompare(qreal(t1), qreal(t2), actual, expected, file, line);
     }
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 // XXXAR: TODO: enable these overloads but for now turn linker errors into compiler errors
 #define DELETE_COMPARE(Type1, Type2) \
     bool qCompare(Type1 t1, Type2 t2, const char *actual, const char *expected, const char *file, int line) = delete

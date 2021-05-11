@@ -200,7 +200,7 @@ Q_STATIC_ASSERT_X(sizeof(quint8) == 1, "quint8 is not 8 bits!");
 Q_STATIC_ASSERT_X(sizeof(qint8) == 1, "qint8 is not 8 bits!");
 Q_STATIC_ASSERT_X(sizeof(qlonglong) == 8, "Qt assumes that long long is 64 bits");
 Q_STATIC_ASSERT_X(sizeof(qulonglong) == 8, "Qt assumes that unsigned long long is 64 bits");
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 Q_STATIC_ASSERT_X(sizeof(qregisteruint) == 8, "Qt on CHERI assumes that qregisteruint is 64 bits");
 Q_STATIC_ASSERT_X(sizeof(qvaddr) == 8, "Qt on CHERI assumes thatqvaddr is 64 bits");
 #endif

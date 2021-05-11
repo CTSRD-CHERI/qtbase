@@ -190,7 +190,7 @@ public:
     QTextStream &operator<<(const QByteArray &array);
     QTextStream &operator<<(const char *c);
     QTextStream &operator<<(const void *ptr);
-#if defined(__CHERI__)
+#if __has_feature(capabilities)
     QTextStream &operator<<(__intcap_t t);
     QTextStream &operator<<(__uintcap_t t);
 #endif

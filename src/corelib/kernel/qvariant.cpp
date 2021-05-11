@@ -170,7 +170,7 @@ static qlonglong qMetaTypeNumber(const QVariant::Private *d)
         return qRound64(d->data.f);
     case QMetaType::Double:
         return qRound64(d->data.d);
-#ifdef __CHERI__
+#if __has_feature(capabilities)
     case QMetaType::IntCap:
         return (qlonglong)d->data.intcap;
 #endif
@@ -198,7 +198,7 @@ static qulonglong qMetaTypeUNumber(const QVariant::Private *d)
         return d->data.us;
     case QMetaType::ULong:
         return d->data.ul;
-#ifdef __CHERI__
+#if __has_feature(capabilities)
     case QMetaType::UIntCap:
         return (qlonglong)d->data.uintcap;
 #endif
@@ -207,7 +207,7 @@ static qulonglong qMetaTypeUNumber(const QVariant::Private *d)
     return 0;
 }
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 #define CASE_CHERI_INTCAP case QMetaType::IntCap:
 #define CASE_CHERI_UINTCAP case QMetaType::UIntCap:
 #else
@@ -788,7 +788,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
         *static_cast<uchar *>(result) = qConvertToUnsignedNumber(d, ok);
         return *ok;
     }
-#ifdef __CHERI__
+#if __has_feature(capabilities)
     case QMetaType::IntCap: {
       switch (d->type) {
       case QMetaType::IntCap:
@@ -2227,7 +2227,7 @@ QVariant::QVariant(float val)
     : d(QMetaType::Float)
 { d.data.f = val; }
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 QVariant::QVariant(__intcap_t val)
     : d(QMetaType::IntCap)
 { d.data.intcap = val; }

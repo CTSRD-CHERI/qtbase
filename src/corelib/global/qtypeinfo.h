@@ -330,7 +330,7 @@ Q_DECLARE_TYPEINFO(qint64, Q_PRIMITIVE_TYPE);
 Q_DECLARE_TYPEINFO(quint64, Q_PRIMITIVE_TYPE);
 Q_DECLARE_TYPEINFO(float, Q_PRIMITIVE_TYPE);
 Q_DECLARE_TYPEINFO(double, Q_PRIMITIVE_TYPE);
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 // XXXAR: possibly isPointer should be true here
 Q_DECLARE_TYPEINFO(__intcap_t, Q_PRIMITIVE_TYPE);
 Q_DECLARE_TYPEINFO(__uintcap_t, Q_PRIMITIVE_TYPE);

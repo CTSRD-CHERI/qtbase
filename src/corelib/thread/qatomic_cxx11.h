@@ -217,7 +217,7 @@ template <> Q_DECL_CONSTEXPR inline bool QAtomicTraits<8>::isLockFree()
 #  endif
 #endif
 
-#ifdef __CHERI__
+#if __has_feature(capabilities)
 // Needed for atomic ops on quintptr to compile
 template<> struct QAtomicOpsSupport<sizeof(__uintcap_t)> { enum { IsSupported = 1 }; };
 template <> Q_DECL_CONSTEXPR inline bool QAtomicTraits<sizeof(__uintcap_t)>::isLockFree()
