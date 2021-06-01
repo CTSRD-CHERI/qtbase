@@ -220,13 +220,11 @@ static void stackTrace()
 #endif
 #if defined(Q_OS_LINUX) || defined(Q_OS_FREEBSD)
     char cmd[512];
-    qsnprintf(cmd, 512, "gdb --pid %d 1>&2 2>/dev/null <<EOF\n"
-                         "set prompt\n"
-                         "set height 0\n"
-                         "thread apply all where full\n"
-                         "detach\n"
-                         "quit\n"
-                         "EOF\n",
+    qsnprintf(cmd, 512, "gdb --pid %d -batch"
+                        " -ex 'thread apply all where full'"
+                        " -ex detach"
+                        " -ex quit"
+                        " 1>&2 2>/dev/null </dev/null\n",
                          (int)getpid());
     if (system(cmd) == -1)
         fprintf(stderr, "calling gdb failed\n");
