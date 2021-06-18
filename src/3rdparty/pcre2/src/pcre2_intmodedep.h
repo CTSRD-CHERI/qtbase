@@ -829,14 +829,20 @@ typedef struct heapframe {
   uint32_t capture_last;     /* Most recent capture */
   PCRE2_SIZE last_group_offset;  /* Saved offset to most recent group frame */
   PCRE2_SIZE offset_top;     /* Offset after highest capture */
+  PCRE2_SPTR _align_ovector; /* To ensure ovector is pointer-aligned.
+                              * Could use _Alignas() instead if we use C99. */
   PCRE2_SIZE ovector[131072]; /* Must be last in the structure */
 } heapframe;
 
 /* This typedef is a check that the size of the heapframe structure is a
-multiple of PCRE2_SIZE. See various comments above. */
+multiple of PCRE2_SPTR. See various comments above. */
 
 typedef char check_heapframe_size[
-  ((sizeof(heapframe) % sizeof(PCRE2_SIZE)) == 0)? (+1):(-1)];
+  ((sizeof(heapframe) % sizeof(PCRE2_SPTR)) == 0)? (+1):(-1)];
+typedef char check_ovector_alignment[
+    ((offsetof(heapframe, ovector) % sizeof(PCRE2_SPTR)) == 0)? (+1):(-1)];
+typedef char check_sptr_geq_size[
+  (sizeof(PCRE2_SPTR) >= sizeof(PCRE2_SIZE))? (+1):(-1)];
 
 /* Structure for passing "static" information around between the functions
 doing traditional NFA matching (pcre2_match() and friends). */
