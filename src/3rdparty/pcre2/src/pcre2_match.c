@@ -53,6 +53,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdarg.h>
 #endif
 
+#include <assert.h>
+
 /* These defines identify the name of the block containing "static"
 information, and fields within it. */
 
