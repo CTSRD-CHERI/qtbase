@@ -936,13 +936,29 @@ template <int... TypeIds> struct MetaTypeOffsets<QtPrivate::IndexesList<TypeIds.
 #endif
     }
 
+    static constexpr short calculateSizeForIdx(int i) { return i < 0 ? -1 : metaTypeNameSizes[i]; }
+    static constexpr short calculateSizeForTypeId(int typeId)
+    {
+        return calculateSizeForIdx(findTypeId(typeId));
+    }
+
     short offsets[sizeof...(TypeIds)];
-    constexpr MetaTypeOffsets() : offsets{calculateOffsetForTypeId(TypeIds)...} {}
+    short sizes[sizeof...(TypeIds)];
+    constexpr MetaTypeOffsets()
+        : offsets { calculateOffsetForTypeId(TypeIds)... },
+          sizes { calculateSizeForTypeId(TypeIds)... }
+    {
+    }
 
     const char *operator[](int typeId) const noexcept
     {
         short o = offsets[typeId];
+#ifdef __CHERI_PURE_CAPABILITY__
+        // For CHERI, we set bounds on the constant string data.
+        return o < 0 ? nullptr : __builtin_cheri_bounds_set(metaTypeStrings + o, sizes[typeId]);
+#else
         return o < 0 ? nullptr : metaTypeStrings + o;
+#endif
     }
 };
 } // anonymous namespace
