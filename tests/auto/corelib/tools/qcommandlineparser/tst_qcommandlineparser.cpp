@@ -521,6 +521,17 @@ void tst_QCommandLineParser::testCpp11StyleInitialization()
 #endif
 }
 
+#define VERIFY_FINISHED(process)                                                                   \
+    if (!process.waitForStarted(3000)) {                                                           \
+        QString err = QLatin1String("Failed to start helper process: ") + process.errorString();   \
+        QFAIL(qPrintable(err));                                                                    \
+    }                                                                                              \
+    if (!process.waitForFinished(10000)) {                                                         \
+        QString err =                                                                              \
+                QLatin1String("Helper process failed to complete: ") + process.errorString();      \
+        QFAIL(qPrintable(err));                                                                    \
+    }
+
 void tst_QCommandLineParser::testVersionOption()
 {
 #if !QT_CONFIG(process)
@@ -533,7 +544,7 @@ void tst_QCommandLineParser::testVersionOption()
     QCoreApplication app(empty_argc, empty_argv);
     QProcess process;
     process.start("testhelper/qcommandlineparser_test_helper", QStringList() << "0" << "--version");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     QString output = process.readAll();
 #ifdef Q_OS_WIN
@@ -603,7 +614,7 @@ void tst_QCommandLineParser::testHelpOption()
     QCoreApplication app(empty_argc, empty_argv);
     QProcess process;
     process.start("testhelper/qcommandlineparser_test_helper", QStringList() << QString::number(parsingMode) << "--help");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     QString output = process.readAll();
 #ifdef Q_OS_WIN
@@ -613,7 +624,7 @@ void tst_QCommandLineParser::testHelpOption()
     QCOMPARE(output, expectedHelpOutput);
 
     process.start("testhelper/qcommandlineparser_test_helper", QStringList() << "0" << "resize" << "--help");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     output = process.readAll();
 #ifdef Q_OS_WIN
@@ -652,7 +663,7 @@ void tst_QCommandLineParser::testQuoteEscaping()
             "-DKEY1=\"VALUE1\""
             "-DQTBUG-15379=C:\\path\\'file.ext" <<
             "-DQTBUG-30628=C:\\temp\\'file'.ext");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     QString output = process.readAll();
     QVERIFY2(!output.contains("ERROR"), qPrintable(output));
@@ -675,7 +686,7 @@ void tst_QCommandLineParser::testUnknownOption()
     process.start("testhelper/qcommandlineparser_test_helper", QStringList() <<
             QString::number(QCommandLineParser::ParseAsLongOptions) <<
             "-unknown-option");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     process.setReadChannel(QProcess::StandardError);
     QString output = process.readAll();
@@ -727,7 +738,7 @@ void tst_QCommandLineParser::testHelpAll()
     QCoreApplication app(empty_argc, empty_argv);
     QProcess process;
     process.start("testhelper/qcommandlineparser_test_helper", QStringList() << QString::number(parsingMode) << "--help-all");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     QString output = process.readAll();
 #ifdef Q_OS_WIN
@@ -750,7 +761,7 @@ void tst_QCommandLineParser::testVeryLongOptionNames()
     QCoreApplication app(empty_argc, empty_argv);
     QProcess process;
     process.start("testhelper/qcommandlineparser_test_helper", QStringList() << "0" << "long" << "--help");
-    QVERIFY(process.waitForFinished(5000));
+    VERIFY_FINISHED(process);
     QCOMPARE(process.exitStatus(), QProcess::NormalExit);
     QString output = process.readAll();
 #ifdef Q_OS_WIN
