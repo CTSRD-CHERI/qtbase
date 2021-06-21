@@ -92,10 +92,12 @@ inline Q_DECL_CONSTEXPR int qMetaTypeId();
     F(QCborSimpleType, 52, QCborSimpleType) \
 
 #if __has_feature(capabilities)
-// XXXAR: which numbers are safe to use?
+// We use the last two values before the GUI types for (u)intcap.
+// Note: there needs to be at least one unused type between Core and GUI types,
+// so we can't use 63.
 #define QT_FOR_EACH_STATIC_PRIMITIVE_CAPABILITY_TYPE(F) \
-    F(IntCap, 62, __intcap_t) \
-    F(UIntCap, 63, __uintcap_t)
+    F(IntCap, 61, __intcap_t) \
+    F(UIntCap, 62, __uintcap_t)
 #else
 #define QT_FOR_EACH_STATIC_PRIMITIVE_CAPABILITY_TYPE(F)
 #endif
