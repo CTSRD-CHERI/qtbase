@@ -156,6 +156,7 @@ struct Q_CORE_EXPORT QArrayData
 #endif
         RawData             = 0x4,
         Grow                = 0x8,
+        WithNulTerminator = 0x16,
 
         Default = 0
     };
@@ -326,7 +327,14 @@ struct QTypedArrayData
 #else
             result->setPointer(__builtin_cheri_bounds_set(data, n * sizeof(T)));
 #endif
-            result->size = int(n);
+            if (options & WithNulTerminator) {
+                // The raw capability includes a nul terminator, but the size
+                // should not include it.
+                Q_ASSERT(data[n - 1] == '\0');
+                result->size = int(n - 1);
+            } else {
+                result->size = int(n);
+            }
         }
         return result;
     }

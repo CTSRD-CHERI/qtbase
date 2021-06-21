@@ -4527,6 +4527,15 @@ QByteArray QByteArray::fromRawData(const char *data, int size)
     return QByteArray(dataPtr);
 }
 
+QByteArray QByteArray::fromNulTerminatedRawData(const char *data, int size)
+{
+    Q_CHECK_PTR(data);
+    Data *x = Data::fromRawData(data, size + 1, Data::WithNulTerminator);
+    Q_CHECK_PTR(x);
+    QByteArrayDataPtr dataPtr = { x };
+    return QByteArray(dataPtr);
+}
+
 /*!
     \since 4.7
 

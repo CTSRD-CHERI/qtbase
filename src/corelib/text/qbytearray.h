@@ -400,6 +400,7 @@ public:
 #endif
     Q_REQUIRED_RESULT static QByteArray number(double, char f = 'g', int prec = 6);
     Q_REQUIRED_RESULT static QByteArray fromRawData(const char *, int size);
+    Q_REQUIRED_RESULT static QByteArray fromNulTerminatedRawData(const char *, int size);
 
     class FromBase64Result;
     Q_REQUIRED_RESULT static FromBase64Result fromBase64Encoding(QByteArray &&base64, Base64Options options = Base64Encoding);
