@@ -156,7 +156,7 @@ struct Q_CORE_EXPORT QArrayData
 #endif
         RawData             = 0x4,
         Grow                = 0x8,
-        WithNulTerminator = 0x16,
+        WithNulTerminator   = 0x10,
 
         Default = 0
     };
