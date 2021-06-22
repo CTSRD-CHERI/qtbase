@@ -507,7 +507,7 @@ static bool convert(const QVariant::Private *d, int t, void *result, bool *ok)
             *str = d->data.b ? QStringLiteral("true") : QStringLiteral("false");
             break;
         case QMetaType::QByteArray:
-            *str = QString::fromUtf8(v_cast<QByteArray>(d)->constData());
+            *str = QString::fromUtf8(*v_cast<QByteArray>(d));
             break;
         case QMetaType::QStringList:
             if (v_cast<QStringList>(d)->count() == 1)
