@@ -1295,48 +1295,20 @@ Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") void 
 Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") int qrand();
 #endif
 
-
-template<unsigned lowBitsMask>
-inline qvaddr qGetLowPointerBits(quintptr ptr) {
+template<qvaddr lowBitsMask>
+inline qvaddr qGetLowPointerBits(quintptr ptr)
+{
     Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
-#ifdef __CHERI_PURE_CAPABILITY__
-    // Work around https://github.com/CTSRD-CHERI/clang/issues/189
-    // which caused QMutexLocker::unlock() to always be a no-op
-    QT_WARNING_PUSH
-    QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
-    // The additional bits are stored using bitwise or -> they are stored in the
-    // offset field. Note: extracting them with bitwise and returns a
-    // LHS-derived capability, so we only want to return the offset of that
-    // result. The simple approach of `if ((x & 3) == 3)` would always return
-    // false since the LHS of the == is a valid capability with offset 3 and
-    // the RHS is an untagged intcap_t with offset 3
-    // See https://github.com/CTSRD-CHERI/clang/issues/189
-    quintptr result = ptr & lowBitsMask;
-    // Return the offset or the address depending on the compiler mode
-    return static_cast<uint64_t>(result);
-    QT_WARNING_POP
-#else
-    return ptr & lowBitsMask;
-#endif
+    return static_cast<qvaddr>(ptr) & lowBitsMask;
 }
 
-template<unsigned lowBitsMask>
-inline quintptr qClearLowPointerBits(quintptr ptr) {
+template<qvaddr lowBitsMask>
+inline quintptr qClearLowPointerBits(quintptr ptr)
+{
     Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
     constexpr qvaddr clearingMask = ~qvaddr(lowBitsMask);
     Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
-#ifdef __CHERI_PURE_CAPABILITY__
-    // See https://github.com/CTSRD-CHERI/clang/issues/189
-    QT_WARNING_PUSH
-    QT_WARNING_DISABLE_CLANG("-Wcheri-bitwise-operations")
-    quintptr result = ptr & clearingMask;
-    // Bitwise operations on uintcap_t always operate on the offset field
-    Q_ASSERT(__builtin_cheri_base_get(reinterpret_cast<void*>(ptr)) == __builtin_cheri_base_get(reinterpret_cast<void*>(result)));
-    return result;
-    QT_WARNING_POP
-#else
     return ptr & clearingMask;
-#endif
 }
 
 // This one is not a template since unlike the mask values the bits parameter
