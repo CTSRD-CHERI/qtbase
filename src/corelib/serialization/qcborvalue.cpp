@@ -792,7 +792,7 @@ static QCborValue::Type convertToExtendedType(QCborContainerPrivate *d)
             qint64 msecs;
             bool ok = false;
             if (e.type == QCborValue::Integer) {
-#if QT_POINTER_SIZE == 8
+#if QT_POINTER_SIZE >= 8
                 // we don't have a fast 64-bit mul_overflow implementation on
                 // 32-bit architectures.
                 ok = !mul_overflow(e.value, qint64(1000), &msecs);
