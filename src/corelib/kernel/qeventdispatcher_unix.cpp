@@ -395,7 +395,7 @@ QEventDispatcherUNIX::registeredTimers(QObject *object) const
 void QEventDispatcherUNIX::registerSocketNotifier(QSocketNotifier *notifier)
 {
     Q_ASSERT(notifier);
-    int sockfd = notifier->socket();
+    int sockfd = static_cast<int>(notifier->socket());
     QSocketNotifier::Type type = notifier->type();
 #ifndef QT_NO_DEBUG
     if (notifier->thread() != thread() || thread() != QThread::currentThread()) {
@@ -417,7 +417,7 @@ void QEventDispatcherUNIX::registerSocketNotifier(QSocketNotifier *notifier)
 void QEventDispatcherUNIX::unregisterSocketNotifier(QSocketNotifier *notifier)
 {
     Q_ASSERT(notifier);
-    int sockfd = notifier->socket();
+    int sockfd = static_cast<int>(notifier->socket());
     QSocketNotifier::Type type = notifier->type();
 #ifndef QT_NO_DEBUG
     if (notifier->thread() != thread() || thread() != QThread::currentThread()) {

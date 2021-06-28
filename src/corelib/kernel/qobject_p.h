@@ -297,7 +297,8 @@ public:
             SignalVector *newVector = reinterpret_cast<SignalVector *>(malloc(sizeof(SignalVector) + (size + 1) * sizeof(ConnectionList)));
             int start = -1;
             if (vector) {
-                memcpy(newVector, vector, sizeof(SignalVector) + (vector->allocated + 1) * sizeof(ConnectionList));
+                memcpy(newVector, vector,
+                       sizeof(SignalVector) + (vector->count() + 1) * sizeof(ConnectionList));
                 start = vector->count();
             }
             for (int i = start; i < int(size); ++i)

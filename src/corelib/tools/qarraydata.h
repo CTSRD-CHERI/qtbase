@@ -82,7 +82,7 @@ struct Q_CORE_EXPORT QArrayData
         if (__builtin_cheri_tag_get(ptr))
             return static_cast<const char*>(ptr) - reinterpret_cast<const char*>(this);
         // otherwise just return the offset:
-        return _internal_cheri_offset;
+        return qptrdiff(_internal_cheri_offset);
     }
     static inline void *cheri_get_arraydata(const QArrayData* obj, quintptr offset, size_t objsize)
     {

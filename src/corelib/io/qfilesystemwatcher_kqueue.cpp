@@ -209,7 +209,7 @@ void QKqueueFileSystemWatcherEngine::readFromKqueue()
             // polling returned no events, so stop
             break;
         } else {
-            int fd = kev.ident;
+            int fd = (int)kev.ident;
 
             DEBUG() << "QKqueueFileSystemWatcherEngine: processing kevent" << kev.ident << kev.filter;
 

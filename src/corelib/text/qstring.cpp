@@ -7208,7 +7208,7 @@ QString QString::vasprintf(const char *cformat, va_list ap)
             }
             case 'p': {
                 void *arg = va_arg(ap, void*);
-                const quint64 i = reinterpret_cast<quintptr>(arg);
+                const quint64 i = reinterpret_cast<quint64>(arg);
                 flags |= QLocaleData::ShowBase;
                 subst = QLocaleData::c()->unsLongLongToString(i, precision, 16, width, flags);
                 ++c;
@@ -7820,13 +7820,13 @@ QString QString::number(double n, char f, int prec)
 */
 QString QString::number(__uintcap_t n, int base)
 {
-#if defined(QT_CHECK_RANGE)
+#    if defined(QT_CHECK_RANGE)
     if (base < 2 || base > 36) {
         qWarning("QString::setNum: Invalid base (%d)", base);
         base = 10;
     }
-#endif
-    qulonglong v = n;
+#    endif
+    qulonglong v = static_cast<qulonglong>(n);
     return QLocaleData::c()->unsLongLongToString(v, -1, base);
 }
 
@@ -7835,13 +7835,13 @@ QString QString::number(__uintcap_t n, int base)
 */
 QString QString::number(__intcap_t n, int base)
 {
-#if defined(QT_CHECK_RANGE)
+#    if defined(QT_CHECK_RANGE)
     if (base < 2 || base > 36) {
         qWarning("QString::setNum: Invalid base (%d)", base);
         base = 10;
     }
-#endif
-    qlonglong v = n;
+#    endif
+    qlonglong v = static_cast<qlonglong>(n);
     return QLocaleData::c()->longLongToString(v, -1, base);
 }
 #endif // __has_feature(capabilities)
