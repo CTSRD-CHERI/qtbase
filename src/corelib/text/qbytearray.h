@@ -394,6 +394,14 @@ public:
     Q_REQUIRED_RESULT static QByteArray number(uint, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qlonglong, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qulonglong, int base = 10);
+    Q_REQUIRED_RESULT static QByteArray number(long l, int base = 10)
+    {
+        return number(qlonglong(l), base);
+    }
+    Q_REQUIRED_RESULT static QByteArray number(ulong l, int base = 10)
+    {
+        return number(qulonglong(l), base);
+    }
 #if __has_feature(capabilities)
     Q_REQUIRED_RESULT static QByteArray number(__intcap_t, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(__uintcap_t, int base = 10);

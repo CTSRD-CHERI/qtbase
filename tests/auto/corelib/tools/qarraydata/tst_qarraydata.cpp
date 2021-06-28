@@ -830,7 +830,7 @@ void tst_QArrayData::alignment()
                     + minAlignment - Q_ALIGNOF(QArrayData)));
 
         // Data is aligned
-        QCOMPARE(qvaddr(qvaddr(data->boundedData(objectSize)) % alignment), qvaddr(0u));
+        QCOMPARE(qptraddr(qptraddr(data->boundedData(objectSize)) % alignment), qptraddr(0u));
 
         // Check that the allocated array can be used. Best tested with a
         // memory checker, such as valgrind, running.

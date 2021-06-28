@@ -202,10 +202,11 @@ Q_STATIC_ASSERT_X(sizeof(qlonglong) == 8, "Qt assumes that long long is 64 bits"
 Q_STATIC_ASSERT_X(sizeof(qulonglong) == 8, "Qt assumes that unsigned long long is 64 bits");
 #if __has_feature(capabilities)
 Q_STATIC_ASSERT_X(sizeof(qregisteruint) == 8, "Qt on CHERI assumes that qregisteruint is 64 bits");
-Q_STATIC_ASSERT_X(sizeof(qvaddr) == 8, "Qt on CHERI assumes thatqvaddr is 64 bits");
+Q_STATIC_ASSERT_X(sizeof(qptraddr) == 8, "Qt on CHERI assumes that qptraddr is 64 bits");
 #endif
-
-
+static_assert(sizeof(size_t) == sizeof(qsizetype), ""); // implied by the definition
+static_assert(sizeof(qsizetype) == sizeof(qptrdiff), "size_t and a ptrdiff_t don't have the same size");
+static_assert(sizeof(qptrdiff) == sizeof(qptraddr), ""); // implied by the definition
 
 /*!
     \class QFlag
@@ -900,9 +901,9 @@ Q_STATIC_ASSERT_X(sizeof(qvaddr) == 8, "Qt on CHERI assumes thatqvaddr is 64 bit
     On a system with 32-bit pointers, quintptr is a typedef for quint32; on
     a system with 64-bit pointers, quintptr is a typedef for quint64.
 
-    Note that qptrdiff is signed. Use qvaddr for unsigned values.
+    Note that qptrdiff is signed. Use qptraddr for unsigned values.
 
-    \sa quintptr, qint32, qint64, qvaddr
+    \sa quintptr, qint32, qint64, qptraddr
 */
 
 /*!

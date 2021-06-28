@@ -2741,18 +2741,16 @@ TO_STRING_FLOAT(double, %.12g)
 template <> Q_TESTLIB_EXPORT char *QTest::toString<__uintcap_t>(const __uintcap_t &t)
 {
     char *msg = new char[128];
-    // XXXAR: not sure how the compiler will react to passing a reference to a variadic function
     __uintcap_t tmp = t;
-    snprintf(msg, 128, "%llu (%#p)", (qvaddr)tmp, (void *)tmp);
+    snprintf(msg, 128, "%lu (%#p)", (qptraddr)tmp, (void *)tmp);
     return msg;
 }
 
 template <> Q_TESTLIB_EXPORT char *QTest::toString<__intcap_t>(const __intcap_t &t)
 {
     char *msg = new char[128];
-    // XXXAR: not sure how the compiler will react to passing a reference to a variadic function
     __intcap_t tmp = t;
-    snprintf(msg, 128, "%lld (%#p)", (qvaddr)tmp, (void *)tmp);
+    snprintf(msg, 128, "%ld (%#p)", (qptraddr)tmp, (void *)tmp);
     return msg;
 }
 #endif

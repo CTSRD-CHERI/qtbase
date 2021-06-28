@@ -116,7 +116,7 @@ Q_DECL_CONST_FUNCTION inline uint qHash(std::nullptr_t, uint seed = 0) noexcept
 
 template <class T> inline uint qHash(const T *key, uint seed = 0) noexcept
 {
-    return qHash(reinterpret_cast<qvaddr>(key), seed);
+    return qHash(reinterpret_cast<qptraddr>(key), seed);
 }
 template<typename T> inline uint qHash(const T &t, uint seed)
     noexcept(noexcept(qHash(t)))

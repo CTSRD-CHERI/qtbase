@@ -66,7 +66,7 @@ class QLibraryPrivate;
 typedef quint16  qelfhalf_t;
 typedef quint32  qelfword_t;
 typedef qregisteruint qelfoff_t;
-typedef qvaddr qelfaddr_t;
+typedef qptraddr qelfaddr_t;
 
 class QElfParser
 {

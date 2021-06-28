@@ -305,7 +305,7 @@ void tst_QPluginLoader::loadCorruptElf()
     QSKIP("This test requires a shared build of Qt, as QPluginLoader::setFileName is a no-op in static builds");
 #endif
 #if defined (__ELF__)
-    if (sizeof(qvaddr) == 8) {
+    if (sizeof(qptraddr) == 8) {
         QVERIFY(QFile::exists(QFINDTESTDATA("elftest/corrupt1.elf64.so")));
 
         QPluginLoader lib1(QFINDTESTDATA("elftest/corrupt1.elf64.so"));
@@ -319,7 +319,7 @@ void tst_QPluginLoader::loadCorruptElf()
         QPluginLoader lib3(QFINDTESTDATA("elftest/corrupt3.elf64.so"));
         QCOMPARE(lib3.load(), false);
         QVERIFY2(lib3.errorString().contains("invalid"), qPrintable(lib3.errorString()));
-    } else if (sizeof(qvaddr) == 4) {
+    } else if (sizeof(qptraddr) == 4) {
         QPluginLoader libW(QFINDTESTDATA("elftest/corrupt3.elf64.so"));
         QCOMPARE(libW.load(), false);
         QVERIFY2(libW.errorString().contains("architecture"), qPrintable(libW.errorString()));

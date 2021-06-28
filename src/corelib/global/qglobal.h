@@ -582,13 +582,12 @@ typedef QIntegerForSizeof<void*>::Unsigned quintptr;
 typedef QIntegerForSizeof<void*>::Signed qintptr;
 // XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
 typedef ptrdiff_t qptrdiff;
-using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
-#if __has_feature(capabilities)
-// TODO: use __memory_address
-typedef qregisteruint qvaddr;
+#ifdef __PTRADDR_TYPE__
+using qptraddr = __PTRADDR_TYPE__;
 #else
-typedef quintptr qvaddr;
+using qptraddr = QIntegerForSizeof<std::ptrdiff_t>::Unsigned;
 #endif
+using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
@@ -1322,18 +1321,18 @@ Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") void 
 Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") int qrand();
 #endif
 
-template<qvaddr lowBitsMask>
-inline qvaddr qGetLowPointerBits(quintptr ptr)
+template<qptraddr lowBitsMask>
+inline qptraddr qGetLowPointerBits(quintptr ptr)
 {
     Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
-    return static_cast<qvaddr>(ptr) & lowBitsMask;
+    return static_cast<qptraddr>(ptr) & lowBitsMask;
 }
 
-template<qvaddr lowBitsMask>
+template<qptraddr lowBitsMask>
 inline quintptr qClearLowPointerBits(quintptr ptr)
 {
     Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
-    constexpr qvaddr clearingMask = ~qvaddr(lowBitsMask);
+    constexpr qptraddr clearingMask = ~qptraddr(lowBitsMask);
     Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
     return ptr & clearingMask;
 }
@@ -1342,7 +1341,7 @@ inline quintptr qClearLowPointerBits(quintptr ptr)
 // might not be a compile-time constant
 // XXXAR: this function is not actually needed since bitwise or works
 // as expected but I added it for symmetry.
-inline quintptr qSetLowPointerBits(quintptr ptr, qvaddr bits) {
+inline quintptr qSetLowPointerBits(quintptr ptr, qptraddr bits) {
     Q_ASSERT(bits <= 31 && "Cannot use more than the low 5 pointer bits");
     return ptr | bits;
 }
