@@ -576,26 +576,39 @@ struct QIntegerForSize<sizeof(void *)>
     // typedef __uintcap_t Unsigned; typedef __intcap_t Signed;
 };
 #elif defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
-template <>    struct QIntegerForSize<16> { __extension__ typedef unsigned __int128 Unsigned; __extension__ typedef __int128 Signed; };
+template<>
+struct QIntegerForSize<16>
+{
+    __extension__ typedef unsigned __int128 Unsigned;
+    __extension__ typedef __int128 Signed;
+};
 #endif
-template <class T> struct QIntegerForSizeof: QIntegerForSize<sizeof(T)> { };
+template<class T>
+struct QIntegerForSizeof : QIntegerForSize<sizeof(T)>
+{
+};
+typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
+typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
+#ifdef __CHERI_PURE_CAPABILITY__
 // Prevent pointers
 template<class T>
 struct QIntegerForSizeof<T *> : QIntegerForSize<-sizeof(T)>
 {
 };
-
-typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
-typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
 typedef uintptr_t quintptr;
 typedef intptr_t qintptr;
 typedef ptrdiff_t qptrdiff;
+#else
+typedef QIntegerForSizeof<void *>::Unsigned quintptr;
+typedef QIntegerForSizeof<void *>::Signed qptrdiff;
+typedef qptrdiff qintptr;
+#endif
+using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
 #ifdef __PTRADDR_TYPE__
 using qptraddr = __PTRADDR_TYPE__;
 #else
 using qptraddr = QIntegerForSizeof<std::ptrdiff_t>::Unsigned;
 #endif
-using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
