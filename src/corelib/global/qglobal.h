@@ -570,17 +570,25 @@ template <>    struct QIntegerForSize<2> { typedef quint16 Unsigned; typedef qin
 template <>    struct QIntegerForSize<4> { typedef quint32 Unsigned; typedef qint32 Signed; };
 template <>    struct QIntegerForSize<8> { typedef quint64 Unsigned; typedef qint64 Signed; };
 #if defined(__CHERI_PURE_CAPABILITY__)
-template <>    struct QIntegerForSize<sizeof(void*)> { typedef __uintcap_t Unsigned; typedef __intcap_t Signed; };
-
+template<>
+struct QIntegerForSize<sizeof(void *)>
+{
+    // typedef __uintcap_t Unsigned; typedef __intcap_t Signed;
+};
 #elif defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
 template <>    struct QIntegerForSize<16> { __extension__ typedef unsigned __int128 Unsigned; __extension__ typedef __int128 Signed; };
 #endif
 template <class T> struct QIntegerForSizeof: QIntegerForSize<sizeof(T)> { };
+// Prevent pointers
+template<class T>
+struct QIntegerForSizeof<T *> : QIntegerForSize<-sizeof(T)>
+{
+};
+
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
-typedef QIntegerForSizeof<void*>::Unsigned quintptr;
-typedef QIntegerForSizeof<void*>::Signed qintptr;
-// XXXAR: this may cause some issues because the documentation states that sizeof(qptrdiff) == sizeof(void*) and it used to be used instead of qintptr
+typedef uintptr_t quintptr;
+typedef intptr_t qintptr;
 typedef ptrdiff_t qptrdiff;
 #ifdef __PTRADDR_TYPE__
 using qptraddr = __PTRADDR_TYPE__;
