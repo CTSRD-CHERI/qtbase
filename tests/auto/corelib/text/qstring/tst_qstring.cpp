@@ -1195,7 +1195,7 @@ void tst_QString::constructorQByteArray()
     QCOMPARE( strBA, expected );
 
     // test operator= too
-    if (src.constData()[src.length()] == '\0') {
+    if (src.capacity() > src.length() && src.constData()[src.length()] == '\0') {
         str1.clear();
         str1 = src.constData();
         QCOMPARE( str1, expected );
@@ -2786,7 +2786,7 @@ void tst_QString::operator_eqeq_bytearray()
     QVERIFY(expected == src);
     QVERIFY(!(expected != src));
 
-    if (src.constData()[src.length()] == '\0') {
+    if (src.capacity() > src.length() && src.constData()[src.length()] == '\0') {
         QVERIFY(expected == src.constData());
         QVERIFY(!(expected != src.constData()));
     }
