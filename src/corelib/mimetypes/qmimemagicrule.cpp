@@ -139,7 +139,7 @@ bool QMimeMagicRule::matchSubstring(const char *dataPtr, int dataSize, int range
         if (!found)
             return false;
     }
-    //qDebug() << "Found" << value << "in" << searchedData;
+    //qCDebug(lcMimeDatabase) << "Found" << value << "in" << searchedData;
     return true;
 }
 
@@ -155,8 +155,8 @@ bool QMimeMagicRule::matchNumber(const QByteArray &data) const
     const T value(m_number);
     const T mask(m_numberMask);
 
-    //qDebug() << "matchNumber" << "0x" << QString::number(m_number, 16) << "size" << sizeof(T);
-    //qDebug() << "mask" << QString::number(m_numberMask, 16);
+    //qCDebug(lcMimeDatabase) << "matchNumber" << "0x" << QString::number(m_number, 16) << "size" << sizeof(T);
+    //qCDebug(lcMimeDatabase) << "mask" << QString::number(m_numberMask, 16);
 
     const char *p = data.constData() + m_startPos;
     const char *e = data.constData() + qMin(data.size() - int(sizeof(T)), m_endPos);
@@ -347,7 +347,7 @@ bool QMimeMagicRule::matches(const QByteArray &data) const
     if (m_subMatches.isEmpty())
         return true;
 
-    //qDebug() << "Checking" << m_subMatches.count() << "sub-rules";
+    //qCDebug(lcMimeDatabase) << "Checking" << m_subMatches.count() << "sub-rules";
     // Check that one of the submatches matches too
     for ( QList<QMimeMagicRule>::const_iterator it = m_subMatches.begin(), end = m_subMatches.end() ;
           it != end ; ++it ) {

@@ -60,12 +60,17 @@ QT_REQUIRE_CONFIG(mimetype);
 #include "qmimeglobpattern_p.h"
 
 #include <QtCore/qelapsedtimer.h>
+#include <QtCore/qloggingcategory.h>
 #include <QtCore/qmutex.h>
 #include <QtCore/qvector.h>
 
 #include <memory>
 
 QT_BEGIN_NAMESPACE
+
+namespace QtPrivate {
+Q_CORE_EXPORT Q_DECLARE_LOGGING_CATEGORY(lcMimeDatabase);
+}
 
 class QIODevice;
 class QMimeDatabase;
