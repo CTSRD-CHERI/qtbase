@@ -122,11 +122,13 @@ QOffscreenIntegration::QOffscreenIntegration()
 #endif
     m_services.reset(new QPlatformServices);
 
-    QWindowSystemInterface::handleScreenAdded(new QOffscreenScreen);
+    m_screen = new QOffscreenScreen;
+    QWindowSystemInterface::handleScreenAdded(m_screen);
 }
 
 QOffscreenIntegration::~QOffscreenIntegration()
 {
+    QWindowSystemInterface::handleScreenRemoved(m_screen);
 }
 
 void QOffscreenIntegration::initialize()
