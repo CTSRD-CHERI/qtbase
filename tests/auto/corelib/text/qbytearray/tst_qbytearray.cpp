@@ -1788,6 +1788,10 @@ void tst_QByteArray::toFromPercentEncoding()
     arr = "";
     QVERIFY(arr.isEmpty());
     QVERIFY(!arr.isNull());
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(arr.constData()), sizeof(char));
+#endif
     QVERIFY(arr.toPercentEncoding().isEmpty());
     QVERIFY(!arr.toPercentEncoding().isNull());
     QVERIFY(QByteArray::fromPercentEncoding("").isEmpty());
@@ -1796,6 +1800,10 @@ void tst_QByteArray::toFromPercentEncoding()
     arr = QByteArray();
     QVERIFY(arr.isEmpty());
     QVERIFY(arr.isNull());
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(arr.constData()), sizeof(char));
+#endif
     QVERIFY(arr.toPercentEncoding().isEmpty());
     QVERIFY(arr.toPercentEncoding().isNull());
     QVERIFY(QByteArray::fromPercentEncoding(QByteArray()).isEmpty());
@@ -2306,6 +2314,10 @@ void tst_QByteArray::literals()
     QVERIFY(str.data_ptr()->dataOffset() == sizeof(QByteArrayData));
 
     const char *s = str.constData();
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(s), static_cast<size_t>(str.length() + 1));
+#endif
     QByteArray str2 = str;
     QVERIFY(str2.constData() == s);
 

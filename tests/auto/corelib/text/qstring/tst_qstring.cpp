@@ -1080,6 +1080,10 @@ void tst_QString::isNull()
 {
     QString a;
     QVERIFY(a.isNull());
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(a.constData()), sizeof(QChar));
+#endif
 
     const char *zero = nullptr;
     QVERIFY(!QString::asprintf(zero).isNull());
@@ -1091,8 +1095,25 @@ void tst_QString::isEmpty()
 {
     QString a;
     QVERIFY(a.isEmpty());
-    QString c("Not empty");
-    QVERIFY(!c.isEmpty());
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(a.constData()), sizeof(QChar));
+#endif
+    a = QStringLiteral("");
+    QVERIFY(a.isEmpty());
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(a.constData()), sizeof(QChar));
+#endif
+    a = QLatin1String("");
+    QVERIFY(a.isEmpty());
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(a.constData()), sizeof(QChar));
+#endif
+
+    QString d("Not empty");
+    QVERIFY(!d.isEmpty());
 }
 
 void tst_QString::constructor()
@@ -6710,6 +6731,14 @@ void tst_QString::toUpperLower_icu()
 // Only tested on c++0x compliant compiler or gcc
 void tst_QString::literals()
 {
+    QString empty(QStringLiteral(""));
+    QVERIFY(empty.isEmpty());
+    QVERIFY(empty.size() == 0);
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(empty.constData()), sizeof(QChar));
+#endif
+
     QString str(QStringLiteral("abcd"));
 
     QVERIFY(str.length() == 4);
@@ -6718,6 +6747,10 @@ void tst_QString::literals()
     QVERIFY(str.data_ptr()->dataOffset() == sizeof(QStringData));
 
     const QChar *s = str.constData();
+#ifdef __CHERI_PURE_CAPABILITY__
+    // Ensure that the zero terminator is accessible for string literals
+    QCOMPARE(__builtin_cheri_length_get(s), sizeof(QChar) * (str.length() + 1));
+#endif
     QString str2 = str;
     QVERIFY(str2.constData() == s);
 
