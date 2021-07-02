@@ -1354,7 +1354,8 @@ void tst_QFile::permissions()
         QEXPECT_FAIL("readonly", "QTBUG-25630", Abort);
 #endif
 #ifdef Q_OS_UNIX
-    if (strcmp(QTest::currentDataTag(), "readonly") == 0) {
+    if (strcmp(QTest::currentDataTag(), "readonly") == 0
+        || strcmp(QTest::currentDataTag(), "data0") == 0) {
         // in case accidentally run as root
         if (::getuid() == 0)
             QSKIP("Running this test as root doesn't make sense");

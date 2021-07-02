@@ -474,7 +474,7 @@ void tst_QDir::removeRecursively_data()
     QTest::addColumn<QString>("path");
 
     // Create dirs and files
-    const QString tmpdir = QDir::currentPath() + "/tmpdir/";
+    const QString tmpdir = QDir::tempPath() + "/tst-qdir-tmpdir/";
     QStringList dirs;
     dirs << tmpdir + "empty"
          << tmpdir + "one"
@@ -516,7 +516,7 @@ void tst_QDir::removeRecursivelyFailure()
     if (::getuid() == 0)
         QSKIP("Running this test as root doesn't make sense");
 #endif
-    const QString tmpdir = QDir::currentPath() + "/tmpdir/";
+    const QString tmpdir = QDir::tempPath() + "/tst-qdir-tmpdir/";
     const QString path = tmpdir + "undeletable";
     QDir().mkpath(path);
 
