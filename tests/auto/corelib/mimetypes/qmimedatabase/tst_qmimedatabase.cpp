@@ -154,7 +154,7 @@ void tst_QMimeDatabase::initTestCase()
     QVERIFY2(copyResourceFile(xmlFileName, xmlTargetFileName, &errorMessage), qPrintable(errorMessage));
 #endif
 
-    m_testSuite = QFINDTESTDATA("../s-m-i/tests/mime-detection");
+    m_testSuite = QFINDTESTDATA("s-m-i/tests/mime-detection");
     if (m_testSuite.isEmpty())
         qWarning("%s", qPrintable(testSuiteWarning()));
 

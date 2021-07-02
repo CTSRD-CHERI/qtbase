@@ -84,6 +84,7 @@ protected:
 #endif
     QScopedPointer<QPlatformInputContext> m_inputContext;
     QScopedPointer<QPlatformServices> m_services;
+    QPlatformScreen *m_screen;
     mutable QScopedPointer<QPlatformNativeInterface> m_nativeInterface;
 };
 
