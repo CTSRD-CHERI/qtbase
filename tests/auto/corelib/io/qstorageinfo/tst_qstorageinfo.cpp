@@ -225,6 +225,11 @@ void tst_QStorageInfo::caching()
     QCOMPARE(free, storage2.bytesFree());
     storage2.refresh();
     QCOMPARE(storage1, storage2);
+    qInfoPrinter("File system type: %s\n", storage2.fileSystemType().constData());
+#ifdef Q_OS_FREEBSD
+    if (storage1.fileSystemType() == "tmpfs")
+        QEXPECT_FAIL("", "This test doesn't appear to work on tmpfs", Continue);
+#endif
     if (free == storage2.bytesFree() && storage2.fileSystemType() == "apfs") {
         QEXPECT_FAIL("", "This test is likely to fail on APFS", Continue);
     }
