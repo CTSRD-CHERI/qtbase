@@ -1016,7 +1016,7 @@ std::shared_ptr<X> qobject_pointer_cast(std::shared_ptr<T> &&src)
         // Before C++2a we don't really know if the compiler has support for it.
         // The move aliasing constructor is the resolution for LWG2996,
         // which does not impose a feature-testing macro. So: clear src.
-        return std::shared_ptr<X>(std::exchange(src, nullptr), castResult);
+        return std::shared_ptr<X>(qExchange(src, nullptr), castResult);
     }
     return std::shared_ptr<X>();
 }
