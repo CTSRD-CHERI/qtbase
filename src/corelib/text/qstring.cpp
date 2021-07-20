@@ -7910,6 +7910,7 @@ QT_WARNING_POP
 */
 QStringList QString::split(const QString &sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) const
 {
+    Q_ASSERT(qIsAligned(this->d, alignof(void *)));
     return splitString<QStringList>(*this, sep.constData(), behavior, cs, sep.size());
 }
 
@@ -7940,6 +7941,7 @@ QStringList QString::split(const QString &sep, SplitBehavior behavior, Qt::CaseS
 QVector<QStringRef> QString::splitRef(const QString &sep, Qt::SplitBehavior behavior,
                                       Qt::CaseSensitivity cs) const
 {
+    Q_ASSERT(qIsAligned(this->d, alignof(void *)));
     return splitString<QVector<QStringRef>>(QStringRef(this), sep.constData(), behavior,
                                             cs, sep.size());
 }

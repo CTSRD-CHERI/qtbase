@@ -974,7 +974,16 @@ public:
     { return QStringView(*this).isValidUtf16(); }
 
     QString(int size, Qt::Initialization);
-    Q_DECL_CONSTEXPR inline QString(QStringDataPtr dd) : d(dd.ptr) {}
+    Q_DECL_CONSTEXPR inline QString(QStringDataPtr dd) : d(dd.ptr) {
+#ifdef __CHERI_PURE_CAPABILITY__
+        QT_WARNING_PUSH
+        QT_WARNING_DISABLE_CLANG("-Wc++14-extensions")
+        if (!__builtin_is_constant_evaluated()) {
+            Q_ASSERT(qIsAligned(this->d, alignof(void *)));
+        }
+        QT_WARNING_POP
+#endif
+    }
 
 private:
 #if defined(QT_NO_CAST_FROM_ASCII)

@@ -248,6 +248,7 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
         header->setOffset(reinterpret_cast<const char*>(data) - reinterpret_cast<const char*>(header));
     }
 
+    Q_ASSERT(qIsAligned(header, alignof(void *)));
     return header;
 }
 
@@ -266,6 +267,7 @@ QArrayData *QArrayData::reallocateUnaligned(QArrayData *data, size_t objectSize,
         header->alloc = capacity;
         qarraydata_dbg("QArrayData::reallocateUnaligned() new alloc=%zd\n", (size_t)header->alloc);
     }
+    Q_ASSERT(qIsAligned(header, alignof(void *)));
     return header;
 }
 
@@ -276,6 +278,7 @@ void QArrayData::deallocate(QArrayData *data, size_t objectSize,
     Q_ASSERT(alignment >= Q_ALIGNOF(QArrayData)
             && !(alignment & (alignment - 1)));
     Q_UNUSED(objectSize) Q_UNUSED(alignment)
+    Q_ASSERT(qIsAligned(data, alignof(void *)));
 
 #if !defined(QT_NO_UNSHARABLE_CONTAINERS)
     if (data == &qt_array_unsharable_empty)
