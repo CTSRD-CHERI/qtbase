@@ -115,14 +115,16 @@ public:
 
 #if QT_CONFIG(timezone)
     static QDateTime::Data create(const QDate &toDate, const QTime &toTime, const QTimeZone & timeZone);
+#elif !defined(QT_BOOTSTRAPPED)
+#error "Need timezone support"
 #endif // timezone
 
-    StatusFlags m_status = StatusFlag(Qt::LocalTime << TimeSpecShift);
-    qint64 m_msecs = 0;
-    int m_offsetFromUtc = 0;
 #if QT_CONFIG(timezone)
     QTimeZone m_timeZone;
 #endif // timezone
+    StatusFlags m_status = StatusFlag(Qt::LocalTime << TimeSpecShift);
+    qint64 m_msecs = 0;
+    int m_offsetFromUtc = 0;
 
 #if QT_CONFIG(timezone)
     static qint64 zoneMSecsToEpochMSecs(qint64 msecs, const QTimeZone &zone,
