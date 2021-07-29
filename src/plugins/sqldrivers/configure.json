@@ -149,6 +149,7 @@
             "headers": "sqlite3.h",
             "sources": [
                 { "type": "pkgConfig", "args": "sqlite3" },
+                { "type": "pkgConfig", "args": "--static sqlite3" },
                 "-lsqlite3"
             ],
             "use": [
