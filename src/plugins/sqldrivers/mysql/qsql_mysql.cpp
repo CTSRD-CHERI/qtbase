@@ -1363,20 +1363,20 @@ bool QMYSQLDriver::open(const QString& db,
     }
 
 #if MYSQL_VERSION_ID >= 50007
-    if (mysql_get_client_version() >= 50503 && mysql_get_server_version(d->mysql) >= 50503) {
-        // force the communication to be utf8mb4 (only utf8mb4 supports 4-byte characters)
-        mysql_set_character_set(d->mysql, "utf8mb4");
+    // force the communication to be utf8mb4 (only utf8mb4 supports 4-byte characters)
+    if (mysql_set_character_set(d->mysql, "utf8mb4")) {
+        // this failed, try forcing it to utf (BMP only)
+        if (mysql_set_character_set(d->mysql, "utf8"))
+            qWarning() << "MySQL: Unable to set the client character set to utf8.";
 #if QT_CONFIG(textcodec)
-        d->tc = QTextCodec::codecForName("UTF-8");
-#endif
-    } else
-    {
-        // force the communication to be utf8
-        mysql_set_character_set(d->mysql, "utf8");
-#if QT_CONFIG(textcodec)
-        d->tc = codec(d->mysql);
+        else
+            d->tc = codec(d->mysql);
 #endif
     }
+#if QT_CONFIG(textcodec)
+    else
+        d->tc = QTextCodec::codecForName("UTF-8");
+#endif
 #endif  // MYSQL_VERSION_ID >= 50007
 
     d->preparedQuerysEnabled = checkPreparedQueries(d->mysql);
