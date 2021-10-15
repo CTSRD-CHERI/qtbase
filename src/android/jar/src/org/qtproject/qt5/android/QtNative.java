@@ -886,25 +886,10 @@ public class QtNative
         });
     }
 
-    private static void updateInputItemRectangle(final int x,
-                                                 final int y,
-                                                 final int w,
-                                                 final int h)
-    {
-        runAction(new Runnable() {
-            @Override
-            public void run() {
-                m_activityDelegate.updateInputItemRectangle(x, y, w, h);
-            }
-        });
-    }
-
-
     private static void showSoftwareKeyboard(final int x,
                                              final int y,
                                              final int width,
                                              final int height,
-                                             final int editorHeight,
                                              final int inputHints,
                                              final int enterKeyType)
     {
@@ -912,7 +897,7 @@ public class QtNative
             @Override
             public void run() {
                 if (m_activityDelegate != null)
-                    m_activityDelegate.showSoftwareKeyboard(x, y, width, height, editorHeight, inputHints, enterKeyType);
+                    m_activityDelegate.showSoftwareKeyboard(x, y, width, height, inputHints, enterKeyType);
             }
         });
     }
