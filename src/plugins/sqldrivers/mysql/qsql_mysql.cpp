@@ -379,7 +379,6 @@ void QMYSQLResultPrivate::bindBlobs()
 bool QMYSQLResultPrivate::bindInValues()
 {
     MYSQL_BIND *bind;
-    char *field;
     int i = 0;
 
     if (!meta)
