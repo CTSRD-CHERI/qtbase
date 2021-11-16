@@ -2254,6 +2254,7 @@ bool QImage::reinterpretAsFormat(Format format)
         // In case detach() ran out of memory
         if (!d) {
             d = oldD;
+            d->ref.ref();
             return false;
         }
     }
