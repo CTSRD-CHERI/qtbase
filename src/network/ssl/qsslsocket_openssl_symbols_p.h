@@ -236,7 +236,6 @@ Q_AUTOTEST_EXPORT int q_EVP_PKEY_up_ref(EVP_PKEY *a);
 EVP_PKEY_CTX *q_EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
 void q_EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
 int q_EVP_PKEY_param_check(EVP_PKEY_CTX *ctx);
-int q_EVP_PKEY_base_id(EVP_PKEY *a);
 int q_RSA_bits(RSA *a);
 Q_AUTOTEST_EXPORT int q_OPENSSL_sk_num(OPENSSL_STACK *a);
 Q_AUTOTEST_EXPORT void q_OPENSSL_sk_pop_free(OPENSSL_STACK *a, void (*b)(void *));
@@ -751,8 +750,11 @@ void q_SSL_CTX_set_security_level(SSL_CTX *ctx, int level);
 #if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
 X509 *q_SSL_get1_peer_certificate(SSL *a);
 #define q_SSL_get_peer_certificate q_SSL_get1_peer_certificate
+int q_EVP_PKEY_get_base_id(const EVP_PKEY *pkey);
+#define q_EVP_PKEY_base_id q_EVP_PKEY_get_base_id
 #else
 X509 *q_SSL_get_peer_certificate(SSL *a);
+int q_EVP_PKEY_base_id(EVP_PKEY *a);
 #endif // OPENSSL_VERSION_MAJOR >= 3
 
 QT_END_NAMESPACE
