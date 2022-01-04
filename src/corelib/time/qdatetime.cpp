@@ -1430,7 +1430,8 @@ QDate QDate::addDays(qint64 ndays) const
     if (isNull())
         return QDate();
 
-    if (qint64 r; Q_UNLIKELY(add_overflow(jd, ndays, &r)))
+    qint64 r;
+    if (Q_UNLIKELY(add_overflow(jd, ndays, &r)))
         return QDate();
     else
         return fromJulianDay(r);
