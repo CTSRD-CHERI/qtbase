@@ -584,7 +584,6 @@ match(PCRE2_SPTR start_eptr, PCRE2_SPTR start_ecode, PCRE2_SIZE *ovector,
   match_block *mb)
 {
 /* Frame-handling variables */
-assert(__builtin_is_aligned(frame_size, sizeof(void*)));
 
 heapframe *F;           /* Current frame pointer */
 heapframe *N = NULL;    /* Temporary frame pointers */
@@ -631,7 +630,6 @@ frame_copy_size = frame_size - offsetof(heapframe, eptr);
 fields that are not reset for new frames. */
 
 F = mb->match_frames;
-assert(__builtin_is_aligned(F, sizeof(void*)));
 Frdepth = 0;                        /* "Recursion" depth */
 Fcapture_last = 0;                  /* Number of most recent capture */
 Fcurrent_recurse = RECURSE_UNSET;   /* Not pattern recursing. */
@@ -651,7 +649,6 @@ MATCH_RECURSE:
 on the heap, doubling the size, but constrained by the heap limit. */
 
 N = (heapframe *)((char *)F + frame_size);
-assert(__builtin_is_aligned(N, sizeof(void*)));
 if (N >= mb->match_frames_top)
   {
   PCRE2_SIZE newsize = mb->frame_vector_size * 2;
@@ -669,9 +666,7 @@ if (N >= mb->match_frames_top)
   memcpy(new, mb->match_frames, mb->frame_vector_size);
 
   F = (heapframe *)((char *)new + ((char *)F - (char *)mb->match_frames));
-  assert(__builtin_is_aligned(F, sizeof(void*)));
   N = (heapframe *)((char *)F + frame_size);
-  assert(__builtin_is_aligned(N, sizeof(void*)));
 
   if (mb->match_frames != mb->stack_frames)
     mb->memctl.free(mb->match_frames, mb->memctl.memory_data);
@@ -721,7 +716,6 @@ memcpy((char *)N + offsetof(heapframe, eptr),
 
 N->rdepth = Frdepth + 1;
 F = N;
-assert(__builtin_is_aligned(F, sizeof(void*)));
 
 /* Carry on processing with a new frame. */
 
@@ -829,7 +823,6 @@ fprintf(stderr, "++ op=%d\n", *Fecode);
       P->eptr = Feptr;
       P->mark = Fmark;
       F = P;
-      assert(__builtin_is_aligned(F, sizeof(void*)));
       Fecode += 1 + LINK_SIZE;
       continue;
       }
@@ -6049,7 +6042,6 @@ RETURN_SWITCH:
 if (Feptr > mb->last_used_ptr) mb->last_used_ptr = Feptr;
 if (Frdepth == 0) return rrc;                     /* Exit from the top level */
 F = (heapframe *)((char *)F - Fback_frame);       /* Backtrack */
-assert(__builtin_is_aligned(F, sizeof(void*)));
 mb->cb->callout_flags |= PCRE2_CALLOUT_BACKTRACK; /* Note for callouts */
 
 #ifdef DEBUG_SHOW_RMATCH
@@ -6610,8 +6602,7 @@ has to be expanded. We therefore put it into the match block so that it is
 correct when calling match() more than once for non-anchored patterns. */
 
 frame_size = offsetof(heapframe, ovector) +
-  re->top_bracket * 2 * sizeof(PCRE2_SIZE); /* FIXME: should this be sizeof(PCRE2_SIZE)? */
-assert(__builtin_is_aligned(frame_size, sizeof(PCRE2_SPTR)));
+  re->top_bracket * 2 * sizeof(PCRE2_SIZE);
 
 /* Limits set in the pattern override the match context only if they are
 smaller. */
