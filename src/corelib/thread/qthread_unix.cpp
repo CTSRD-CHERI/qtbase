@@ -671,7 +671,7 @@ void QThread::start(Priority priority)
                 // could not set scheduling hints, fallback to inheriting them
                 // we'll try again from inside the thread
                 pthread_attr_setinheritsched(&attr, PTHREAD_INHERIT_SCHED);
-                d->priority = static_cast<std::underlying_type_t<QThread::Priority>>(priority) | ThreadPriorityResetFlag;
+                d->priority = static_cast<std::underlying_type<QThread::Priority>::type>(priority) | ThreadPriorityResetFlag;
             }
             break;
         }
