@@ -1179,6 +1179,7 @@ void QDashStroker::processCurrentSubpath()
 
         bool done = pos >= estop;
 
+        int maxDashes = dashCount;
         if (clipping) {
             // Check if the entire line can be clipped away.
             if (!lineIntersectsRect(prev, e, clip_tl, clip_br)) {
@@ -1196,7 +1197,7 @@ void QDashStroker::processCurrentSubpath()
                         done = true;
                     } else { // Dash is on this line
                         pos = dpos + estart;
-                        done = pos >= estop;
+                        done = --maxDashes > 0 ? pos >= estop : estop;
                         if (++idash >= dashCount)
                             idash = 0;
                         doffset = 0; // full segment so no offset on next.
