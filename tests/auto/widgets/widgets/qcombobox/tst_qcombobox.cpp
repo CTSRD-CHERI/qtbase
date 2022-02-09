@@ -167,6 +167,7 @@ private slots:
     void task_QTBUG_52027_mapCompleterIndex();
     void checkMenuItemPosWhenStyleSheetIsSet();
     void checkEmbeddedLineEditWhenStyleSheetIsSet();
+    void buttonPressKeys();
 
 private:
     PlatformInputContext m_platformInputContext;
@@ -3594,6 +3595,25 @@ void tst_QComboBox::checkEmbeddedLineEditWhenStyleSheetIsSet()
     QVERIFY(color.blue() < 20);
 
     qApp->setStyleSheet(oldCss);
+}
+
+void tst_QComboBox::buttonPressKeys()
+{
+    QComboBox comboBox;
+    comboBox.setEditable(false);
+    comboBox.addItem(QString::number(1));
+    comboBox.addItem(QString::number(2));
+    const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
+                                         ->themeHint(QPlatformTheme::ButtonPressKeys)
+                                         .value<QList<Qt::Key>>();
+    for (int i = 0; i < buttonPressKeys.length(); ++i) {
+        QTest::keyClick(&comboBox, buttonPressKeys[i]);
+        // On some platforms, a window will not be immediately visible,
+        // but take some event-loop iterations to complete.
+        // Using QTRY_VERIFY to deal with that.
+        QTRY_VERIFY(comboBox.view()->isVisible());
+        comboBox.hidePopup();
+    }
 }
 
 QTEST_MAIN(tst_QComboBox)
