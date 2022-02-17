@@ -731,7 +731,6 @@ QGnomeTheme::QGnomeTheme()
 
 QVariant QGnomeTheme::themeHint(QPlatformTheme::ThemeHint hint) const
 {
-    Q_D(const QGnomeTheme);
     switch (hint) {
     case QPlatformTheme::DialogButtonBoxButtonsHaveIcons:
         return QVariant(true);
