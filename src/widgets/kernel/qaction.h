@@ -81,7 +81,7 @@ class Q_WIDGETS_EXPORT QAction : public QObject
     Q_PROPERTY(MenuRole menuRole READ menuRole WRITE setMenuRole NOTIFY changed)
     Q_PROPERTY(bool iconVisibleInMenu READ isIconVisibleInMenu WRITE setIconVisibleInMenu NOTIFY changed)
     Q_PROPERTY(bool shortcutVisibleInContextMenu READ isShortcutVisibleInContextMenu WRITE setShortcutVisibleInContextMenu NOTIFY changed)
-    Q_PROPERTY(Priority priority READ priority WRITE setPriority)
+    Q_PROPERTY(Priority priority READ priority WRITE setPriority NOTIFY changed)
 
 public:
     // note this is copied into qplatformmenu.h, which must stay in sync
