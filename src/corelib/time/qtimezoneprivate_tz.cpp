@@ -42,6 +42,7 @@
 #include "qtimezone.h"
 #include "qtimezoneprivate_p.h"
 #include "private/qlocale_tools_p.h"
+#include "private/qlocking_p.h"
 
 #include <QtCore/QDataStream>
 #include <QtCore/QDateTime>
@@ -61,6 +62,10 @@
 #include <unistd.h>    // to use _SC_SYMLOOP_MAX constant
 
 QT_BEGIN_NAMESPACE
+
+#if QT_CONFIG(icu)
+static QBasicMutex s_icu_mutex;
+#endif
 
 /*
     Private
@@ -371,8 +376,8 @@ static QDate calculatePosixDate(const QByteArray &dateRule, int year)
         int month = dateParts.at(0).mid(1).toInt();
         int week = dateParts.at(1).toInt();
         int dow = dateParts.at(2).toInt();
-        if (dow == 0)
-            ++dow;
+        if (dow == 0) // Sunday; we represent it as 7
+            dow = 7;
         return calculateDowDate(year, month, dow, week);
     } else if (dateRule.at(0) == 'J') {
         // Day of Year ignores Feb 29
@@ -655,6 +660,9 @@ QTzTimeZonePrivate::~QTzTimeZonePrivate()
 
 QTzTimeZonePrivate *QTzTimeZonePrivate::clone() const
 {
+#if QT_CONFIG(icu)
+    const auto lock = qt_scoped_lock(s_icu_mutex);
+#endif
     return new QTzTimeZonePrivate(*this);
 }
 
@@ -867,13 +875,19 @@ void QTzTimeZonePrivate::init(const QByteArray &ianaId)
     cached_data = std::move(entry);
     m_id = ianaId;
     // Avoid empty ID, if we have an abbreviation to use instead
-    if (m_id.isEmpty()) { // We've read /etc/localtime's contents
-        for (const auto &abbr : cached_data.m_abbreviations) {
-            if (!abbr.isEmpty()) {
-                m_id = abbr;
-                break;
-            }
-        }
+    if (m_id.isEmpty()) {
+        // This can only happen for the system zone, when we've read the
+        // contents of /etc/localtime because it wasn't a symlink.
+#if QT_CONFIG(icu)
+        // Use ICU's system zone, if only to avoid using the abbreviation as ID
+        // (ICU might mis-recognize it) in displayName().
+        m_icu = new QIcuTimeZonePrivate();
+        // Use its ID, as an alternate source of data:
+        m_id = m_icu->id();
+        if (!m_id.isEmpty())
+            return;
+#endif
+        m_id = abbreviation(QDateTime::currentMSecsSinceEpoch()).toUtf8();
     }
 }
 
@@ -892,17 +906,20 @@ QString QTzTimeZonePrivate::displayName(qint64 atMSecsSinceEpoch,
                                         const QLocale &locale) const
 {
 #if QT_CONFIG(icu)
+    auto lock = qt_unique_lock(s_icu_mutex);
     if (!m_icu)
         m_icu = new QIcuTimeZonePrivate(m_id);
     // TODO small risk may not match if tran times differ due to outdated files
     // TODO Some valid TZ names are not valid ICU names, use translation table?
     if (m_icu->isValid())
         return m_icu->displayName(atMSecsSinceEpoch, nameType, locale);
+    lock.unlock();
 #else
     Q_UNUSED(nameType)
     Q_UNUSED(locale)
 #endif
-    return abbreviation(atMSecsSinceEpoch);
+    // Fall back to base-class:
+    return QTimeZonePrivate::displayName(atMSecsSinceEpoch, nameType, locale);
 }
 
 QString QTzTimeZonePrivate::displayName(QTimeZone::TimeType timeType,
@@ -910,12 +927,14 @@ QString QTzTimeZonePrivate::displayName(QTimeZone::TimeType timeType,
                                         const QLocale &locale) const
 {
 #if QT_CONFIG(icu)
+    auto lock = qt_unique_lock(s_icu_mutex);
     if (!m_icu)
         m_icu = new QIcuTimeZonePrivate(m_id);
     // TODO small risk may not match if tran times differ due to outdated files
     // TODO Some valid TZ names are not valid ICU names, use translation table?
     if (m_icu->isValid())
         return m_icu->displayName(timeType, nameType, locale);
+    lock.unlock();
 #else
     Q_UNUSED(timeType)
     Q_UNUSED(nameType)
@@ -1162,8 +1181,11 @@ public:
          */
         const StatIdent local = identify("/etc/localtime");
         const StatIdent tz = identify("/etc/TZ");
-        if (!m_name.isEmpty() && m_last.isValid() && (m_last == local || m_last == tz))
+        const StatIdent timezone = identify("/etc/timezone");
+        if (!m_name.isEmpty() && m_last.isValid()
+            && (m_last == local || m_last == tz || m_last == timezone)) {
             return m_name;
+        }
 
         m_name = etcLocalTime();
         if (!m_name.isEmpty()) {
@@ -1171,11 +1193,18 @@ public:
             return m_name;
         }
 
-        m_name = etcTZ();
-        m_last = m_name.isEmpty() ? StatIdent() : tz;
+        // Some systems (e.g. uClibc) have a default value for $TZ in /etc/TZ:
+        m_name = etcContent(QStringLiteral("/etc/TZ"));
+        if (!m_name.isEmpty()) {
+            m_last = tz;
+            return m_name;
+        }
+
+        // Gentoo still (2020, QTBUG-87326) uses this:
+        m_name = etcContent(QStringLiteral("/etc/timezone"));
+        m_last = m_name.isEmpty() ? StatIdent() : timezone;
         return m_name;
     }
-
 
 private:
     QByteArray m_name;
@@ -1217,10 +1246,8 @@ private:
         return QByteArray();
     }
 
-    static QByteArray etcTZ()
+    static QByteArray etcContent(const QString &path)
     {
-        // Some systems (e.g. uClibc) have a default value for $TZ in /etc/TZ:
-        const QString path = QStringLiteral("/etc/TZ");
         QFile zone(path);
         if (zone.open(QIODevice::ReadOnly))
             return zone.readAll().trimmed();

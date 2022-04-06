@@ -148,7 +148,6 @@ DEFINEFUNC(int, EVP_PKEY_up_ref, EVP_PKEY *a, a, return 0, return)
 DEFINEFUNC2(EVP_PKEY_CTX *, EVP_PKEY_CTX_new, EVP_PKEY *pkey, pkey, ENGINE *e, e, return nullptr, return)
 DEFINEFUNC(int, EVP_PKEY_param_check, EVP_PKEY_CTX *ctx, ctx, return 0, return)
 DEFINEFUNC(void, EVP_PKEY_CTX_free, EVP_PKEY_CTX *ctx, ctx, return, return)
-DEFINEFUNC(int, EVP_PKEY_base_id, EVP_PKEY *a, a, return NID_undef, return)
 DEFINEFUNC(int, RSA_bits, RSA *a, a, return 0, return)
 DEFINEFUNC(int, DSA_bits, DSA *a, a, return 0, return)
 DEFINEFUNC(int, OPENSSL_sk_num, OPENSSL_STACK *a, a, return -1, return)
@@ -368,7 +367,15 @@ DEFINEFUNC(const SSL_CIPHER *, SSL_get_current_cipher, SSL *a, a, return nullptr
 DEFINEFUNC(int, SSL_version, const SSL *a, a, return 0, return)
 DEFINEFUNC2(int, SSL_get_error, SSL *a, a, int b, b, return -1, return)
 DEFINEFUNC(STACK_OF(X509) *, SSL_get_peer_cert_chain, SSL *a, a, return nullptr, return)
+
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
+DEFINEFUNC(X509 *, SSL_get1_peer_certificate, SSL *a, a, return nullptr, return)
+DEFINEFUNC(int, EVP_PKEY_get_base_id, const EVP_PKEY *pkey, pkey, return -1, return)
+#else
 DEFINEFUNC(X509 *, SSL_get_peer_certificate, SSL *a, a, return nullptr, return)
+DEFINEFUNC(int, EVP_PKEY_base_id, EVP_PKEY *a, a, return NID_undef, return)
+#endif // OPENSSL_VERSION_MAJOR >= 3
+
 DEFINEFUNC(long, SSL_get_verify_result, const SSL *a, a, return -1, return)
 DEFINEFUNC(SSL *, SSL_new, SSL_CTX *a, a, return nullptr, return)
 DEFINEFUNC(SSL_CTX *, SSL_get_SSL_CTX, SSL *a, a, return nullptr, return)
@@ -489,9 +496,7 @@ DEFINEFUNC(DH *, DH_new, DUMMYARG, DUMMYARG, return nullptr, return)
 DEFINEFUNC(void, DH_free, DH *dh, dh, return, DUMMYARG)
 DEFINEFUNC3(DH *, d2i_DHparams, DH**a, a, const unsigned char **pp, pp, long length, length, return nullptr, return)
 DEFINEFUNC2(int, i2d_DHparams, DH *a, a, unsigned char **p, p, return -1, return)
-#ifndef OPENSSL_NO_DEPRECATED_3_0
 DEFINEFUNC2(int, DH_check, DH *dh, dh, int *codes, codes, return 0, return)
-#endif // OPENSSL_NO_DEPRECATED_3_0
 DEFINEFUNC3(BIGNUM *, BN_bin2bn, const unsigned char *s, s, int len, len, BIGNUM *ret, ret, return nullptr, return)
 
 #ifndef OPENSSL_NO_EC
@@ -671,14 +676,18 @@ static LoadedOpenSsl loadOpenSsl()
 {
     LoadedOpenSsl result;
 
-    // With OpenSSL 1.1 the names have changed to libssl-1_1(-x64) and libcrypto-1_1(-x64), for builds using
-    // MSVC and GCC, (-x64 suffix for 64-bit builds).
+    // With OpenSSL 1.1 the names have changed to libssl-1_1 and libcrypto-1_1 for builds using
+    // MSVC and GCC, with architecture suffixes for non-x86 builds.
 
-#ifdef Q_PROCESSOR_X86_64
+#if defined(Q_PROCESSOR_X86_64)
 #define QT_SSL_SUFFIX "-x64"
-#else // !Q_PROCESSOFR_X86_64
+#elif defined(Q_PROCESSOR_ARM_64)
+#define QT_SSL_SUFFIX "-arm64"
+#elif defined(Q_PROCESSOR_ARM_32)
+#define QT_SSL_SUFFIX "-arm"
+#else
 #define QT_SSL_SUFFIX
-#endif // !Q_PROCESSOR_x86_64
+#endif
 
     tryToLoadOpenSslWin32Library(QLatin1String("libssl-1_1" QT_SSL_SUFFIX),
                                  QLatin1String("libcrypto-1_1" QT_SSL_SUFFIX), result);
@@ -848,7 +857,6 @@ bool q_resolveOpenSslSymbols()
     RESOLVEFUNC(EVP_PKEY_CTX_new)
     RESOLVEFUNC(EVP_PKEY_param_check)
     RESOLVEFUNC(EVP_PKEY_CTX_free)
-    RESOLVEFUNC(EVP_PKEY_base_id)
     RESOLVEFUNC(RSA_bits)
     RESOLVEFUNC(OPENSSL_sk_new_null)
     RESOLVEFUNC(OPENSSL_sk_push)
@@ -1073,7 +1081,15 @@ bool q_resolveOpenSslSymbols()
     RESOLVEFUNC(SSL_version)
     RESOLVEFUNC(SSL_get_error)
     RESOLVEFUNC(SSL_get_peer_cert_chain)
+
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
+    RESOLVEFUNC(SSL_get1_peer_certificate)
+    RESOLVEFUNC(EVP_PKEY_get_base_id)
+#else
     RESOLVEFUNC(SSL_get_peer_certificate)
+    RESOLVEFUNC(EVP_PKEY_base_id)
+#endif // OPENSSL_VERSION_MAJOR >= 3
+
     RESOLVEFUNC(SSL_get_verify_result)
     RESOLVEFUNC(SSL_new)
     RESOLVEFUNC(SSL_get_SSL_CTX)
@@ -1172,9 +1188,7 @@ bool q_resolveOpenSslSymbols()
     RESOLVEFUNC(DH_free)
     RESOLVEFUNC(d2i_DHparams)
     RESOLVEFUNC(i2d_DHparams)
-#ifndef OPENSSL_NO_DEPRECATED_3_0
     RESOLVEFUNC(DH_check)
-#endif // OPENSSL_NO_DEPRECATED_3_0
     RESOLVEFUNC(BN_bin2bn)
 
 #ifndef OPENSSL_NO_EC

@@ -70,10 +70,10 @@ public:
     QPushButtonPrivate()
         : QAbstractButtonPrivate(QSizePolicy::PushButton), autoDefault(Auto),
           defaultButton(false), flat(false), menuOpen(false), hovering(false),
-          lastAutoDefault(false)
+          commandLink(false), lastAutoDefault(false)
     {}
 
-    inline void init() { resetLayoutItemMargins(); }
+    void init();
     static QPushButtonPrivate* get(QPushButton *b) { return b->d_func(); }
 #if QT_CONFIG(menu)
     QPoint adjustedMenuPosition();
@@ -92,6 +92,7 @@ public:
     uint flat : 1;
     uint menuOpen : 1;
     uint hovering : 1;
+    uint commandLink : 1;
     mutable uint lastAutoDefault : 1;
 };
 

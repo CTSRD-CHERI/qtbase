@@ -43,6 +43,7 @@
 #if QT_CONFIG(datetimeparser)
 #include "private/qdatetimeparser_p.h"
 #endif
+#include <private/qnumeric_p.h>
 
 #include "qdatastream.h"
 #include "qset.h"
@@ -1429,9 +1430,11 @@ QDate QDate::addDays(qint64 ndays) const
     if (isNull())
         return QDate();
 
-    // Due to limits on minJd() and maxJd() we know that any overflow
-    // will be invalid and caught by fromJulianDay().
-    return fromJulianDay(jd + ndays);
+    qint64 r;
+    if (Q_UNLIKELY(add_overflow(jd, ndays, &r)))
+        return QDate();
+    else
+        return fromJulianDay(r);
 }
 
 /*!
@@ -2612,6 +2615,8 @@ bool QTime::isValid(int h, int m, int s, int ms)
 
 #if QT_DEPRECATED_SINCE(5, 14) // ### Qt 6: remove
 /*!
+    \deprecated
+
     Sets this time to the current time. This is practical for timing:
 
     \snippet code/src_corelib_tools_qdatetime.cpp 10
@@ -2655,6 +2660,8 @@ int QTime::restart()
 }
 
 /*!
+    \deprecated
+
     Returns the number of milliseconds that have elapsed since the
     last time start() or restart() was called.
 
@@ -5573,7 +5580,7 @@ QDateTime QDateTime::fromString(const QString &string, const QString &format, QC
     return QDateTime();
 }
 
-/*
+/*!
   \overload
 */
 

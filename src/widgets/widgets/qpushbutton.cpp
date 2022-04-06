@@ -326,6 +326,8 @@ void QPushButton::initStyleOption(QStyleOptionButton *option) const
         option->features |= QStyleOptionButton::AutoDefaultButton;
     if (d->defaultButton)
         option->features |= QStyleOptionButton::DefaultButton;
+    if (d->commandLink)
+        option->features |= QStyleOptionButton::CommandLinkButton;
     if (d->down || d->menuOpen)
         option->state |= QStyle::State_Sunken;
     if (d->checked)
@@ -581,6 +583,13 @@ void QPushButton::showMenu()
         return;
     setDown(true);
     d->_q_popupPressed();
+}
+
+void QPushButtonPrivate::init()
+{
+    Q_Q(QPushButton);
+    q->setAttribute(Qt::WA_MacShowFocusRect);
+    resetLayoutItemMargins();
 }
 
 void QPushButtonPrivate::_q_popupPressed()

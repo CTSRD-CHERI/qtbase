@@ -57,6 +57,9 @@
 #if QT_CONFIG(lineedit)
 #include <qlineedit.h>
 #endif
+#if QT_CONFIG(textedit)
+#include <qtextedit.h>
+#endif
 #include <private/qwindowsstyle_p.h>
 #if QT_CONFIG(combobox)
 #include <qcombobox.h>
@@ -1458,6 +1461,7 @@ void QRenderRule::configurePalette(QPalette *p, QPalette::ColorGroup cg, const Q
         p->setBrush(cg, w->foregroundRole(), pal->foreground);
         p->setBrush(cg, QPalette::WindowText, pal->foreground);
         p->setBrush(cg, QPalette::Text, pal->foreground);
+        p->setBrush(cg, QPalette::PlaceholderText, pal->foreground);
     }
     if (pal->selectionBackground.style() != Qt::NoBrush)
         p->setBrush(cg, QPalette::Highlight, pal->selectionBackground);
@@ -2085,6 +2089,11 @@ QRenderRule QStyleSheetStyle::renderRule(const QObject *obj, const QStyleOption 
 
         }
 #endif
+#if QT_CONFIG(textedit)
+        else if (const QTextEdit *edit = qobject_cast<const QTextEdit *>(obj)) {
+            extraClass |= (edit->isReadOnly() ? PseudoClass_ReadOnly : PseudoClass_Editable);
+        }
+#endif
 #if QT_CONFIG(lineedit)
         // LineEdit sets Sunken flag to indicate Sunken frame (argh)
         if (const QLineEdit *lineEdit = qobject_cast<const QLineEdit *>(obj)) {
@@ -2508,6 +2517,11 @@ static quint64 extendedPseudoClass(const QWidget *w)
 #endif
 #if QT_CONFIG(lineedit)
     if (const QLineEdit *edit = qobject_cast<const QLineEdit *>(w)) {
+        pc |= (edit->isReadOnly() ? PseudoClass_ReadOnly : PseudoClass_Editable);
+    } else
+#endif
+#if QT_CONFIG(textedit)
+    if (const QTextEdit *edit = qobject_cast<const QTextEdit *>(w)) {
         pc |= (edit->isReadOnly() ? PseudoClass_ReadOnly : PseudoClass_Editable);
     } else
 #endif
@@ -3540,8 +3554,8 @@ void QStyleSheetStyle::drawControl(ControlElement ce, const QStyleOption *opt, Q
                 const uint horizontalAlignMask = Qt::AlignHCenter | Qt::AlignLeft | Qt::AlignRight;
                 const uint verticalAlignMask = Qt::AlignVCenter | Qt::AlignTop | Qt::AlignLeft;
 
-                const Qt::Alignment textAlignment = rule.position()->textAlignment;
-                if (rule.hasPosition() && textAlignment != 0) {
+                if (rule.hasPosition() && rule.position()->textAlignment != 0) {
+                    Qt::Alignment textAlignment = rule.position()->textAlignment;
                     tf |= (textAlignment & verticalAlignMask) ? (textAlignment & verticalAlignMask) : Qt::AlignVCenter;
                     tf |= (textAlignment & horizontalAlignMask) ? (textAlignment & horizontalAlignMask) : Qt::AlignHCenter;
                     if (!styleHint(SH_UnderlineShortcut, button, w))
@@ -3600,8 +3614,6 @@ void QStyleSheetStyle::drawControl(ControlElement ce, const QStyleOption *opt, Q
                         iconRect.translate(pixelMetric(PM_ButtonShiftHorizontal, opt, w),
                                            pixelMetric(PM_ButtonShiftVertical, opt, w));
                     p->drawPixmap(iconRect, pixmap);
-                }else {
-                    tf |= textAlignment;
                 }
 
                 if (button->state & (State_On | State_Sunken))
@@ -3760,10 +3772,10 @@ void QStyleSheetStyle::drawControl(ControlElement ce, const QStyleOption *opt, Q
                     QRect pmr(0, 0, pixw, pixh);
                     pmr.moveCenter(iconRect.center());
                     p->drawPixmap(pmr.topLeft(), pixmap);
-                } else if (checkable) {
+                } else if (mi.menuHasCheckableItems) {
                     QRenderRule subSubRule = renderRule(w, opt, PseudoElement_MenuCheckMark);
                     const QRect cmRect = positionRect(w, subRule, subSubRule, PseudoElement_MenuCheckMark, opt->rect, opt->direction);
-                    if (subSubRule.hasDrawable() || checked) {
+                    if (checkable && (subSubRule.hasDrawable() || checked)) {
                         QStyleOptionMenuItem newMi = mi;
                         if (!dis)
                             newMi.state |= State_Enabled;

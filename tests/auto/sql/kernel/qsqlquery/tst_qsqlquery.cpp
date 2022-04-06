@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2022 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the test suite of the Qt Toolkit.
@@ -68,6 +68,8 @@ private slots:
     void query_exec();
     void execErrorRecovery_data() { generic_data(); }
     void execErrorRecovery();
+    void prematureExec_data() { generic_data(); }
+    void prematureExec();
     void first_data() { generic_data(); }
     void first();
     void next_data() { generic_data(); }
@@ -257,6 +259,9 @@ private slots:
 
     void QTBUG_57138_data() { generic_data("QSQLITE"); }
     void QTBUG_57138();
+
+    void QTBUG_73286_data() { generic_data("QODBC"); }
+    void QTBUG_73286();
 
     void dateTime_data();
     void dateTime();
@@ -2767,6 +2772,35 @@ void tst_QSqlQuery::execErrorRecovery()
     QVERIFY_SQL( q, exec() );
 }
 
+void tst_QSqlQuery::prematureExec()
+{
+    QFETCH(QString, dbName);
+    // We only want the engine name, for addDatabase():
+    int cut = dbName.indexOf(QChar('@'));
+    if (cut < 0)
+        QSKIP("Failed to parse database type out of name");
+    dbName.truncate(cut);
+    cut = dbName.indexOf(QChar('_'));
+    if (cut >= 0)
+        dbName = dbName.sliced(cut + 1);
+
+    auto db = QSqlDatabase::addDatabase(dbName);
+    QSqlQuery q(db);
+
+    QTest::ignoreMessage(QtWarningMsg,
+                         "QSqlDatabasePrivate::removeDatabase: connection "
+                         "'qt_sql_default_connection' is still in use, all "
+                         "queries will cease to work.");
+    QTest::ignoreMessage(QtWarningMsg,
+                         "QSqlDatabasePrivate::addDatabase: duplicate connection name "
+                         "'qt_sql_default_connection', old connection removed.");
+    auto otherDb = QSqlDatabase::addDatabase(dbName);
+
+    QTest::ignoreMessage(QtWarningMsg, "QSqlQuery::exec: called before driver has been set up");
+    // QTBUG-100037: shouldn't crash !
+    QVERIFY(!q.exec("select stuff from TheVoid"));
+}
+
 void tst_QSqlQuery::lastInsertId()
 {
     QFETCH( QString, dbName );
@@ -4529,6 +4563,7 @@ void tst_QSqlQuery::QTBUG_57138()
 
     QSqlQuery create(db);
     QString tableName = qTableName("qtbug57138", __FILE__, db);
+    tst_Databases::safeDropTable(db, tableName);
 
     QVERIFY_SQL(create, exec("create table " + tableName + " (id int, dt_utc datetime, dt_lt datetime, dt_tzoffset datetime)"));
     QVERIFY_SQL(create, prepare("insert into " + tableName + " (id, dt_utc, dt_lt, dt_tzoffset) values (?, ?, ?, ?)"));
@@ -4550,6 +4585,37 @@ void tst_QSqlQuery::QTBUG_57138()
     QCOMPARE(q.value(0).toDateTime(), utc);
     QCOMPARE(q.value(1).toDateTime(), localtime);
     QCOMPARE(q.value(2).toDateTime(), tzoffset);
+}
+
+void tst_QSqlQuery::QTBUG_73286()
+{
+    QFETCH(QString, dbName);
+    QSqlDatabase db = QSqlDatabase::database(dbName);
+    CHECK_DATABASE(db);
+
+    QSqlQuery create(db);
+    QString tableName = qTableName("qtbug73286", __FILE__, db);
+    tst_Databases::safeDropTable(db, tableName);
+
+    QVERIFY_SQL(create, exec("create table " + tableName + " (dec2 decimal(4,2), dec0 decimal(20,0), dec3 decimal(20,3))"));
+    QVERIFY_SQL(create, prepare("insert into " + tableName + " (dec2, dec0, dec3) values (?, ?, ?)"));
+
+    create.addBindValue("99.99");
+    create.addBindValue("12345678901234567890");
+    create.addBindValue("12345678901234567.890");
+
+    QVERIFY_SQL(create, exec());
+
+    QSqlQuery q(db);
+    q.prepare("SELECT dec2, dec0, dec3 FROM " + tableName);
+    q.setNumericalPrecisionPolicy(QSql::HighPrecision);
+
+    QVERIFY_SQL(q, exec());
+    QVERIFY(q.next());
+
+    QCOMPARE(q.value(0).toString(), "99.99");
+    QCOMPARE(q.value(1).toString(), "12345678901234567890");
+    QCOMPARE(q.value(2).toString(), "12345678901234567.890");
 }
 
 void tst_QSqlQuery::dateTime_data()

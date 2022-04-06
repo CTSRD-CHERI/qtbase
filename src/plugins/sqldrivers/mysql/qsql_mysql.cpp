@@ -158,6 +158,20 @@ static inline QVariant qDateTimeFromString(QString &val)
 #endif
 }
 
+// check if this client and server version of MySQL/MariaDB support prepared statements
+static inline bool checkPreparedQueries(MYSQL *mysql)
+{
+    std::unique_ptr<MYSQL_STMT, decltype(&mysql_stmt_close)> stmt(mysql_stmt_init(mysql), &mysql_stmt_close);
+    if (!stmt)
+        return false;
+
+    static const char dummyQuery[] = "SELECT ? + ?";
+    if (mysql_stmt_prepare(stmt.get(), dummyQuery, sizeof(dummyQuery) - 1))
+        return false;
+
+    return mysql_stmt_param_count(stmt.get()) == 2;
+}
+
 class QMYSQLResultPrivate;
 
 class QMYSQLResult : public QSqlResult
@@ -209,7 +223,7 @@ public:
     struct QMyField
     {
         char *outField = nullptr;
-        MYSQL_FIELD *myField = nullptr;
+        const MYSQL_FIELD *myField = nullptr;
         QMetaType::Type type = QMetaType::UnknownType;
         my_bool nullIndicator = false;
         ulong bufLength = 0ul;
@@ -347,7 +361,7 @@ static bool qIsInteger(int t)
 void QMYSQLResultPrivate::bindBlobs()
 {
     int i;
-    MYSQL_FIELD *fieldInfo;
+    const MYSQL_FIELD *fieldInfo;
     MYSQL_BIND *bind;
 
     for(i = 0; i < fields.count(); ++i) {
@@ -365,7 +379,6 @@ void QMYSQLResultPrivate::bindBlobs()
 bool QMYSQLResultPrivate::bindInValues()
 {
     MYSQL_BIND *bind;
-    char *field;
     int i = 0;
 
     if (!meta)
@@ -378,35 +391,34 @@ bool QMYSQLResultPrivate::bindInValues()
     inBinds = new MYSQL_BIND[fields.size()];
     memset(inBinds, 0, fields.size() * sizeof(MYSQL_BIND));
 
-    MYSQL_FIELD *fieldInfo;
+    const MYSQL_FIELD *fieldInfo;
 
     while((fieldInfo = mysql_fetch_field(meta))) {
+        bind = &inBinds[i];
+
         QMyField &f = fields[i];
         f.myField = fieldInfo;
-
+        bind->buffer_length = f.bufLength = fieldInfo->length + 1;
+        bind->buffer_type = fieldInfo->type;
         f.type = qDecodeMYSQLType(fieldInfo->type, fieldInfo->flags);
         if (qIsBlob(fieldInfo->type)) {
             // the size of a blob-field is available as soon as we call
             // mysql_stmt_store_result()
             // after mysql_stmt_exec() in QMYSQLResult::exec()
-            fieldInfo->length = 0;
+            bind->buffer_length = f.bufLength = 0;
             hasBlobs = true;
         } else if (qIsInteger(f.type)) {
-            fieldInfo->length = 8;
+            bind->buffer_length = f.bufLength = 8;
         } else {
-            fieldInfo->type = MYSQL_TYPE_STRING;
+            bind->buffer_type = MYSQL_TYPE_STRING;
         }
-        bind = &inBinds[i];
-        field = new char[fieldInfo->length + 1];
-        memset(field, 0, fieldInfo->length + 1);
 
-        bind->buffer_type = fieldInfo->type;
-        bind->buffer = field;
-        bind->buffer_length = f.bufLength = fieldInfo->length + 1;
         bind->is_null = &f.nullIndicator;
         bind->length = &f.bufLength;
         bind->is_unsigned = fieldInfo->flags & UNSIGNED_FLAG ? 1 : 0;
-        f.outField=field;
+
+        char *field = new char[bind->buffer_length + 1]{};
+        bind->buffer = f.outField = field;
 
         ++i;
     }
@@ -1355,24 +1367,23 @@ bool QMYSQLDriver::open(const QString& db,
     }
 
 #if MYSQL_VERSION_ID >= 50007
-    if (mysql_get_client_version() >= 50503 && mysql_get_server_version(d->mysql) >= 50503) {
-        // force the communication to be utf8mb4 (only utf8mb4 supports 4-byte characters)
-        mysql_set_character_set(d->mysql, "utf8mb4");
+    // force the communication to be utf8mb4 (only utf8mb4 supports 4-byte characters)
+    if (mysql_set_character_set(d->mysql, "utf8mb4")) {
+        // this failed, try forcing it to utf (BMP only)
+        if (mysql_set_character_set(d->mysql, "utf8"))
+            qWarning() << "MySQL: Unable to set the client character set to utf8.";
 #if QT_CONFIG(textcodec)
-        d->tc = QTextCodec::codecForName("UTF-8");
-#endif
-    } else
-    {
-        // force the communication to be utf8
-        mysql_set_character_set(d->mysql, "utf8");
-#if QT_CONFIG(textcodec)
-        d->tc = codec(d->mysql);
+        else
+            d->tc = codec(d->mysql);
 #endif
     }
+#if QT_CONFIG(textcodec)
+    else
+        d->tc = QTextCodec::codecForName("UTF-8");
+#endif
 #endif  // MYSQL_VERSION_ID >= 50007
 
-    d->preparedQuerysEnabled = mysql_get_client_version() >= 40108
-                        && mysql_get_server_version(d->mysql) >= 40100;
+    d->preparedQuerysEnabled = checkPreparedQueries(d->mysql);
 
 #if QT_CONFIG(thread)
     mysql_thread_init();

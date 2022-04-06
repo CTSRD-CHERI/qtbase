@@ -105,14 +105,13 @@ public:
 
     bool sizeDirty;
     bool layoutDirty;
-    bool fullLayoutCompleted;
 
     QVector<QPointer<QTextFrame> > floats;
 };
 
 QTextFrameData::QTextFrameData()
     : maximumWidth(QFIXED_MAX),
-      currentLayoutStruct(nullptr), sizeDirty(true), layoutDirty(true), fullLayoutCompleted(false)
+      currentLayoutStruct(nullptr), sizeDirty(true), layoutDirty(true)
 {
 }
 
@@ -2124,7 +2123,7 @@ void QTextDocumentLayoutPrivate::drawListItem(const QPointF &offset, QPainter *p
 {
     Q_Q(const QTextDocumentLayout);
     const QTextBlockFormat blockFormat = bl.blockFormat();
-    const QTextCharFormat charFormat = QTextCursor(bl).charFormat();
+    const QTextCharFormat charFormat = bl.charFormat();
     QFont font(charFormat.font());
     if (q->paintDevice())
         font = QFont(font, q->paintDevice());
@@ -2358,9 +2357,10 @@ QTextLayoutStruct QTextDocumentLayoutPrivate::layoutCell(QTextTable *t, const QT
         floatMinWidth = qMax(floatMinWidth, cd->minimumWidth);
     }
 
-    // constraint the maximumWidth by the minimum width of the fixed size floats, to
-    // keep them visible
+    // constraint the maximum/minimumWidth by the minimum width of the fixed size floats,
+    // to keep them visible
     layoutStruct.maximumWidth = qMax(layoutStruct.maximumWidth, floatMinWidth);
+    layoutStruct.minimumWidth = qMax(layoutStruct.minimumWidth, floatMinWidth);
 
     // as floats in cells get added to the table's float list but must not affect
     // floats in other cells we must clear the list here.
@@ -2537,6 +2537,8 @@ recalc_minmax_widths:
             for (int n = 0; n < cspan; ++n) {
                 const int col = i + n;
                 QFixed w = widthToDistribute / (cspan - n);
+                if (td->maxWidths[col] != QFIXED_MAX)
+                    w = qMax(td->maxWidths[col], w);
                 td->maxWidths[col] = qMax(td->minWidths.at(col), w);
                 widthToDistribute -= td->maxWidths.at(col);
                 if (widthToDistribute <= 0)
@@ -2944,7 +2946,7 @@ QRectF QTextDocumentLayoutPrivate::layoutFrame(QTextFrame *f, int layoutFrom, in
     QTextFrameData *fd = data(f);
     QFixed newContentsWidth;
 
-    bool fullLayout = (f == document->rootFrame() && !fd->fullLayoutCompleted);
+    bool fullLayout = false;
     {
         QTextFrameFormat fformat = f->frameFormat();
         // set sizes of this frame from the format
@@ -3398,7 +3400,6 @@ void QTextDocumentLayoutPrivate::layoutFlow(QTextFrame::Iterator it, QTextLayout
             cp.contentsWidth = layoutStruct->contentsWidth;
             checkPoints.append(cp);
             checkPoints.reserve(checkPoints.size());
-            fd->fullLayoutCompleted = true;
         } else {
             currentLazyLayoutPosition = checkPoints.constLast().positionInFrame;
             // #######
@@ -3810,7 +3811,6 @@ void QTextDocumentLayout::documentChanged(int from, int oldLength, int length)
         d->contentHasAlignment = false;
         d->currentLazyLayoutPosition = 0;
         d->checkPoints.clear();
-        data(d->docPrivate->rootFrame())->fullLayoutCompleted = false;
         d->layoutStep();
     } else {
         d->ensureLayoutedByPosition(from);

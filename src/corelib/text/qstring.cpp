@@ -4574,13 +4574,13 @@ int QString::lastIndexOf(const QRegularExpression &re, int from, QRegularExpress
         return -1;
     }
 
-    int endpos = (from < 0) ? (size() + from + 1) : (from);
+    int endpos = (from < 0) ? (size() + from + 1) : (from + 1);
     QRegularExpressionMatchIterator iterator = re.globalMatch(*this);
     int lastIndex = -1;
     while (iterator.hasNext()) {
         QRegularExpressionMatch match = iterator.next();
         int start = match.capturedStart();
-        if (start <= endpos) {
+        if (start < endpos) {
             lastIndex = start;
             if (rmatch)
                 *rmatch = std::move(match);
@@ -12345,7 +12345,7 @@ static qsizetype qLastIndexOf(Haystack haystack0, qsizetype from,
     const auto needle = needle0.data();
     const auto *end = haystack;
     haystack += from;
-    const std::size_t sl_minus_1 = sl - 1;
+    const std::size_t sl_minus_1 = sl ? sl - 1 : 0;
     const auto *n = needle + sl_minus_1;
     const auto *h = haystack + sl_minus_1;
     std::size_t hashNeedle = 0, hashHaystack = 0;

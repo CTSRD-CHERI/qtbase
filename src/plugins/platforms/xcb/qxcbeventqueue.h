@@ -107,8 +107,7 @@ public:
                         PeekOptions option = PeekDefault, qint32 peekerId = -1);
 
     const QXcbEventNode *flushedTail() const { return m_flushedTail; }
-    void waitForNewEvents(const QXcbEventNode *sinceFlushedTail,
-                          unsigned long time = ULONG_MAX);
+    void waitForNewEvents(const QXcbEventNode *sinceFlushedTail, unsigned long time = ULONG_MAX);
 
 private:
     QXcbEventNode *qXcbEventNodeFactory(xcb_generic_event_t *event);

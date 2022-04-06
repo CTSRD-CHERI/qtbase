@@ -1864,7 +1864,7 @@ public:
     QT_Q_ENUM(TimerType)
     QT_Q_ENUM(ScrollPhase)
     QT_Q_ENUM(MouseEventSource)
-    QT_Q_FLAG(MouseEventFlag)
+    QT_Q_FLAG(MouseEventFlags)
     QT_Q_ENUM(ChecksumType)
     QT_Q_ENUM(HighDpiScaleFactorRoundingPolicy)
     QT_Q_ENUM(TabFocusBehavior)
