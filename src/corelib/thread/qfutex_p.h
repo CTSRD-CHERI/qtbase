@@ -52,6 +52,7 @@
 //
 
 #include <qglobal.h>
+#include <QtCore/qtsan_impl.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -106,16 +107,13 @@ namespace QtLinuxFutex {
     inline int _q_futex(int *addr, int op, int val, quintptr val2 = 0,
                         int *addr2 = nullptr, int val3 = 0) noexcept
     {
-        // A futex call ensures total ordering on the futex words
-        // (in either success or failure of the call). Instruct TSAN accordingly,
-        // as TSAN does not understand the futex(2) syscall.
-        _q_tsan_release(addr, addr2);
+        QtTsan::futexRelease(addr, addr2);
 
         // we use __NR_futex because some libcs (like Android's bionic) don't
         // provide SYS_futex etc.
         int result = syscall(__NR_futex, addr, op | FUTEX_PRIVATE_FLAG, val, val2, addr2, val3);
 
-        _q_tsan_acquire(addr, addr2);
+        QtTsan::futexAcquire(addr, addr2);
 
         return result;
     }
