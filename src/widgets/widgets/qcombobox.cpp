@@ -3357,7 +3357,7 @@ void QComboBox::keyPressEvent(QKeyEvent *e)
 #ifdef QT_KEYPAD_NAVIGATION
     pressLikeButton |= QApplicationPrivate::keypadNavigationEnabled() && !hasEditFocus();
 #endif
-    auto key = e->key();
+    auto key = static_cast<Qt::Key>(e->key());
     if (pressLikeButton) {
         const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
                                              ->themeHint(QPlatformTheme::ButtonPressKeys)
