@@ -1078,7 +1078,7 @@ void QAbstractButton::keyPressEvent(QKeyEvent *e)
     Q_D(QAbstractButton);
     bool next = true;
 
-    const auto key = e->key();
+    const auto key = static_cast<Qt::Key>(e->key());
     const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
                                          ->themeHint(QPlatformTheme::ButtonPressKeys)
                                          .value<QList<Qt::Key>>();
@@ -1157,7 +1157,7 @@ void QAbstractButton::keyReleaseEvent(QKeyEvent *e)
     const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
                                          ->themeHint(QPlatformTheme::ButtonPressKeys)
                                          .value<QList<Qt::Key>>();
-    if (buttonPressKeys.contains(e->key()) && !e->isAutoRepeat() && d->down) {
+    if (buttonPressKeys.contains(static_cast<Qt::Key>(e->key())) && !e->isAutoRepeat() && d->down) {
         d->click();
         return;
     }

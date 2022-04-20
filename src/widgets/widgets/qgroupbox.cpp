@@ -365,7 +365,7 @@ bool QGroupBox::event(QEvent *e)
         const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
                                              ->themeHint(QPlatformTheme::ButtonPressKeys)
                                              .value<QList<Qt::Key>>();
-        if (!k->isAutoRepeat() && buttonPressKeys.contains(k->key())) {
+        if (!k->isAutoRepeat() && buttonPressKeys.contains(static_cast<Qt::Key>(k->key()))) {
             d->pressedControl = QStyle::SC_GroupBoxCheckBox;
             update(style()->subControlRect(QStyle::CC_GroupBox, &box, QStyle::SC_GroupBoxCheckBox, this));
             return true;
@@ -377,7 +377,7 @@ bool QGroupBox::event(QEvent *e)
         const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
                                              ->themeHint(QPlatformTheme::ButtonPressKeys)
                                              .value<QList<Qt::Key>>();
-        if (!k->isAutoRepeat() && buttonPressKeys.contains(k->key())) {
+        if (!k->isAutoRepeat() && buttonPressKeys.contains(static_cast<Qt::Key>(k->key()))) {
             bool toggle = (d->pressedControl == QStyle::SC_GroupBoxLabel
                            || d->pressedControl == QStyle::SC_GroupBoxCheckBox);
             d->pressedControl = QStyle::SC_None;
