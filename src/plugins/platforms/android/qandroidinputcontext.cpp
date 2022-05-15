@@ -47,6 +47,7 @@
 #include "qandroideventdispatcher.h"
 #include "androiddeadlockprotector.h"
 #include "qandroidplatformintegration.h"
+#include <private/qhighdpiscaling_p.h>
 #include <QDebug>
 #include <qevent.h>
 #include <qguiapplication.h>
@@ -930,7 +931,7 @@ void QAndroidInputContext::showInputPanel()
     else
         m_updateCursorPosConnection = connect(qGuiApp->focusObject(), SIGNAL(cursorPositionChanged()), this, SLOT(updateCursorPosition()));
 
-    QRect rect = inputItemRectangle();
+    QRect rect = screenInputItemRectangle();
     QtAndroidInput::showSoftwareKeyboard(rect.left(), rect.top(), rect.width(), rect.height(),
                                          query->value(Qt::ImHints).toUInt(),
                                          query->value(Qt::ImEnterKeyType).toUInt());

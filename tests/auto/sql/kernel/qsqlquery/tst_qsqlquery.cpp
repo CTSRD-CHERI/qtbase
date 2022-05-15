@@ -2782,7 +2782,7 @@ void tst_QSqlQuery::prematureExec()
     dbName.truncate(cut);
     cut = dbName.indexOf(QChar('_'));
     if (cut >= 0)
-        dbName = dbName.sliced(cut + 1);
+        dbName = dbName.mid(cut + 1);
 
     auto db = QSqlDatabase::addDatabase(dbName);
     QSqlQuery q(db);

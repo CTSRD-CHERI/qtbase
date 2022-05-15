@@ -4566,6 +4566,10 @@ int QString::lastIndexOf(const QRegularExpression &re, int from) const
     Example:
 
     \snippet qstring/main.cpp 100
+
+    \note Due to how the regular expression matching algorithm works,
+    this function will actually match repeatedly from the beginning of
+    the string until the position \a from is reached.
 */
 int QString::lastIndexOf(const QRegularExpression &re, int from, QRegularExpressionMatch *rmatch) const
 {
@@ -7917,6 +7921,8 @@ QStringList QString::split(const QString &sep, Qt::SplitBehavior behavior, Qt::C
 #if QT_DEPRECATED_SINCE(5, 15)
 /*!
     \overload
+    Use QString::split(const QString &sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) instead.
+
     \obsolete
 */
 QStringList QString::split(const QString &sep, SplitBehavior behavior, Qt::CaseSensitivity cs) const
@@ -7950,6 +7956,8 @@ QVector<QStringRef> QString::splitRef(const QString &sep, Qt::SplitBehavior beha
 /*!
     \overload
     \obsolete
+    Use QString::splitRef(const QString &sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) instead.
+
     \since 5.4
 */
 QVector<QStringRef> QString::splitRef(const QString &sep, SplitBehavior behavior, Qt::CaseSensitivity cs) const
@@ -7971,6 +7979,8 @@ QStringList QString::split(QChar sep, Qt::SplitBehavior behavior, Qt::CaseSensit
 /*!
     \overload
     \obsolete
+    Use QString::split(QChar sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) instead.
+
 */
 QStringList QString::split(QChar sep, SplitBehavior behavior, Qt::CaseSensitivity cs) const
 {
@@ -8021,6 +8031,7 @@ QVector<QStringRef> QStringRef::split(const QString &sep, Qt::SplitBehavior beha
     \overload
     \since 5.4
     \obsolete
+    Use QString::split(const QString &sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) instead.
 */
 QVector<QStringRef> QStringRef::split(const QString &sep, QString::SplitBehavior behavior, Qt::CaseSensitivity cs) const
 {
@@ -8042,6 +8053,7 @@ QVector<QStringRef> QStringRef::split(QChar sep, Qt::SplitBehavior behavior, Qt:
     \overload
     \since 5.4
     \obsolete
+    Use QString::split(QChar sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) instead.
 */
 QVector<QStringRef> QStringRef::split(QChar sep, QString::SplitBehavior behavior, Qt::CaseSensitivity cs) const
 {
@@ -8108,6 +8120,7 @@ QStringList QString::split(const QRegExp &rx, Qt::SplitBehavior behavior) const
 /*!
     \overload
     \obsolete
+    Use QString::split(const QRegularExpression &sep, Qt::SplitBehavior behavior) instead.
 */
 QStringList QString::split(const QRegExp &rx, SplitBehavior behavior) const
 {
@@ -8139,6 +8152,7 @@ QVector<QStringRef> QString::splitRef(const QRegExp &rx, Qt::SplitBehavior behav
     \overload
     \since 5.4
     \obsolete
+    Use QString::splitRef(const QRegularExpression &sep, Qt::SplitBehavior behavior) instead.
 */
 QVector<QStringRef> QString::splitRef(const QRegExp &rx, SplitBehavior behavior) const
 {
@@ -8214,6 +8228,7 @@ QStringList QString::split(const QRegularExpression &re, Qt::SplitBehavior behav
     \overload
     \since 5.0
     \obsolete
+    Use QString::split(const QRegularExpression &sep, Qt::SplitBehavior behavior) instead.
 */
 QStringList QString::split(const QRegularExpression &re, SplitBehavior behavior) const
 {
@@ -8245,6 +8260,8 @@ QVector<QStringRef> QString::splitRef(const QRegularExpression &re, Qt::SplitBeh
     \overload
     \since 5.4
     \obsolete
+    Use QString::splitRef(const QRegularExpression &sep, Qt::SplitBehavior behavior) instead.
+
 */
 QVector<QStringRef> QString::splitRef(const QRegularExpression &re, SplitBehavior behavior) const
 {
