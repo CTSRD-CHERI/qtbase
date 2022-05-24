@@ -97,6 +97,10 @@
 #  include <private/qcore_mac_p.h>
 #endif
 
+#if defined(Q_OS_MACOS)
+#include <QtCore/qversionnumber.h>
+#endif
+
 #ifdef Q_OS_UNIX
 #include <sys/utsname.h>
 #include <private/qcore_unix_p.h>
@@ -2133,6 +2137,13 @@ QT_WARNING_POP
 static const char *osVer_helper(QOperatingSystemVersion version = QOperatingSystemVersion::current())
 {
 #ifdef Q_OS_MACOS
+    if (version.majorVersion() == 12)
+        return "Monterey";
+    // Compare against predefined constant to handle 10.16/11.0
+    if (QVersionNumber(QOperatingSystemVersion::MacOSBigSur.majorVersion(),
+            QOperatingSystemVersion::MacOSBigSur.minorVersion(), QOperatingSystemVersion::MacOSBigSur.microVersion()).isPrefixOf(
+                QVersionNumber(version.majorVersion(), version.minorVersion(), version.microVersion())))
+        return "Big Sur";
     if (version.majorVersion() == 10) {
         switch (version.minorVersion()) {
         case 9:
@@ -2147,13 +2158,15 @@ static const char *osVer_helper(QOperatingSystemVersion version = QOperatingSyst
             return "High Sierra";
         case 14:
             return "Mojave";
+        case 15:
+            return "Catalina";
         }
     }
     // unknown, future version
 #else
     Q_UNUSED(version);
 #endif
-    return 0;
+    return nullptr;
 }
 #endif
 
@@ -2278,7 +2291,7 @@ static const char *osVer_helper(QOperatingSystemVersion version = QOperatingSyst
     }
 #undef Q_WINVER
     // unknown, future version
-    return 0;
+    return nullptr;
 }
 
 #endif
