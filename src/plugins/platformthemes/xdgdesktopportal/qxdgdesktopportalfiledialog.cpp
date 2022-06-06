@@ -327,7 +327,7 @@ QUrl QXdgDesktopPortalFileDialog::directory() const
 {
     Q_D(const QXdgDesktopPortalFileDialog);
 
-    if (d->nativeFileDialog && (options()->fileMode() == QFileDialogOptions::Directory || options()->fileMode() == QFileDialogOptions::DirectoryOnly))
+    if (d->nativeFileDialog && useNativeFileDialog())
         return d->nativeFileDialog->directory();
 
     return d->directory;
@@ -349,7 +349,7 @@ QList<QUrl> QXdgDesktopPortalFileDialog::selectedFiles() const
 {
     Q_D(const QXdgDesktopPortalFileDialog);
 
-    if (d->nativeFileDialog && (options()->fileMode() == QFileDialogOptions::Directory || options()->fileMode() == QFileDialogOptions::DirectoryOnly))
+    if (d->nativeFileDialog && useNativeFileDialog())
         return d->nativeFileDialog->selectedFiles();
 
     QList<QUrl> files;
@@ -404,7 +404,7 @@ void QXdgDesktopPortalFileDialog::exec()
 {
     Q_D(QXdgDesktopPortalFileDialog);
 
-    if (d->nativeFileDialog && (options()->fileMode() == QFileDialogOptions::Directory || options()->fileMode() == QFileDialogOptions::DirectoryOnly)) {
+    if (d->nativeFileDialog && useNativeFileDialog()) {
         d->nativeFileDialog->exec();
         return;
     }
@@ -433,7 +433,7 @@ bool QXdgDesktopPortalFileDialog::show(Qt::WindowFlags windowFlags, Qt::WindowMo
     d->modal = windowModality != Qt::NonModal;
     d->winId = parent ? parent->winId() : 0;
 
-    if (d->nativeFileDialog && (options()->fileMode() == QFileDialogOptions::Directory || options()->fileMode() == QFileDialogOptions::DirectoryOnly))
+    if (d->nativeFileDialog && useNativeFileDialog())
         return d->nativeFileDialog->show(windowFlags, windowModality, parent);
 
     openPortal();
@@ -464,6 +464,16 @@ void QXdgDesktopPortalFileDialog::gotResponse(uint response, const QVariantMap &
     } else {
         Q_EMIT reject();
     }
+}
+
+bool QXdgDesktopPortalFileDialog::useNativeFileDialog() const
+{
+    if (options()->fileMode() == QFileDialogOptions::Directory)
+        return true;
+    else if (options()->fileMode() == QFileDialogOptions::DirectoryOnly)
+        return true;
+
+    return false;
 }
 
 QT_END_NAMESPACE
