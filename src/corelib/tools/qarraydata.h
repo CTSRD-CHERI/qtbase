@@ -42,6 +42,7 @@
 
 #include <QtCore/qrefcount.h>
 #include <string.h>
+#include <cstdint>
 
 QT_BEGIN_NAMESPACE
 
@@ -58,14 +59,14 @@ struct Q_CORE_EXPORT QArrayData
     {
         Q_ASSERT(size == 0
                 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<char *>(this) + offset;
+        return reinterpret_cast<void *> (reinterpret_cast<uintptr_t>(this) + offset);
     }
 
     const void *data() const
     {
         Q_ASSERT(size == 0
                 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<const char *>(this) + offset;
+        return reinterpret_cast<void *> (reinterpret_cast<uintptr_t>(this) + offset);
     }
 
     // This refers to array data mutability, not "header data" represented by
