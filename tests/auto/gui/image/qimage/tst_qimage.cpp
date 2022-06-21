@@ -3572,7 +3572,7 @@ void tst_QImage::metadataPassthrough()
     QCOMPARE(converted.dotsPerMeterY(), a.dotsPerMeterY());
     QCOMPARE(converted.devicePixelRatio(), a.devicePixelRatio());
 
-    QList<QRgb> clut({ 0xFFFF0000, 0xFF00FF00, 0xFF0000FF });
+    QVector<QRgb> clut({ 0xFFFF0000, 0xFF00FF00, 0xFF0000FF });
     QImage convertedWithClut = a.convertToFormat(QImage::Format_Indexed8, clut);
     QCOMPARE(convertedWithClut.text(QStringLiteral("Test")), a.text(QStringLiteral("Test")));
     QCOMPARE(convertedWithClut.dotsPerMeterX(), a.dotsPerMeterX());
