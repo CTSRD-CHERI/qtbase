@@ -408,7 +408,7 @@ void QPaintEngineEx::stroke(const QVectorPath &path, const QPen &inPen)
     if (pen.style() > Qt::SolidLine) {
         QRectF cpRect = path.controlPointRect();
         const QTransform &xf = state()->matrix;
-        if (qt_pen_is_cosmetic(pen, state()->renderHints)){
+        if (qt_pen_is_cosmetic(pen, state()->renderHints)) {
             clipRect = d->exDeviceRect;
             cpRect.translate(xf.dx(), xf.dy());
         } else {

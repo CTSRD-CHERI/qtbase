@@ -97,6 +97,7 @@ public class QtNative
     public static final String QtTAG = "Qt JAVA"; // string used for Log.x
     private static ArrayList<Runnable> m_lostActions = new ArrayList<Runnable>(); // a list containing all actions which could not be performed (e.g. the main activity is destroyed, etc.)
     private static boolean m_started = false;
+    private static boolean m_isKeyboardHiding = false;
     private static int m_displayMetricsScreenWidthPixels = 0;
     private static int m_displayMetricsScreenHeightPixels = 0;
     private static int m_displayMetricsDesktopWidthPixels = 0;
@@ -615,7 +616,8 @@ public class QtNative
                                       m_displayMetricsXDpi,
                                       m_displayMetricsYDpi,
                                       m_displayMetricsScaledDensity,
-                                      m_displayMetricsDensity);
+                                      m_displayMetricsDensity,
+                                      true);
                 }
             });
             m_qtThread.post(new Runnable() {
@@ -637,7 +639,8 @@ public class QtNative
                                                     double XDpi,
                                                     double YDpi,
                                                     double scaledDensity,
-                                                    double density)
+                                                    double density,
+                                                    boolean forceUpdate)
     {
         /* Fix buggy dpi report */
         if (XDpi < android.util.DisplayMetrics.DENSITY_LOW)
@@ -654,7 +657,8 @@ public class QtNative
                                   XDpi,
                                   YDpi,
                                   scaledDensity,
-                                  density);
+                                  density,
+                                  forceUpdate);
             } else {
                 m_displayMetricsScreenWidthPixels = screenWidthPixels;
                 m_displayMetricsScreenHeightPixels = screenHeightPixels;
@@ -911,6 +915,7 @@ public class QtNative
 
     private static void hideSoftwareKeyboard()
     {
+        m_isKeyboardHiding = true;
         runAction(new Runnable() {
             @Override
             public void run() {
@@ -931,6 +936,13 @@ public class QtNative
                 updateWindow();
             }
         });
+    }
+
+    public static boolean isSoftwareKeyboardVisible()
+    {
+        if (m_activityDelegate == null)
+            return false;
+        return m_activityDelegate.isKeyboardVisible() && !m_isKeyboardHiding;
     }
 
     private static void notifyAccessibilityLocationChange()
@@ -969,6 +981,11 @@ public class QtNative
         });
     }
 
+    public static void notifyQtAndroidPluginRunning(final boolean running)
+    {
+        m_activityDelegate.notifyQtAndroidPluginRunning(running);
+    }
+
     private static void registerClipboardManager()
     {
         if (m_service == null || m_activity != null) { // Avoid freezing if only service
@@ -1000,6 +1017,7 @@ public class QtNative
     {
         if (Build.VERSION.SDK_INT >= 28 && m_clipboardManager != null)
             m_clipboardManager.clearPrimaryClip();
+         m_usePrimaryClip = false;
     }
     private static void setClipboardText(String text)
     {
@@ -1297,6 +1315,12 @@ public class QtNative
         });
     }
 
+    public static void keyboardVisibilityUpdated(boolean visibility)
+    {
+        m_isKeyboardHiding = false;
+        keyboardVisibilityChanged(visibility);
+    }
+
     private static String[] listAssetContent(android.content.res.AssetManager asset, String path) {
         String [] list;
         ArrayList<String> res = new ArrayList<String>();
@@ -1328,7 +1352,8 @@ public class QtNative
                                                 double XDpi,
                                                 double YDpi,
                                                 double scaledDensity,
-                                                double density);
+                                                double density,
+                                                boolean forceUpdate);
     public static native void handleOrientationChanged(int newRotation, int nativeOrientation);
     // screen methods
 

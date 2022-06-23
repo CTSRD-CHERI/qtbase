@@ -42,6 +42,7 @@
 
 #include <QtCore/qrefcount.h>
 #include <string.h>
+#include <cstdint>
 
 #ifdef __CHERI_PURE_CAPABILITY__
 #undef QARRAYDATA_DEBUG_OUTPUT
@@ -130,7 +131,7 @@ struct Q_CORE_EXPORT QArrayData
 #ifndef __CHERI_PURE_CAPABILITY__
         Q_UNUSED(objsize);
         Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<void *>(reinterpret_cast<char *>(this) + offset);
+        return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(this) + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
         return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
@@ -141,7 +142,7 @@ struct Q_CORE_EXPORT QArrayData
 #ifndef __CHERI_PURE_CAPABILITY__
         Q_UNUSED(objsize);
         Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<const void *>(reinterpret_cast<const char *>(this) + offset);
+        return reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(this) + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
         return cheri_get_arraydata(this, _internal_cheri_offset, objsize);

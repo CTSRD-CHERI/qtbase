@@ -41,6 +41,8 @@
 #include <QtCore/qmetaobject.h>
 #include "private/qiodevice_p.h"
 
+#include <limits>
+
 QT_BEGIN_NAMESPACE
 
 /** QBufferPrivate **/
@@ -366,7 +368,9 @@ qint64 QBuffer::size() const
 bool QBuffer::seek(qint64 pos)
 {
     Q_D(QBuffer);
-    if (pos > d->buf->size() && isWritable()) {
+    const auto oldBufSize = d->buf->size();
+    constexpr qint64 MaxSeekPos = (std::numeric_limits<decltype(oldBufSize)>::max)();
+    if (pos <= MaxSeekPos && pos > oldBufSize && isWritable()) {
         if (seek(d->buf->size())) {
             const qint64 gapSize = pos - d->buf->size();
             if (write(QByteArray(gapSize, 0)) != gapSize) {
@@ -377,7 +381,7 @@ bool QBuffer::seek(qint64 pos)
             return false;
         }
     } else if (pos > d->buf->size() || pos < 0) {
-        qWarning("QBuffer::seek: Invalid pos: %d", int(pos));
+        qWarning("QBuffer::seek: Invalid pos: %lld", pos);
         return false;
     }
     return QIODevice::seek(pos);

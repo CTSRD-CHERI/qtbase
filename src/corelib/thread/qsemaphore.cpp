@@ -132,9 +132,10 @@ static Q_CONSTEXPR bool futexHasWaiterCount = true;
 static Q_CONSTEXPR bool futexHasWaiterCount = false;
 #endif
 
-static const qptraddr futexNeedsWakeAllBit = Q_UINT64_C(1) << (sizeof(qptraddr) * CHAR_BIT - 1);
+static const qptraddr futexNeedsWakeAllBit =
+        Q_UINT64_C(1) << (sizeof(qptraddr) * CHAR_BIT - 1);
 
-static int futexAvailCounter(quint64 v)
+static int futexAvailCounter(qptraddr v)
 {
     // the low 31 bits
     if (futexHasWaiterCount) {
@@ -147,7 +148,7 @@ static int futexAvailCounter(quint64 v)
     return int(v & 0x7fffffffU);
 }
 
-static bool futexNeedsWake(quint64 v)
+static bool futexNeedsWake(qptraddr v)
 {
     // If we're counting waiters, the number of waiters is stored in the low 31
     // bits of the high word (that is, bits 32-62). If we're not, then we use
@@ -156,7 +157,7 @@ static bool futexNeedsWake(quint64 v)
     return v >> 31;
 }
 
-static QBasicAtomicInteger<quint32> *futexLow32(QBasicAtomicInteger<quint64> *ptr)
+static QBasicAtomicInteger<quint32> *futexLow32(QBasicAtomicInteger<qptraddr> *ptr)
 {
     auto result = reinterpret_cast<QBasicAtomicInteger<quint32> *>(ptr);
 #if Q_BYTE_ORDER == Q_BIG_ENDIAN && QT_POINTER_SIZE > 4
@@ -165,7 +166,7 @@ static QBasicAtomicInteger<quint32> *futexLow32(QBasicAtomicInteger<quint64> *pt
     return result;
 }
 
-static QBasicAtomicInteger<quint32> *futexHigh32(QBasicAtomicInteger<quint64> *ptr)
+static QBasicAtomicInteger<quint32> *futexHigh32(QBasicAtomicInteger<qptraddr> *ptr)
 {
     auto result = reinterpret_cast<QBasicAtomicInteger<quint32> *>(ptr);
 #if Q_BYTE_ORDER == Q_LITTLE_ENDIAN && QT_POINTER_SIZE > 4
@@ -174,9 +175,8 @@ static QBasicAtomicInteger<quint32> *futexHigh32(QBasicAtomicInteger<quint64> *p
     return result;
 }
 
-template<bool IsTimed>
-bool futexSemaphoreTryAcquire_loop(QBasicAtomicInteger<quint64> &u, quint64 curValue, quint64 nn,
-                                   int timeout)
+template <bool IsTimed> bool
+futexSemaphoreTryAcquire_loop(QBasicAtomicInteger<qptraddr> &u, qptraddr curValue, qptraddr nn, int timeout)
 {
     QDeadlineTimer timer(IsTimed ? QDeadlineTimer(timeout) : QDeadlineTimer());
     qint64 remainingTime = timeout * Q_INT64_C(1000) * 1000;
@@ -188,7 +188,7 @@ bool futexSemaphoreTryAcquire_loop(QBasicAtomicInteger<quint64> &u, quint64 curV
     forever {
         if (futexAvailCounter(curValue) >= n) {
             // try to acquire
-            quint64 newValue = curValue - nn;
+            qptraddr newValue = curValue - nn;
             if (u.testAndSetOrdered(curValue, newValue, curValue))
                 return true;        // succeeded!
             continue;
@@ -225,19 +225,18 @@ start_wait:
     }
 }
 
-template<bool IsTimed>
-bool futexSemaphoreTryAcquire(QBasicAtomicInteger<quint64> &u, int n, int timeout)
+template <bool IsTimed> bool futexSemaphoreTryAcquire(QBasicAtomicInteger<qptraddr> &u, int n, int timeout)
 {
     // Try to acquire without waiting (we still loop because the testAndSet
     // call can fail).
-    quint64 nn = unsigned(n);
+    qptraddr nn = unsigned(n);
     if (futexHasWaiterCount)
         nn |= quint64(nn) << 32;    // token count replicated in high word
 
-    quint64 curValue = u.loadAcquire();
+    qptraddr curValue = u.loadAcquire();
     while (futexAvailCounter(curValue) >= n) {
         // try to acquire
-        quint64 newValue = curValue - nn;
+        qptraddr newValue = curValue - nn;
         if (u.testAndSetOrdered(curValue, newValue, curValue))
             return true;        // succeeded!
     }
@@ -245,7 +244,7 @@ bool futexSemaphoreTryAcquire(QBasicAtomicInteger<quint64> &u, int n, int timeou
         return false;
 
     // we need to wait
-    quint64 oneWaiter = quint64(Q_UINT64_C(1) << 32); // zero on 32-bit
+    qptraddr oneWaiter = qptraddr(Q_UINT64_C(1) << 32); // zero on 32-bit
     if (futexHasWaiterCount) {
         // increase the waiter count
         u.fetchAndAddRelaxed(oneWaiter);
@@ -291,7 +290,7 @@ QSemaphore::QSemaphore(int n)
 {
     Q_ASSERT_X(n >= 0, "QSemaphore", "parameter 'n' must be non-negative");
     if (futexAvailable()) {
-        quint64 nn = unsigned(n);
+        qptraddr nn = unsigned(n);
         if (futexHasWaiterCount)
             nn |= quint64(nn) << 32;    // token count replicated in high word
         u.storeRelaxed(nn);
@@ -352,10 +351,15 @@ void QSemaphore::release(int n)
     Q_ASSERT_X(n >= 0, "QSemaphore::release", "parameter 'n' must be non-negative");
 
     if (futexAvailable()) {
-        quint64 nn = unsigned(n);
+        qptraddr nn = unsigned(n);
         if (futexHasWaiterCount)
             nn |= quint64(nn) << 32;    // token count replicated in high word
-        quint64 prevValue = u.fetchAndAddRelease(nn);
+        qptraddr prevValue = u.loadRelaxed();
+        qptraddr newValue;
+        do { // loop just to ensure the operations are done atomically
+            newValue = prevValue + nn;
+            newValue &= (futexNeedsWakeAllBit - 1);
+        } while (!u.testAndSetRelease(prevValue, newValue, prevValue));
         if (futexNeedsWake(prevValue)) {
 #ifdef FUTEX_OP
             if (futexHasWaiterCount) {
@@ -377,7 +381,6 @@ void QSemaphore::release(int n)
                 quint32 oparg = 0;
                 quint32 cmp = FUTEX_OP_CMP_NE;
                 quint32 cmparg = 0;
-                u.fetchAndAndRelease(futexNeedsWakeAllBit - 1);
                 futexWakeOp(*futexLow32(&u), n, INT_MAX, *futexHigh32(&u), FUTEX_OP(op, oparg, cmp, cmparg));
                 return;
             }
@@ -389,7 +392,6 @@ void QSemaphore::release(int n)
             //    its acquisition anyway, so it has to wait;
             // 2) it did not see the new counter value, in which case its
             //    futexWait will fail.
-            u.fetchAndAndRelease(futexNeedsWakeAllBit - 1);
             if (futexHasWaiterCount) {
                 futexWakeAll(*futexLow32(&u));
                 futexWakeAll(*futexHigh32(&u));

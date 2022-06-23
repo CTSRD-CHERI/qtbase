@@ -73,7 +73,7 @@ enum {
 const auto dummyLockedForRead = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(StateLockedForRead));
 const auto dummyLockedForWrite = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(StateLockedForWrite));
 inline bool isUncontendedLocked(const QReadWriteLockPrivate *d)
-{ return qGetLowPointerBits<StateMask>(quintptr(d)); }
+{ return qptraddr(d) & StateMask; }
 }
 
 /*! \class QReadWriteLock
@@ -155,7 +155,7 @@ QReadWriteLock::QReadWriteLock(RecursionMode recursionMode)
 */
 QReadWriteLock::~QReadWriteLock()
 {
-    auto d = d_ptr.loadRelaxed();
+    auto d = d_ptr.loadAcquire();
     if (isUncontendedLocked(d)) {
         qWarning("QReadWriteLock: destroying locked QReadWriteLock");
         return;
@@ -233,7 +233,7 @@ bool QReadWriteLock::tryLockForRead(int timeout)
             return true;
         }
 
-        if (qGetLowPointerBits<StateMask>(quintptr(d)) == StateLockedForRead) {
+        if ((qptraddr(d) & StateMask) == StateLockedForRead) {
             // locked for read, increase the counter
             const auto val = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(d) + (1U<<4));
             Q_ASSERT_X(quintptr(val) > (1U<<4), "QReadWriteLock::tryLockForRead()",
@@ -403,7 +403,7 @@ void QReadWriteLock::unlock()
             return;
         }
 
-        if (qGetLowPointerBits<StateMask>(quintptr(d)) == StateLockedForRead) {
+        if ((qptraddr(d) & StateMask) == StateLockedForRead) {
             Q_ASSERT(quintptr(d) > (1U<<4)); //otherwise that would be the fast case
             // Just decrease the reader's count.
             auto val = reinterpret_cast<QReadWriteLockPrivate *>(quintptr(d) - (1U<<4));
@@ -445,14 +445,15 @@ void QReadWriteLock::unlock()
 /*! \internal  Helper for QWaitCondition::wait */
 QReadWriteLock::StateForWaitCondition QReadWriteLock::stateForWaitCondition() const
 {
-    QReadWriteLockPrivate *d = d_ptr.loadRelaxed();
-    switch (qGetLowPointerBits<StateMask>(quintptr(d))) {
+    QReadWriteLockPrivate *d = d_ptr.loadAcquire();
+    switch (qptraddr(d) & StateMask) {
     case StateLockedForRead: return LockedForRead;
     case StateLockedForWrite: return LockedForWrite;
     }
 
     if (!d)
         return Unlocked;
+    const auto lock = qt_scoped_lock(d->mutex);
     if (d->writerCount > 1)
         return RecursivelyLocked;
     else if (d->writerCount == 1)
