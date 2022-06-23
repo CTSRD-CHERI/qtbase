@@ -67,7 +67,7 @@ private:
 
     union {
         QSemaphorePrivate *d;
-        QBasicAtomicInteger<quint64> u;
+        QBasicAtomicInteger<qptraddr> u;
     };
 };
 
