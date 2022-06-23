@@ -41,10 +41,6 @@
 #include <qpa/qplatformintegrationplugin.h>
 #include "qoffscreenintegration.h"
 
-#ifdef __CHERI_PURE_CAPABILITY__
-#define QT_STATICPLUGIN
-#endif
-
 QT_BEGIN_NAMESPACE
 
 class QOffscreenIntegrationPlugin : public QPlatformIntegrationPlugin

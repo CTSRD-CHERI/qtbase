@@ -647,14 +647,14 @@ void tst_QGraphicsScene::items_QRectF()
     item3->setZValue(2);
     item4->setZValue(3);
 
-    QCOMPARE(scene.items(QRectF(-10, -10, 10, 10)), {item1});
-    QCOMPARE(scene.items(QRectF(10, -10, 10, 10)), {item2});
-    QCOMPARE(scene.items(QRectF(10, 10, 10, 10)), {item3});
-    QCOMPARE(scene.items(QRectF(-10, 10, 10, 10)), {item4});
-    QCOMPARE(scene.items(QRectF(-10, -10, 1, 1)), {item1});
-    QCOMPARE(scene.items(QRectF(10, -10, 1, 1)), {item2});
-    QCOMPARE(scene.items(QRectF(10, 10, 1, 1)), {item3});
-    QCOMPARE(scene.items(QRectF(-10, 10, 1, 1)), {item4});
+    QCOMPARE(scene.items(QRectF(-10, -10, 10, 10)), QList<QGraphicsItem *>() << item1);
+    QCOMPARE(scene.items(QRectF(10, -10, 10, 10)), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(scene.items(QRectF(10, 10, 10, 10)), QList<QGraphicsItem *>() << item3);
+    QCOMPARE(scene.items(QRectF(-10, 10, 10, 10)), QList<QGraphicsItem *>() << item4);
+    QCOMPARE(scene.items(QRectF(-10, -10, 1, 1)), QList<QGraphicsItem *>() << item1);
+    QCOMPARE(scene.items(QRectF(10, -10, 1, 1)), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(scene.items(QRectF(10, 10, 1, 1)), QList<QGraphicsItem *>() << item3);
+    QCOMPARE(scene.items(QRectF(-10, 10, 1, 1)), QList<QGraphicsItem *>() << item4);
 
     QCOMPARE(scene.items(QRectF(-10, -10, 40, 10)), QList<QGraphicsItem *>() << item2 << item1);
     QCOMPARE(scene.items(QRectF(-10, 10, 40, 10)), QList<QGraphicsItem *>() << item4 << item3);
@@ -771,20 +771,20 @@ void tst_QGraphicsScene::items_QPolygonF()
     QPolygonF poly3(item3->boundingRect());
     QPolygonF poly4(item4->boundingRect());
 
-    QCOMPARE(scene.items(poly1), {item1});
-    QCOMPARE(scene.items(poly2), {item2});
-    QCOMPARE(scene.items(poly3), {item3});
-    QCOMPARE(scene.items(poly4), {item4});
+    QCOMPARE(scene.items(poly1), QList<QGraphicsItem *>() << item1);
+    QCOMPARE(scene.items(poly2), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(scene.items(poly3), QList<QGraphicsItem *>() << item3);
+    QCOMPARE(scene.items(poly4), QList<QGraphicsItem *>() << item4);
 
     poly1 = QPolygonF(QRectF(-10, -10, 1, 1));
     poly2 = QPolygonF(QRectF(10, -10, 1, 1));
     poly3 = QPolygonF(QRectF(10, 10, 1, 1));
     poly4 = QPolygonF(QRectF(-10, 10, 1, 1));
 
-    QCOMPARE(scene.items(poly1), {item1});
-    QCOMPARE(scene.items(poly2), {item2});
-    QCOMPARE(scene.items(poly3), {item3});
-    QCOMPARE(scene.items(poly4), {item4});
+    QCOMPARE(scene.items(poly1), QList<QGraphicsItem *>() << item1);
+    QCOMPARE(scene.items(poly2), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(scene.items(poly3), QList<QGraphicsItem *>() << item3);
+    QCOMPARE(scene.items(poly4), QList<QGraphicsItem *>() << item4);
 
     poly1 = QPolygonF(QRectF(-10, -10, 40, 10));
     poly2 = QPolygonF(QRectF(-10, 10, 40, 10));
@@ -861,20 +861,20 @@ void tst_QGraphicsScene::items_QPainterPath()
     QPainterPath path3; path3.addEllipse(item3->boundingRect());
     QPainterPath path4; path4.addEllipse(item4->boundingRect());
 
-    QCOMPARE(scene.items(path1), {item1});
-    QCOMPARE(scene.items(path2), {item2});
-    QCOMPARE(scene.items(path3), {item3});
-    QCOMPARE(scene.items(path4), {item4});
+    QCOMPARE(scene.items(path1), QList<QGraphicsItem *>() << item1);
+    QCOMPARE(scene.items(path2), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(scene.items(path3), QList<QGraphicsItem *>() << item3);
+    QCOMPARE(scene.items(path4), QList<QGraphicsItem *>() << item4);
 
     path1 = QPainterPath(); path1.addEllipse(QRectF(-10, -10, 1, 1));
     path2 = QPainterPath(); path2.addEllipse(QRectF(10, -10, 1, 1));
     path3 = QPainterPath(); path3.addEllipse(QRectF(10, 10, 1, 1));
     path4 = QPainterPath(); path4.addEllipse(QRectF(-10, 10, 1, 1));
 
-    QCOMPARE(scene.items(path1), {item1});
-    QCOMPARE(scene.items(path2), {item2});
-    QCOMPARE(scene.items(path3), {item3});
-    QCOMPARE(scene.items(path4), {item4});
+    QCOMPARE(scene.items(path1), QList<QGraphicsItem *>() << item1);
+    QCOMPARE(scene.items(path2), QList<QGraphicsItem *>() << item2);
+    QCOMPARE(scene.items(path3), QList<QGraphicsItem *>() << item3);
+    QCOMPARE(scene.items(path4), QList<QGraphicsItem *>() << item4);
 
     path1 = QPainterPath(); path1.addRect(QRectF(-10, -10, 40, 10));
     path2 = QPainterPath(); path2.addRect(QRectF(-10, 10, 40, 10));
@@ -983,7 +983,7 @@ void tst_QGraphicsScene::selectionChanged()
     rect->setSelected(true);
     QVERIFY(rect->isSelected());
     QCOMPARE(spy.count(), 1); // selection changed
-    QCOMPARE(scene.selectedItems(), {rect});
+    QCOMPARE(scene.selectedItems(), QList<QGraphicsItem *>() << rect);
 
     rect->setSelected(false);
     QVERIFY(!rect->isSelected());
@@ -3888,14 +3888,6 @@ void tst_QGraphicsScene::dispatchHoverOnPress()
 
     tester1->eventTypes.clear();
     tester2->eventTypes.clear();
-
-    const QEvent::Type initialExpected[] =
-        {QEvent::GraphicsSceneHoverEnter, QEvent::GraphicsSceneHoverMove, QEvent::GrabMouse,
-         QEvent::GraphicsSceneMousePress, QEvent::UngrabMouse};
-
-    const QEvent::Type repeatExpected[] =
-        {QEvent::GraphicsSceneHoverMove, QEvent::GrabMouse, QEvent::GraphicsSceneMousePress,
-         QEvent::UngrabMouse};
 
     {
         QGraphicsSceneMouseEvent me(QEvent::GraphicsSceneMousePress);

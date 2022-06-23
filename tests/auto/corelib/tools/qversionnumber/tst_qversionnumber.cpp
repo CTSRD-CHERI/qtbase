@@ -31,16 +31,6 @@
 #include <QtCore/qversionnumber.h>
 #include <QtCore/qlibraryinfo.h>
 
-QT_BEGIN_NAMESPACE
-namespace QTest {
-template<>
-inline char *toString(const QVersionNumber &v)
-{
-    return qstrdup(qPrintable(v.toString()));
-}
-} // namespace QTest
-QT_END_NAMESPACE
-
 class tst_QVersionNumber : public QObject
 {
     Q_OBJECT
