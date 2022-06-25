@@ -2114,7 +2114,8 @@ inline QString &&asString(QString &&s)              { return std::move(s); }
 
 namespace QtPrivate {
 
-struct ArgBase {
+// alignas() needed to work around https://git.morello-project.org/morello/llvm-project/-/issues/52
+struct alignas(QStringView) ArgBase {
     enum Tag : uchar { L1, U8, U16 } tag;
 };
 
