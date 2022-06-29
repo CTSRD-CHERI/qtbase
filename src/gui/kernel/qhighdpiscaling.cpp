@@ -580,9 +580,8 @@ void QHighDpiScaling::setScreenFactor(QScreen *screen, qreal factor)
     else
         qNamedScreenScaleFactors()->insert(name, factor);
 
-    // hack to force re-evaluation of screen geometry
     if (screen->handle())
-        screen->d_func()->setPlatformScreen(screen->handle()); // updates geometries based on scale factor
+        screen->d_func()->updateLogicalDpi();
 }
 
 QPoint QHighDpiScaling::mapPositionToNative(const QPoint &pos, const QPlatformScreen *platformScreen)

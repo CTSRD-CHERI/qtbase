@@ -77,6 +77,12 @@ QScreen::QScreen(QPlatformScreen *screen)
     d->setPlatformScreen(screen);
 }
 
+void QScreenPrivate::updateLogicalDpi()
+{
+    logicalDpi = QPlatformScreen::overrideDpi(platformScreen->logicalDpi());
+    updateGeometriesWithSignals(); // updates geometries based on scale factor
+}
+
 void QScreenPrivate::updateGeometriesWithSignals()
 {
     const QRect oldGeometry = geometry;
