@@ -58,6 +58,10 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QUrlQuery>
 
+#include <QtGui/QColor>
+#include <QtGui/QGuiApplication>
+#include <QtGui/QWindow>
+
 #include <QtDBus/QDBusConnection>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusPendingCall>
@@ -298,7 +302,131 @@ static inline QDBusMessage xdgDesktopPortalSendEmail(const QUrl &url)
 
     return QDBusConnection::sessionBus().call(message);
 }
+
+namespace {
+struct XDGDesktopColor
+{
+    double r = 0;
+    double g = 0;
+    double b = 0;
+
+    QColor toQColor() const
+    {
+        constexpr auto rgbMax = 255;
+        return { static_cast<int>(r * rgbMax), static_cast<int>(g * rgbMax),
+                 static_cast<int>(b * rgbMax) };
+    }
+};
+
+const QDBusArgument &operator>>(const QDBusArgument &argument, XDGDesktopColor &myStruct)
+{
+    argument.beginStructure();
+    argument >> myStruct.r >> myStruct.g >> myStruct.b;
+    argument.endStructure();
+    return argument;
+}
+
+class XdgDesktopPortalColorPicker : public QPlatformServiceColorPicker
+{
+    Q_OBJECT
+public:
+    XdgDesktopPortalColorPicker(const QString &parentWindowId, QWindow *parent)
+        : QPlatformServiceColorPicker(parent), m_parentWindowId(parentWindowId)
+    {
+    }
+
+    void pickColor() override
+    {
+        // DBus signature:
+        // PickColor (IN   s      parent_window,
+        //            IN   a{sv}  options
+        //            OUT  o      handle)
+        // Options:
+        // handle_token (s) -  A string that will be used as the last element of the @handle.
+
+        QDBusMessage message = QDBusMessage::createMethodCall(
+                QStringLiteral("org.freedesktop.portal.Desktop"), QStringLiteral("/org/freedesktop/portal/desktop"),
+                QStringLiteral("org.freedesktop.portal.Screenshot"), QStringLiteral("PickColor"));
+        message << m_parentWindowId << QVariantMap();
+
+        QDBusPendingCall pendingCall = QDBusConnection::sessionBus().asyncCall(message);
+        auto watcher = new QDBusPendingCallWatcher(pendingCall, this);
+        connect(watcher, &QDBusPendingCallWatcher::finished, this,
+                [this](QDBusPendingCallWatcher *watcher) {
+                    watcher->deleteLater();
+                    QDBusPendingReply<QDBusObjectPath> reply = *watcher;
+                    if (reply.isError()) {
+                        qWarning("DBus call to pick color failed: %s",
+                                 qPrintable(reply.error().message()));
+                        Q_EMIT colorPicked({});
+                    } else {
+                        QDBusConnection::sessionBus().connect(
+                                QStringLiteral("org.freedesktop.portal.Desktop"), reply.value().path(),
+                                QStringLiteral("org.freedesktop.portal.Request"), QStringLiteral("Response"), this,
+                                // clang-format off
+                                SLOT(gotColorResponse(uint,QVariantMap))
+                                // clang-format on
+                        );
+                    }
+                });
+    }
+
+private Q_SLOTS:
+    void gotColorResponse(uint result, const QVariantMap &map)
+    {
+        if (result != 0)
+            return;
+        XDGDesktopColor color{};
+        map.value(QStringLiteral("color")).value<QDBusArgument>() >> color;
+        Q_EMIT colorPicked(color.toQColor());
+        deleteLater();
+    }
+
+private:
+    const QString m_parentWindowId;
+};
+} // namespace
+
 #endif // QT_CONFIG(dbus)
+
+QGenericUnixServices::QGenericUnixServices()
+{
+#if QT_CONFIG(dbus)
+    QDBusMessage message = QDBusMessage::createMethodCall(
+            QStringLiteral("org.freedesktop.portal.Desktop"), QStringLiteral("/org/freedesktop/portal/desktop"),
+            QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("Get"));
+    message << QStringLiteral("org.freedesktop.portal.Screenshot")
+            << QStringLiteral("version");
+
+    QDBusPendingCall pendingCall = QDBusConnection::sessionBus().asyncCall(message);
+    auto watcher = new QDBusPendingCallWatcher(pendingCall);
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher,
+                     [this](QDBusPendingCallWatcher *watcher) {
+                         watcher->deleteLater();
+                         QDBusPendingReply<QVariant> reply = *watcher;
+                         if (!reply.isError() && reply.value().toUInt() >= 2)
+                             m_hasScreenshotPortalWithColorPicking = true;
+                     });
+
+#endif
+}
+
+QPlatformServiceColorPicker *QGenericUnixServices::colorPicker(QWindow *parent)
+{
+#if QT_CONFIG(dbus)
+    // Make double sure that we are in a wayland environment. In particular check
+    // WAYLAND_DISPLAY so also XWayland apps benefit from portal-based color picking.
+    // Outside wayland we'll rather rely on other means than the XDG desktop portal.
+    if (!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")
+        || QGuiApplication::platformName().startsWith(QLatin1String("wayland"))) {
+        return new XdgDesktopPortalColorPicker(portalWindowIdentifier(parent), parent);
+    }
+    return nullptr;
+#else
+    Q_UNUSED(parent);
+    return nullptr;
+#endif
+}
 
 QByteArray QGenericUnixServices::desktopEnvironment() const
 {
@@ -354,6 +482,8 @@ bool QGenericUnixServices::openDocument(const QUrl &url)
 }
 
 #else
+QGenericUnixServices::QGenericUnixServices() = default;
+
 QByteArray QGenericUnixServices::desktopEnvironment() const
 {
     return QByteArrayLiteral("UNKNOWN");
@@ -373,6 +503,30 @@ bool QGenericUnixServices::openDocument(const QUrl &url)
     return false;
 }
 
+QPlatformServiceColorPicker *QGenericUnixServices::colorPicker(QWindow *parent)
+{
+    Q_UNUSED(parent);
+    return nullptr;
+}
+
 #endif // QT_NO_MULTIPROCESS
 
+QString QGenericUnixServices::portalWindowIdentifier(QWindow *window)
+{
+    if (QGuiApplication::platformName() == QLatin1String("xcb"))
+        return QStringLiteral("x11:") + QString::number(window->winId(), 16);
+    return QString();
+}
+
+bool QGenericUnixServices::hasCapability(Capability capability) const
+{
+    switch (capability) {
+    case Capability::ColorPicking:
+        return m_hasScreenshotPortalWithColorPicking;
+    }
+    return false;
+}
+
 QT_END_NAMESPACE
+
+#include "qgenericunixservices.moc"

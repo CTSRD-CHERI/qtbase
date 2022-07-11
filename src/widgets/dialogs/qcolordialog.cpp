@@ -78,7 +78,10 @@
 #include "qwindow.h"
 
 #include "private/qdialog_p.h"
+#include "private/qguiapplication_p.h"
 
+#include <qpa/qplatformservices.h>
+#include <qpa/qplatformintegration.h>
 #include <algorithm>
 
 QT_BEGIN_NAMESPACE
@@ -1611,6 +1614,20 @@ void QColorDialogPrivate::_q_newStandard(int r, int c)
 void QColorDialogPrivate::_q_pickScreenColor()
 {
     Q_Q(QColorDialog);
+
+    auto *platformServices = QGuiApplicationPrivate::platformIntegration()->services();
+    if (platformServices->hasCapability(QPlatformServices::Capability::ColorPicking)) {
+        if (auto *colorPicker = platformServices->colorPicker(q->windowHandle())) {
+            q->connect(colorPicker, &QPlatformServiceColorPicker::colorPicked, q,
+                       [q, colorPicker](const QColor &color) {
+                           colorPicker->deleteLater();
+                           q->setCurrentColor(color);
+                       });
+            colorPicker->pickColor();
+            return;
+        }
+    }
+
     if (!colorPickingEventFilter)
         colorPickingEventFilter = new QColorPickingEventFilter(this, q);
     q->installEventFilter(colorPickingEventFilter);
