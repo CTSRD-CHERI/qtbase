@@ -42,7 +42,7 @@ outpath=`/bin/pwd`
 
 WHICH="which"
 
-PERL=`$WHICH perl 2>/dev/null`
+PERL=/usr/local64/bin/perl
 
 # find out which awk we want to use, prefer gawk, then nawk, then regular awk
 AWK=

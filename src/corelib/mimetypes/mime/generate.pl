@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/local64/bin/perl
 #############################################################################
 ##
 ## Copyright (C) 2019 Intel Corporation.
