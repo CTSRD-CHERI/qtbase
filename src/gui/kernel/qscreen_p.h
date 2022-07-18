@@ -70,6 +70,7 @@ public:
         geometry = platformScreen->deviceIndependentGeometry();
         availableGeometry = QHighDpi::fromNative(platformScreen->availableGeometry(), QHighDpiScaling::factor(platformScreen), geometry.topLeft());
     }
+    void updateLogicalDpi();
 
     void updatePrimaryOrientation();
     void updateGeometriesWithSignals();
