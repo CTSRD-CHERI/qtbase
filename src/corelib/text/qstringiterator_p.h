@@ -121,7 +121,7 @@ public:
         Q_ASSERT_X(hasNext(), Q_FUNC_INFO, "iterator hasn't a next item");
 
         if (Q_UNLIKELY((pos++)->isHighSurrogate())) {
-            Q_ASSERT(pos < e && pos->isLowSurrogate());
+            Q_ASSERT(hasNext() && pos->isLowSurrogate());
             ++pos;
         }
     }
@@ -160,7 +160,7 @@ public:
 
         const QChar cur = *pos++;
         if (Q_UNLIKELY(cur.isHighSurrogate())) {
-            Q_ASSERT(pos < e && pos->isLowSurrogate());
+            Q_ASSERT(hasNext() && pos->isLowSurrogate());
             return QChar::surrogateToUcs4(cur, *pos++);
         }
         return cur.unicode();
@@ -172,7 +172,7 @@ public:
 
         const QChar uc = *pos++;
         if (Q_UNLIKELY(uc.isSurrogate())) {
-            if (Q_LIKELY(uc.isHighSurrogate() && pos < e && pos->isLowSurrogate()))
+            if (Q_LIKELY(uc.isHighSurrogate() && hasNext() && pos->isLowSurrogate()))
                 return QChar::surrogateToUcs4(uc, *pos++);
             return invalidAs;
         }
@@ -203,7 +203,7 @@ public:
         Q_ASSERT_X(hasPrevious(), Q_FUNC_INFO, "iterator hasn't a previous item");
 
         if (Q_UNLIKELY((--pos)->isLowSurrogate())) {
-            Q_ASSERT(pos > i && pos[-1].isHighSurrogate());
+            Q_ASSERT(hasPrevious() && pos[-1].isHighSurrogate());
             --pos;
         }
     }
@@ -241,7 +241,7 @@ public:
 
         const QChar cur = *--pos;
         if (Q_UNLIKELY(cur.isLowSurrogate())) {
-            Q_ASSERT(pos > i && pos[-1].isHighSurrogate());
+            Q_ASSERT(hasPrevious() && pos[-1].isHighSurrogate());
             return QChar::surrogateToUcs4(*--pos, cur);
         }
         return cur.unicode();
@@ -253,7 +253,7 @@ public:
 
         const QChar uc = *--pos;
         if (Q_UNLIKELY(uc.isSurrogate())) {
-            if (Q_LIKELY(uc.isLowSurrogate() && pos > i && pos[-1].isHighSurrogate()))
+            if (Q_LIKELY(uc.isLowSurrogate() && hasPrevious() && pos[-1].isHighSurrogate()))
                 return QChar::surrogateToUcs4(*--pos, uc);
             return invalidAs;
         }
