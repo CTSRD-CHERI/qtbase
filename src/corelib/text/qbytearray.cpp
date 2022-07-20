@@ -71,7 +71,7 @@ QT_BEGIN_NAMESPACE
 
 // Latin 1 case system, used by QByteArray::to{Upper,Lower}() and qstr(n)icmp():
 /*
-#!/usr/bin/perl -l
+#!/usr/local64/bin/perl -l
 use feature "unicode_strings";
 for (0..255) {
     $up = uc(chr($_));
@@ -100,7 +100,7 @@ static const uchar latin1_uppercased[256] = {
 };
 
 /*
-#!/usr/bin/perl -l
+#!/usr/local64/bin/perl -l
 use feature "unicode_strings";
 for (0..255) {
     $up = lc(chr($_));

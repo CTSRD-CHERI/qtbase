@@ -57,11 +57,11 @@ INSTALLS += syncqt
 # qtPrepareTool() to find the non-installed syncqt.
 prefix_build|!equals(PWD, $$OUT_PWD) {
 
-    cmd = perl -w $$system_path($$PWD/bin/syncqt.pl)
+    cmd = /usr/local64/bin/perl -w $$system_path($$PWD/bin/syncqt.pl)
 
     TOOL_PRI = $$OUT_PWD/mkspecs/modules/qt_tool_syncqt.pri
 
-    TOOL_PRI_CONT = "QT_TOOL.syncqt.binary = $$val_escape(cmd)"
+    TOOL_PRI_CONT = "QT_TOOL.syncqt.binary = /usr/local64/bin/perl -w $$system_path($$PWD/bin/syncqt.pl)"
     write_file($$TOOL_PRI, TOOL_PRI_CONT)|error("Aborting.")
 
     # Then, inject the new tool into the current cache state
