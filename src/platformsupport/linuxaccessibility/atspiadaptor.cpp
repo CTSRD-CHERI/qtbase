@@ -913,8 +913,17 @@ void AtSpiAdaptor::notify(QAccessibleEvent *event)
     }
     case QAccessible::NameChanged: {
         if (sendObject || sendObject_property_change || sendObject_property_change_accessible_name) {
-            QString path = pathForInterface(event->accessibleInterface());
-            QVariantList args = packDBusSignalArguments(QLatin1String("accessible-name"), 0, 0, variantForPath(path));
+            QAccessibleInterface *iface = event->accessibleInterface();
+            if (!iface) {
+                qCDebug(lcAccessibilityAtspi,
+                        "NameChanged event from invalid accessible.");
+                return;
+            }
+
+            QString path = pathForInterface(iface);
+            QVariantList args = packDBusSignalArguments(
+                QLatin1String("accessible-name"), 0, 0,
+                QVariant::fromValue(QDBusVariant(iface->text(QAccessible::Name))));
             sendDBusSignal(path, QLatin1String(ATSPI_DBUS_INTERFACE_EVENT_OBJECT),
                            QLatin1String("PropertyChange"), args);
         }
@@ -922,8 +931,17 @@ void AtSpiAdaptor::notify(QAccessibleEvent *event)
     }
     case QAccessible::DescriptionChanged: {
         if (sendObject || sendObject_property_change || sendObject_property_change_accessible_description) {
-            QString path = pathForInterface(event->accessibleInterface());
-            QVariantList args = packDBusSignalArguments(QLatin1String("accessible-description"), 0, 0, variantForPath(path));
+            QAccessibleInterface *iface = event->accessibleInterface();
+            if (!iface) {
+                qCDebug(lcAccessibilityAtspi,
+                        "DescriptionChanged event from invalid accessible.");
+                return;
+            }
+
+            QString path = pathForInterface(iface);
+            QVariantList args = packDBusSignalArguments(
+                QLatin1String("accessible-description"), 0, 0,
+                QVariant::fromValue(QDBusVariant(iface->text(QAccessible::Description))));
             sendDBusSignal(path, QLatin1String(ATSPI_DBUS_INTERFACE_EVENT_OBJECT),
                            QLatin1String("PropertyChange"), args);
         }
