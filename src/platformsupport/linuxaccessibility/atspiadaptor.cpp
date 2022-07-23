@@ -1038,7 +1038,9 @@ void AtSpiAdaptor::notify(QAccessibleEvent *event)
                 // Combo Box with AT-SPI likes to be special
                 // It requires a name-change to update caches and then selection-changed
                 QString path = pathForInterface(iface);
-                QVariantList args1 = packDBusSignalArguments(QLatin1String("accessible-name"), 0, 0, variantForPath(path));
+                QVariantList args1 = packDBusSignalArguments(
+                    QLatin1String("accessible-name"), 0, 0,
+                    QVariant::fromValue(QDBusVariant(iface->text(QAccessible::Name))));
                 sendDBusSignal(path, QLatin1String(ATSPI_DBUS_INTERFACE_EVENT_OBJECT),
                                QLatin1String("PropertyChange"), args1);
                 QVariantList args2 = packDBusSignalArguments(QString(), 0, 0, QVariant::fromValue(QDBusVariant(QVariant(0))));
