@@ -51,6 +51,9 @@
 #include <QtCore/QStandardPaths>
 #include <QtCore/QUrl>
 
+#include <QtGui/QGuiApplication>
+#include <QtGui/QWindow>
+
 #if QT_CONFIG(dbus)
 // These QtCore includes are needed for xdg-desktop-portal support
 #include <QtCore/private/qcore_unix_p.h>
@@ -59,8 +62,6 @@
 #include <QtCore/QUrlQuery>
 
 #include <QtGui/QColor>
-#include <QtGui/QGuiApplication>
-#include <QtGui/QWindow>
 
 #include <QtDBus/QDBusConnection>
 #include <QtDBus/QDBusMessage>
