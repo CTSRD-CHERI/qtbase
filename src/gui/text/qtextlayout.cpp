@@ -1333,16 +1333,16 @@ void QTextLayout::drawCursor(QPainter *p, const QPointF &pos, int cursorPosition
 
     QFixed base = sl.base();
     QFixed descent = sl.descent;
-    QFixed cursorDescent = descent;
     bool rightToLeft = d->isRightToLeft();
     if (itm >= 0) {
         const QScriptItem &si = d->layoutData->items.at(itm);
-        if (si.ascent > 0)
-            base = si.ascent;
-        if (si.descent == 0)
-            descent = si.descent;
-        else if (si.descent > 0 && si.descent < descent)
-            cursorDescent = si.descent;
+        // objects need some special treatment as they can have special alignment or be floating
+        if (si.analysis.flags != QScriptAnalysis::Object) {
+            if (si.ascent > 0)
+                base = si.ascent;
+            if (si.descent > 0)
+                descent = si.descent;
+        }
         rightToLeft = si.analysis.bidiLevel % 2;
     }
     qreal y = position.y() + (sl.y + sl.base() - base).toReal();
@@ -1356,7 +1356,7 @@ void QTextLayout::drawCursor(QPainter *p, const QPointF &pos, int cursorPosition
     const QTransform &deviceTransform = p->deviceTransform();
     const qreal xScale = deviceTransform.m11();
     if (deviceTransform.type() != QTransform::TxScale || std::trunc(xScale) == xScale) {
-        p->fillRect(QRectF(x, y, qreal(width), (base + cursorDescent).toReal()), p->pen().brush());
+        p->fillRect(QRectF(x, y, qreal(width), (base + descent).toReal()), p->pen().brush());
     } else {
         // Ensure consistently rendered cursor width under fractional scaling
         const QPen origPen = p->pen();
@@ -1364,7 +1364,7 @@ void QTextLayout::drawCursor(QPainter *p, const QPointF &pos, int cursorPosition
         pen.setCosmetic(true);
         const qreal center = x + qreal(width) / 2;
         p->setPen(pen);
-        p->drawLine(QPointF(center, y), QPointF(center, y + (base + cursorDescent).toReal()));
+        p->drawLine(QPointF(center, y), QPointF(center, y + (base + descent).toReal()));
         p->setPen(origPen);
     }
     p->setCompositionMode(origCompositionMode);
