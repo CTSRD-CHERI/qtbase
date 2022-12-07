@@ -2137,6 +2137,8 @@ QT_WARNING_POP
 static const char *osVer_helper(QOperatingSystemVersion version = QOperatingSystemVersion::current())
 {
 #ifdef Q_OS_MACOS
+    if (version.majorVersion() == 13)
+        return "Ventura";
     if (version.majorVersion() == 12)
         return "Monterey";
     // Compare against predefined constant to handle 10.16/11.0
