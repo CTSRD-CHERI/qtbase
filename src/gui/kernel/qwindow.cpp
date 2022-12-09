@@ -644,7 +644,7 @@ bool QWindow::isVisible() const
     into an actual native surface. However, the window remains hidden until setVisible() is called.
 
     Note that it is not usually necessary to call this function directly, as it will be implicitly
-    called by show(), setVisible(), and other functions that require access to the platform
+    called by show(), setVisible(), winId(), and other functions that require access to the platform
     resources.
 
     Call destroy() to free the platform resources if necessary.
@@ -659,6 +659,8 @@ void QWindow::create()
 
 /*!
     Returns the window's platform id.
+
+    \note This function will cause the platform window to be created if it is not already.
 
     For platforms where this id might be useful, the value returned
     will uniquely represent the window inside the corresponding screen.
