@@ -53,7 +53,7 @@
             },
             "headers": "proxy.h",
             "sources": [
-                "-lproxy"
+                { "type": "pkgConfig", "args": "libproxy-1.0" }
             ]
         },
         "openssl_headers": {
