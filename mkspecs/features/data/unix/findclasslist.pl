@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/local64/bin/perl
 #############################################################################
 ##
 ## Copyright (C) 2016 Intel Corporation.

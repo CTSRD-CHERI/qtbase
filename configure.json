@@ -204,7 +204,7 @@
                     },
                     "condition": "config.win32"
                 },
-                { "libs": "-ldbus-1", "condition": "!config.win32" }
+                { "libs": "-L/usr/local/lib -ldbus-1", "condition": "!config.win32" }
             ]
         },
         "host_dbus": {

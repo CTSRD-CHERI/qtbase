@@ -90,7 +90,7 @@ defineTest(qtPrepareTool) {
         cmd = $$[QT_HOST_BINS]/$$2
         exists($${cmd}.pl) {
             $${1}_EXE = $${cmd}.pl
-            cmd = perl -w $$system_path($${cmd}.pl)
+            cmd = /usr/local64/bin/perl -w $$system_path($${cmd}.pl)
         } else: contains(QMAKE_PLATFORM, win32) {
             $${1}_EXE = $${cmd}.exe
             cmd = $$system_path($${cmd}.exe)

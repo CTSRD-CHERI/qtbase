@@ -1,4 +1,4 @@
-#! /usr/bin/perl -w
+#! /usr/local64/bin/perl -w
 # -*- Perl -*-
 #
 # afblue.pl
