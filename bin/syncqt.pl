@@ -1,4 +1,4 @@
-#!/usr/local64/bin/perl
+#!/usr/bin/env perl
 #############################################################################
 ##
 ## Copyright (C) 2016 The Qt Company Ltd.
