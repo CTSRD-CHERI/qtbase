@@ -2506,6 +2506,18 @@ QTextStream &QTextStream::operator<<(qulonglong i)
     return *this;
 }
 
+#if defined(__CHERI__)
+QTextStream &QTextStream::operator<<(__intcap_t i)
+{
+    return *this << qint64(i);
+}
+
+QTextStream &QTextStream::operator<<(__uintcap_t i)
+{
+    return *this << quint64(i);
+}
+#endif
+
 /*!
     Writes the real number \a f to the stream, then returns a
     reference to the QTextStream. By default, QTextStream stores it
@@ -2684,7 +2696,7 @@ QTextStream &QTextStream::operator<<(const void *ptr)
     const NumberFlags oldFlags = d->params.numberFlags;
     d->params.integerBase = 16;
     d->params.numberFlags |= ShowBase;
-    d->putNumber(reinterpret_cast<quintptr>(ptr), false);
+    d->putNumber(reinterpret_cast<qptraddr>(ptr), false);
     d->params.integerBase = oldBase;
     d->params.numberFlags = oldFlags;
     return *this;

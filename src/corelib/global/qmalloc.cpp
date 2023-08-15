@@ -103,13 +103,15 @@ void *qReallocAligned(void *oldptr, size_t newsize, size_t oldsize, size_t align
     // However, we need to store the actual pointer, so we need to allocate actually size +
     // alignment anyway.
 
+    // XXXAR: FIXME: this will probably not work!
+    // alignment is greater than sizeof(void*) so there should be space for one void* before the return value?
+
     void *real = realloc(actualptr, newsize + alignment);
     if (!real)
         return nullptr;
 
-    quintptr faked = reinterpret_cast<quintptr>(real) + alignment;
-    faked &= ~(alignment - 1);
-    void **faked_ptr = reinterpret_cast<void **>(faked);
+    void **faked_ptr =
+            reinterpret_cast<void **>(qAlignDown(static_cast<char *>(real) + alignment, alignment));
 
     if (oldptr) {
         qptrdiff oldoffset = static_cast<char *>(oldptr) - static_cast<char *>(actualptr);

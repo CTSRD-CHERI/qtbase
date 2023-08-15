@@ -44,6 +44,16 @@
 #include <string.h>
 #include <cstdint>
 
+#ifdef __CHERI_PURE_CAPABILITY__
+#undef QARRAYDATA_DEBUG_OUTPUT
+#endif
+#ifdef QARRAYDATA_DEBUG_OUTPUT
+#include <cstdio>
+#define qarraydata_dbg(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define qarraydata_dbg(...) do {} while(false)
+#endif
+
 QT_BEGIN_NAMESPACE
 
 struct Q_CORE_EXPORT QArrayData
@@ -53,20 +63,90 @@ struct Q_CORE_EXPORT QArrayData
     uint alloc : 31;
     uint capacityReserved : 1;
 
+#ifndef __CHERI_PURE_CAPABILITY__
     qptrdiff offset; // in bytes from beginning of header
-
-    void *data()
+    inline qptrdiff dataOffset() const { return offset; }
+    void setOffset(qptrdiff newOffset) { offset = newOffset; }
+#else
+    // FIXME: See if we can make this work somehow without runtime relocs
+    // See https://woboq.com/blog/qstringliteral.html
+    qintptr _internal_cheri_offset;
+    void setOffset(qptrdiff offset) { _internal_cheri_offset = offset; }
+    void setPointer(const void *data)
     {
-        Q_ASSERT(size == 0
-                || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<void *> (reinterpret_cast<uintptr_t>(this) + offset);
+        Q_ASSERT(__builtin_cheri_tag_get(data) && "Setting untagged pointer?");
+        _internal_cheri_offset = reinterpret_cast<quintptr>(data);
     }
-
-    const void *data() const
+    inline qptrdiff dataOffset() const
     {
-        Q_ASSERT(size == 0
-                || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<void *> (reinterpret_cast<uintptr_t>(this) + offset);
+        void *ptr = reinterpret_cast<void *>(_internal_cheri_offset);
+        if (__builtin_cheri_tag_get(ptr))
+            return static_cast<const char *>(ptr) - reinterpret_cast<const char *>(this);
+        // otherwise just return the offset:
+        return qptrdiff(_internal_cheri_offset);
+    }
+    static inline void *cheri_get_arraydata(const QArrayData *obj, quintptr offset, size_t objsize)
+    {
+        // For CHERI we can't just always add the offset to this since that may be be out-of-bounds
+        void *ret = reinterpret_cast<void *>(offset);
+        qarraydata_dbg("%s(%#p, %zd): %#p\n", __func__, static_cast<const void *>(obj), objsize,
+                       ret);
+        if (__builtin_cheri_tag_get(ret))
+            return ret; // valid pointer so can just return
+
+        // The generated QMetaObject tables uses large offsets so just assert that the length is
+        // sensible.
+        Q_ASSERT(offset < __builtin_cheri_length_get(obj));
+        ret = const_cast<char *>(reinterpret_cast<const char *>(obj) + qint64(offset));
+        qarraydata_dbg("Remaining bytes in buffer: %ld (obj = %#p), obj->alloc=%d, obj->size=%d\n",
+                       cheri_bytes_remaining(ret), static_cast<const void *>(obj), obj->alloc,
+                       obj->size);
+
+        // If we have an allocation set the bounds of data() to the size of the allocation so that
+        // modifying code like QString::append() works.
+        // TODO: for the const overload this should probably always be just the size (+1 for the
+        // zero terminator) to avoid accidental modification?
+        size_t bounds = (obj->alloc ? obj->alloc : obj->size) * objsize;
+        // We could set alloc == size + 1 for QByteArrayLiteral/QStringLiteral, but for the
+        // shared_null case we have to set alloc==0 since shared_null is also used for
+        // types > sizeof(QArrayData) and setting it to one would cause a bounds violation.
+        // For QByteArray/Qstring we have to ensure that qrintable(QByteArray()) and
+        // qUtf16Printable(QString()) return a single '\0' character and not a zero-size capability,
+        // so that that they can be passed to printf()/QString::vasprintf().
+        // TO avoid many other changes just assume that alloc==0+static+size<2 means a constant
+        // zero-terminated string -> set bounds to size+1
+        if (Q_UNLIKELY(obj->alloc == 0 && objsize <= 2 && obj->ref.isStatic())) {
+            qarraydata_dbg("%s: Adding nul byte since data is static\n", __func__);
+            return __builtin_cheri_bounds_set(ret, bounds + objsize);
+        }
+#ifndef QT_CHERI_NO_SET_BOUNDS
+        ret = __builtin_cheri_bounds_set(ret, bounds);
+#endif
+        qarraydata_dbg("%s with size(%zd): %#p\n", __func__, bounds, ret);
+        return ret;
+    }
+#endif
+    void *boundedData(size_t objsize)
+    {
+#ifndef __CHERI_PURE_CAPABILITY__
+        Q_UNUSED(objsize);
+        Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
+        return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(this) + offset);
+#else
+        Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
+        return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
+#endif
+    }
+    const void *boundedData(size_t objsize) const
+    {
+#ifndef __CHERI_PURE_CAPABILITY__
+        Q_UNUSED(objsize);
+        Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
+        return reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(this) + offset);
+#else
+        Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
+        return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
+#endif
     }
 
     // This refers to array data mutability, not "header data" represented by
@@ -84,6 +164,7 @@ struct Q_CORE_EXPORT QArrayData
 #endif
         RawData             = 0x4,
         Grow                = 0x8,
+        WithNulTerminator   = 0x10,
 
         Default = 0
     };
@@ -206,8 +287,8 @@ struct QTypedArrayData
     typedef const T* const_iterator;
 #endif
 
-    T *data() { return static_cast<T *>(QArrayData::data()); }
-    const T *data() const { return static_cast<const T *>(QArrayData::data()); }
+    T *data() { return static_cast<T *>(QArrayData::boundedData(sizeof(T))); }
+    const T *data() const { return static_cast<const T *>(QArrayData::boundedData(sizeof(T))); }
 
     iterator begin(iterator = iterator()) { return data(); }
     iterator end(iterator = iterator()) { return data() + size; }
@@ -244,13 +325,24 @@ struct QTypedArrayData
             AllocationOptions options = Default)
     {
         Q_STATIC_ASSERT(sizeof(QTypedArrayData) == sizeof(QArrayData));
+        Q_ASSERT(data && "Creating rawData from NULL");
         QTypedArrayData *result = allocate(0, options | RawData);
         if (result) {
             Q_ASSERT(!result->ref.isShared()); // No shared empty, please!
-
+#ifndef __CHERI_PURE_CAPABILITY__
             result->offset = reinterpret_cast<const char *>(data)
                 - reinterpret_cast<const char *>(result);
-            result->size = int(n);
+#else
+            result->setPointer(__builtin_cheri_bounds_set(data, n * sizeof(T)));
+#endif
+            if (options & WithNulTerminator) {
+                // The raw capability includes a nul terminator, but the size
+                // should not include it.
+                Q_ASSERT(data[n - 1] == '\0');
+                result->size = int(n - 1);
+            } else {
+                result->size = int(n);
+            }
         }
         return result;
     }

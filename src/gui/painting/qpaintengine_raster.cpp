@@ -3630,7 +3630,11 @@ extern "C" {
 
 static inline uchar *alignAddress(uchar *address, quintptr alignmentMask)
 {
+#if __has_builtin(__builtin_align_up)
+    return __builtin_align_up(address, alignmentMask + 1);
+#else
     return (uchar *)(((quintptr)address + alignmentMask) & ~alignmentMask);
+#endif
 }
 
 void QRasterPaintEnginePrivate::rasterize(QT_FT_Outline *outline,

@@ -279,7 +279,7 @@ bool QMimeTypeParserBase::parse(QIODevice *dev, const QString &fileName, QString
 
                 }
                 currentRules.clear();
-                //qDebug() << "MAGIC start for mimetype" << data.name;
+                //qCDebug(lcMimeDatabase) << "MAGIC start for mimetype" << data.name;
             }
                 break;
             case ParseMagicMatchRule: {
@@ -293,7 +293,7 @@ bool QMimeTypeParserBase::parse(QIODevice *dev, const QString &fileName, QString
                 else // nest this rule into the proper parent
                     ruleList = &currentRules.top()->m_subMatches;
                 ruleList->append(std::move(result.rule));
-                //qDebug() << " MATCH added. Stack size was" << currentRules.size();
+                //qCDebug(lcMimeDatabase) << " MATCH added. Stack size was" << currentRules.size();
                 currentRules.push(&ruleList->last());
                 break;
             }
@@ -316,9 +316,9 @@ bool QMimeTypeParserBase::parse(QIODevice *dev, const QString &fileName, QString
             } else if (elementName == QLatin1String(matchTagC)) {
                 // Closing a <match> tag, pop stack
                 currentRules.pop();
-                //qDebug() << " MATCH closed. Stack size is now" << currentRules.size();
+                //qCDebug(lcMimeDatabase) << " MATCH closed. Stack size is now" << currentRules.size();
             } else if (elementName == QLatin1String(magicTagC)) {
-                //qDebug() << "MAGIC ended, we got" << rules.count() << "rules, with prio" << priority;
+                //qCDebug(lcMimeDatabase) << "MAGIC ended, we got" << rules.count() << "rules, with prio" << priority;
                 // Finished a <magic> sequence
                 QMimeMagicRuleMatcher ruleMatcher(data.name, priority);
                 ruleMatcher.addRules(rules);

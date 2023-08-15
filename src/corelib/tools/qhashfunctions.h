@@ -89,6 +89,10 @@ Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline uint qHash(quint64 key, uint seed 
     return uint(((key >> (8 * sizeof(uint) - 1)) ^ key) & (~0U)) ^ seed;
 }
 Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline uint qHash(qint64 key, uint seed = 0) noexcept { return qHash(quint64(key), seed); }
+#if __has_feature(capabilities)
+Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline uint qHash(__intcap_t key, uint seed = 0) Q_DECL_NOTHROW { return qHash(qint64(key), seed); }
+Q_DECL_CONST_FUNCTION Q_DECL_CONSTEXPR inline uint qHash(__uintcap_t key, uint seed = 0) Q_DECL_NOTHROW { return qHash(quint64(key), seed); }
+#endif
 Q_CORE_EXPORT Q_DECL_CONST_FUNCTION uint qHash(float key, uint seed = 0) noexcept;
 Q_CORE_EXPORT Q_DECL_CONST_FUNCTION uint qHash(double key, uint seed = 0) noexcept;
 #if !defined(Q_OS_DARWIN) || defined(Q_CLANG_QDOC)
@@ -112,7 +116,7 @@ Q_DECL_CONST_FUNCTION inline uint qHash(std::nullptr_t, uint seed = 0) noexcept
 
 template <class T> inline uint qHash(const T *key, uint seed = 0) noexcept
 {
-    return qHash(reinterpret_cast<quintptr>(key), seed);
+    return qHash(reinterpret_cast<qptraddr>(key), seed);
 }
 template<typename T> inline uint qHash(const T &t, uint seed)
     noexcept(noexcept(qHash(t)))

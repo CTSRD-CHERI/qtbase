@@ -42,6 +42,7 @@
 #include "qmimeprovider_p.h"
 
 #include "qmimetypeparser_p.h"
+#include "qmimedatabase_p.h"
 #include <qstandardpaths.h>
 #include "qmimemagicrulematcher_p.h"
 
@@ -83,6 +84,8 @@ __attribute__((section(".qtmimedatabase"), aligned(4096)))
 #endif
 
 QT_BEGIN_NAMESPACE
+
+using namespace QtPrivate;
 
 QMimeProviderBase::QMimeProviderBase(QMimeDatabasePrivate *db, const QString &directory)
     : m_db(db), m_directory(directory)
@@ -261,7 +264,7 @@ void QMimeBinaryProvider::addFileNameMatches(const QString &fileName, QMimeGlobM
 void QMimeBinaryProvider::matchGlobList(QMimeGlobMatchResult &result, CacheFile *cacheFile, int off, const QString &fileName)
 {
     const int numGlobs = cacheFile->getUint32(off);
-    //qDebug() << "Loading" << numGlobs << "globs from" << cacheFile->file.fileName() << "at offset" << cacheFile->globListOffset;
+    qCDebug(lcMimeDatabase) << "Loading" << numGlobs << "globs from" << cacheFile->file.fileName() << "at offset" << off;
     for (int i = 0; i < numGlobs; ++i) {
         const int globOffset = cacheFile->getUint32(off + 4 + 12 * i);
         const int mimeTypeOffset = cacheFile->getUint32(off + 4 + 12 * i + 4);
@@ -272,7 +275,7 @@ void QMimeBinaryProvider::matchGlobList(QMimeGlobMatchResult &result, CacheFile 
         const QString pattern = QLatin1String(cacheFile->getCharStar(globOffset));
 
         const char *mimeType = cacheFile->getCharStar(mimeTypeOffset);
-        //qDebug() << pattern << mimeType << weight << caseSensitive;
+        //qCDebug(lcMimeDatabase) << pattern << mimeType << weight << caseSensitive;
         QMimeGlobPattern glob(pattern, QString() /*unused*/, weight, qtCaseSensitive);
 
         if (glob.matchFileName(fileName))
@@ -463,11 +466,12 @@ void QMimeBinaryProvider::loadMimeTypeList()
         // So we have to parse the plain-text files called "types".
         QFile file(m_directory + QStringLiteral("/types"));
         if (file.open(QIODevice::ReadOnly)) {
-            QTextStream stream(&file);
-            stream.setCodec("ISO 8859-1");
-            QString line;
-            while (stream.readLineInto(&line))
-                m_mimetypeNames.insert(line);
+            while (!file.atEnd()) {
+                QByteArray line = file.readLine();
+                if (line.endsWith('\n'))
+                    line.chop(1);
+                m_mimetypeNames.insert(QString::fromLatin1(line));
+            }
         }
     }
 }
@@ -756,7 +760,7 @@ void QMimeXMLProvider::ensureLoaded()
     m_mimeTypeGlobs.clear();
     m_magicMatchers.clear();
 
-    //qDebug() << "Loading" << m_allFiles;
+    qCDebug(lcMimeDatabase) << "Loading" << m_allFiles;
 
     for (const QString &file : qAsConst(allFiles))
         load(file);

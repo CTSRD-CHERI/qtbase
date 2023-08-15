@@ -59,6 +59,7 @@
             "android-javac-target": "string",
             "android-javac-source": "string",
 
+            "additional-datadir": { "type": "addString", "name": "additional_datadirs" },
             "android-style-assets": "boolean",
             "appstore-compliant": "boolean",
             "avx": "boolean",
@@ -203,7 +204,7 @@
                     },
                     "condition": "config.win32"
                 },
-                { "libs": "-ldbus-1", "condition": "!config.win32" }
+                { "libs": "-L/usr/local/lib -ldbus-1", "condition": "!config.win32" }
             ]
         },
         "host_dbus": {
@@ -758,7 +759,7 @@
         "optimize_debug": {
             "label": "Optimize debug build",
             "autoDetect": "!features.developer-build",
-            "condition": "!config.msvc && !config.clang && (features.debug || features.debug_and_release) && tests.optimize_debug",
+            "condition": "!config.msvc && (features.debug || features.debug_and_release) && tests.optimize_debug",
             "output": [ "privateConfig" ]
         },
         "optimize_size": {
@@ -1538,7 +1539,7 @@ Configure with '-qreal float' to create a build that is binary-compatible with 5
                 {
                     "type": "feature",
                     "args": "optimize_debug",
-                    "condition": "!config.msvc && !config.clang && (features.debug || features.debug_and_release)"
+                    "condition": "!config.msvc && (features.debug || features.debug_and_release)"
                 },
                 {
                     "type": "feature",

@@ -166,6 +166,10 @@ public:
     inline QDebug &operator<<(const QByteArray & t) { putByteArray(t.constData(), t.size(), ContainsBinary); return maybeSpace(); }
     inline QDebug &operator<<(const void * t) { stream->ts << t; return maybeSpace(); }
     inline QDebug &operator<<(std::nullptr_t) { stream->ts << "(nullptr)"; return maybeSpace(); }
+#if defined(__CHERI__)
+    inline QDebug &operator<<(__intcap_t t) { stream->ts << t; return maybeSpace(); }
+    inline QDebug &operator<<(__uintcap_t t) { stream->ts << t; return maybeSpace(); }
+#endif
     inline QDebug &operator<<(QTextStreamFunction f) {
         stream->ts << f;
         return *this;

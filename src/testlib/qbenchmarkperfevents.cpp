@@ -194,7 +194,7 @@ bool QBenchmarkPerfEventsMeasurer::isAvailable()
 
    Use the following Perl script to re-generate the list
 === cut perl ===
-#!/usr/bin/env perl
+#!/usr/local64/bin/perl
 # Load all entries into %map
 while (<STDIN>) {
     m/^\s*(.*)\s*$/;

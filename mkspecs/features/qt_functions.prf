@@ -90,11 +90,11 @@ defineTest(qtPrepareTool) {
         cmd = $$[QT_HOST_BINS]/$$2
         exists($${cmd}.pl) {
             $${1}_EXE = $${cmd}.pl
-            cmd = perl -w $$system_path($${cmd}.pl)
-        } else: contains(QMAKE_HOST.os, Windows) {
+            cmd = /usr/local64/bin/perl -w $$system_path($${cmd}.pl)
+        } else: contains(QMAKE_PLATFORM, win32) {
             $${1}_EXE = $${cmd}.exe
             cmd = $$system_path($${cmd}.exe)
-        } else:contains(QMAKE_HOST.os, Darwin) {
+        } else:contains(QMAKE_PLATFORM, darwin) {
             BUNDLENAME = $${cmd}.app/Contents/MacOS/$$2
             exists($$BUNDLENAME) {
                 cmd = $$BUNDLENAME
@@ -170,7 +170,7 @@ defineTest(qtAddToolEnv) {
         !isEmpty(cmd): cmd = "$$cmd "
         equals(ds, /) {
             batch_name = $${batch_name}.sh
-            equals(QMAKE_HOST.os, Darwin):exists(/bin/bash): \
+            contains(QMAKE_PLATFORM, darwin):exists(/bin/bash): \
                 shell = /bin/bash
             else: \
                 shell = /bin/sh
@@ -209,21 +209,21 @@ defineTest(qtAddTargetEnv) {
     !isEmpty(deps) {
         libs = libs
         deppath.CONFIG = prepend
-        equals(QMAKE_HOST.os, Windows) {
+        contains(QMAKE_PLATFORM, win32) {
             libs = bins
             deppath.CONFIG = always_prepend
             deppath.name = PATH
-        } else:contains(QMAKE_HOST.os, Linux|FreeBSD|OpenBSD|NetBSD|DragonFly|SunOS|HP-UX|QNX|GNU) {
-            deppath.name = LD_LIBRARY_PATH
-        } else:contains(QMAKE_HOST.os, Haiku) {
+        } else:contains(QMAKE_PLATFORM, haiku) {
             deppath.name = LIBRARY_PATH
-        } else:equals(QMAKE_HOST.os, Darwin) {
+        } else:contains(QMAKE_PLATFORM, darwin) {
             qtConfig(framework): \
                 deppath.name = DYLD_FRAMEWORK_PATH
             else: \
                 deppath.name = DYLD_LIBRARY_PATH
-        } else:equals(QMAKE_HOST.os, AIX) {
+        } else:contains(QMAKE_PLATFORM, aix) {
             deppath.name = LIBPATH
+        } else:contains(QMAKE_PLATFORM, unix) {
+            deppath.name = LD_LIBRARY_PATH
         } else {
             error("Operating system not supported.")
         }

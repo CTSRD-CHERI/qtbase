@@ -77,6 +77,20 @@ static QJsonDocument jsonFromCborMetaData(const char *raw, qsizetype size, QStri
         *errMsg = QStringLiteral("Invalid metadata version");
         return QJsonDocument();
     }
+#ifdef __CHERI_PURE_CAPABILITY__
+    qsizetype bytes_remaining = __builtin_cheri_length_get(raw) - __builtin_cheri_offset_get(raw);
+    // This can be set to INT_MAX when called from qt_get_metadata(), ensure we don't attempt to
+    // create a capability with bounds == INT_MAX.
+    // XXX: Could also check for size == INT_MAX - metaDataSignatureLength(), but checking the
+    // remaining bytes seems safer.
+    // Note: This is not needed for Qt6 - removed in 9a189a096f134e80e0c11523db14c8580275b4ad
+    if (size > bytes_remaining) {
+        if (qt_debug_component())
+            qDebug() << "jsonFromCborMetaData limiting metadata size to" << bytes_remaining
+                     << "(was " << size << ")";
+        size = bytes_remaining;
+    }
+#endif
 
     raw += 4;
     size -= 4;

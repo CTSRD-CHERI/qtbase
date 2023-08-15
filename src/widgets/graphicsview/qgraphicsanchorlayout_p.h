@@ -266,7 +266,7 @@ struct AnchorVertexPair : public AnchorVertex {
 inline QString AnchorVertex::toString() const
 {
     if (!m_item)
-        return QString::fromLatin1("NULL_%1").arg(quintptr(this));
+        return QString::fromLatin1("NULL_%1").arg(qptraddr(this));
 
     QString edge;
     switch (m_edge) {

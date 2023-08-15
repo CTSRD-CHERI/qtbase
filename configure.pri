@@ -795,6 +795,16 @@ defineTest(qtConfOutput_preparePaths) {
     else: \
         qmake_crossbuild = true
 
+    !isEmpty(config.input.additional_datadirs) {
+        # Ensure that all the -additional-datadirs entries are absolute paths
+        extradirs =
+        for (dir, config.input.additional_datadirs) {
+            extradirs += $$absolute_path($$dir, $$OUT_PWD)
+        }
+        config.input.additional_datadirs = $$extradirs
+        export(config.input.additional_datadirs)
+    }
+
     PREFIX_COMPLAINTS =
     PREFIX_REMINDER = false
     win32: \
@@ -1304,6 +1314,17 @@ output += \
            "$${LITERAL_HASH}define QT_EMCC_VERSION \"$$qt_emcc_version\""
     }
 
+    return($$output)
+}
+
+defineReplace(qtConfOutputPostProcess_privateHeader) {
+    output = $$1
+    # Add support for additional QStandardPaths::GenericDataLocation on macOS (useful for homebrew, etc.)
+    macos:!isEmpty(config.input.additional_datadirs) {
+        extraDataDirsDefine = $$join(config.input.additional_datadirs, \
+            "\"), QStringLiteral(\"", "{ QStringLiteral(\"", "\") }")
+        output += "$${LITERAL_HASH}define QT_STANDARDPATHS_ADDITIONAL_DATADIRS $$extraDataDirsDefine"
+    }
     return($$output)
 }
 

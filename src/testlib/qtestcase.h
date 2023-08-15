@@ -442,6 +442,10 @@ namespace QTest
     QTEST_COMPARE_DECL(signed char)
     QTEST_COMPARE_DECL(unsigned char)
     QTEST_COMPARE_DECL(bool)
+#if __has_feature(capabilities)
+    QTEST_COMPARE_DECL(__intcap_t)
+    QTEST_COMPARE_DECL(__uintcap_t)
+#endif
 #endif
 
     template <typename T1, typename T2>
@@ -463,6 +467,26 @@ namespace QTest
     {
         return qCompare(qreal(t1), qreal(t2), actual, expected, file, line);
     }
+
+#if __has_feature(capabilities)
+// XXXAR: TODO: enable these overloads but for now turn linker errors into compiler errors
+#define DELETE_COMPARE(Type1, Type2) \
+    bool qCompare(Type1 t1, Type2 t2, const char *actual, const char *expected, const char *file, int line) = delete
+#define DELETE_CAP_COMPARE_WITH(type) \
+    DELETE_COMPARE(__intcap_t, type); \
+    DELETE_COMPARE(type, __intcap_t); \
+    DELETE_COMPARE(__uintcap_t, type); \
+    DELETE_COMPARE(type, __uintcap_t)
+
+    DELETE_CAP_COMPARE_WITH(int);
+    DELETE_CAP_COMPARE_WITH(uint);
+    DELETE_CAP_COMPARE_WITH(long);
+    DELETE_CAP_COMPARE_WITH(ulong);
+    DELETE_CAP_COMPARE_WITH(qlonglong);
+    DELETE_CAP_COMPARE_WITH(qulonglong);
+    DELETE_CAP_COMPARE_WITH(void*);
+    DELETE_CAP_COMPARE_WITH(std::nullptr_t);
+#endif
 
     template <typename T>
     inline bool qCompare(const T *t1, const T *t2, const char *actual, const char *expected,

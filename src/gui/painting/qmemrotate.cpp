@@ -51,7 +51,7 @@ static inline void qt_memrotate90_tiled(const T *src, int w, int h, int isstride
 
     const int pack = sizeof(quint32) / sizeof(T);
     const int unaligned =
-        qMin(uint((quintptr(dest) & (sizeof(quint32)-1)) / sizeof(T)), uint(h));
+        qMin(uint((qptraddr(dest) & (sizeof(quint32)-1)) / sizeof(T)), uint(h));
     const int restX = w % tileSize;
     const int restY = (h - unaligned) % tileSize;
     const int unoptimizedY = restY % pack;
@@ -137,7 +137,7 @@ static inline void qt_memrotate270_tiled(const T *src, int w, int h, int isstrid
 
     const int pack = sizeof(quint32) / sizeof(T);
     const int unaligned =
-        qMin(uint((quintptr(dest) & (sizeof(quint32)-1)) / sizeof(T)), uint(h));
+        qMin(uint((qptraddr(dest) & (sizeof(quint32)-1)) / sizeof(T)), uint(h));
     const int restX = w % tileSize;
     const int restY = (h - unaligned) % tileSize;
     const int unoptimizedY = restY % pack;

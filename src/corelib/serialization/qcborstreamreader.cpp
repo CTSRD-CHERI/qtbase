@@ -720,7 +720,8 @@ static CborError qt_cbor_decoder_transfer_string(void *token, const void **userp
         return CborErrorDataTooLarge;
 
     // our string transfer is just saving the offset to the userptr
-    *userptr = reinterpret_cast<void *>(offset);
+    // FIXME: is this safe for CHERI?
+    *userptr = reinterpret_cast<void *>(quintptr(offset));
 
     qint64 avail = (self->device ? self->device->bytesAvailable() : self->buffer.size()) -
             self->bufferStart;

@@ -563,7 +563,8 @@
             },
             "headers": "X11/Xlib.h",
             "sources": [
-                { "type": "makeSpec", "spec": "X11" }
+                { "type": "pkgConfig", "args": "x11" },
+                "-lX11"
             ]
         },
         "x11sm": {

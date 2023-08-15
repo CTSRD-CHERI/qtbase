@@ -1754,6 +1754,7 @@ Q_STATIC_ASSERT(sizeof(QAtomicInteger<unsigned>));
 Q_STATIC_ASSERT(sizeof(QAtomicInteger<long>));
 Q_STATIC_ASSERT(sizeof(QAtomicInteger<unsigned long>));
 Q_STATIC_ASSERT(sizeof(QAtomicInteger<quintptr>));
+static_assert(sizeof(QAtomicInteger<qptraddr>));
 Q_STATIC_ASSERT(sizeof(QAtomicInteger<qptrdiff>));
 #ifdef Q_COMPILER_UNICODE_STRINGS
 Q_STATIC_ASSERT(sizeof(QAtomicInteger<char32_t>));

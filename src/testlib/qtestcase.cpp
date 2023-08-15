@@ -212,28 +212,26 @@ static void stackTrace()
     if (debuggerPresent() || hasSystemCrashReporter())
         return;
 
-#if defined(Q_OS_LINUX) || (defined(Q_OS_MACOS) && !defined(Q_PROCESSOR_ARM_64))
+#if defined(Q_OS_LINUX) || (defined(Q_OS_MACOS) && !defined(Q_PROCESSOR_ARM_64)) || defined(Q_OS_FREEBSD)
     const int msecsFunctionTime = qRound(QTestLog::msecsFunctionTime());
     const int msecsTotalTime = qRound(QTestLog::msecsTotalTime());
     fprintf(stderr, "\n=== Received signal at function time: %dms, total time: %dms, dumping stack ===\n",
             msecsFunctionTime, msecsTotalTime);
 
-#  ifdef Q_OS_LINUX
+#if defined(Q_OS_LINUX) || defined(Q_OS_FREEBSD)
     char cmd[512];
-    qsnprintf(cmd, 512, "gdb --pid %d 2>/dev/null <<EOF\n"
-                         "set prompt\n"
-                         "set height 0\n"
-                         "thread apply all where full\n"
-                         "detach\n"
-                         "quit\n"
-                         "EOF\n",
+    qsnprintf(cmd, 512, "gdb --pid %d -batch"
+                        " -ex 'thread apply all where full'"
+                        " -ex detach"
+                        " -ex quit"
+                        " 1>&2 2>/dev/null </dev/null\n",
                          (int)getpid());
     if (system(cmd) == -1)
         fprintf(stderr, "calling gdb failed\n");
     fprintf(stderr, "=== End of stack trace ===\n");
 #  elif defined(Q_OS_MACOS)
     char cmd[512];
-    qsnprintf(cmd, 512, "lldb -p %d 2>/dev/null <<EOF\n"
+    qsnprintf(cmd, 512, "lldb -p %d 1>&2 2>/dev/null <<EOF\n"
                          "bt all\n"
                          "quit\n"
                          "EOF\n",
@@ -645,7 +643,7 @@ Q_TESTLIB_EXPORT void qtest_qParseArgs(int argc, const char *const argv[], bool 
         } else if (strcmp(argv[i], "-v2") == 0) {
             QTestLog::setVerboseLevel(2);
         } else if (strcmp(argv[i], "-vs") == 0) {
-            QSignalDumper::startDump();
+            QSignalDumper::setEnabled(true);
         } else if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 >= argc) {
                 fprintf(stderr, "-o needs an extra parameter specifying the filename and optional format\n");
@@ -1032,6 +1030,7 @@ class WatchDog : public QThread
 public:
     WatchDog()
     {
+        setObjectName(QLatin1String("QtTest Watchdog"));
         auto locker = qt_unique_lock(mutex);
         expecting = ThreadStart;
         start();
@@ -1491,6 +1490,8 @@ void TestMethods::invokeTests(QObject *testObject) const
         watchDog.reset(new WatchDog);
     }
 
+    QSignalDumper::startDump();
+
     if (!QTestResult::skipCurrentTest() && !QTest::currentTestFailed()) {
         if (m_initTestCaseMethod.isValid())
             m_initTestCaseMethod.invoke(testObject, Qt::DirectConnection);
@@ -1523,6 +1524,8 @@ void TestMethods::invokeTests(QObject *testObject) const
     }
     QTestResult::finishedCurrentTestFunction();
     QTestResult::setCurrentTestFunction(nullptr);
+
+    QSignalDumper::endDump();
 }
 
 #if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
@@ -1972,8 +1975,6 @@ void QTest::qCleanup()
 
     delete QBenchmarkGlobalData::current;
     QBenchmarkGlobalData::current = nullptr;
-
-    QSignalDumper::endDump();
 
 #if defined(Q_OS_MACOS)
     IOPMAssertionRelease(macPowerSavingDisabled);
@@ -2737,6 +2738,25 @@ template <> Q_TESTLIB_EXPORT char *QTest::toString<TYPE>(const TYPE &t) \
 TO_STRING_FLOAT(qfloat16, %.3g)
 TO_STRING_FLOAT(float, %g)
 TO_STRING_FLOAT(double, %.12g)
+
+#if __has_feature(capabilities)
+template <> Q_TESTLIB_EXPORT char *QTest::toString<__uintcap_t>(const __uintcap_t &t)
+{
+    char *msg = new char[128];
+    __uintcap_t tmp = t;
+    snprintf(msg, 128, "%lu (%#p)", (qptraddr)tmp, (void *)tmp);
+    return msg;
+}
+
+template <> Q_TESTLIB_EXPORT char *QTest::toString<__intcap_t>(const __intcap_t &t)
+{
+    char *msg = new char[128];
+    __intcap_t tmp = t;
+    snprintf(msg, 128, "%ld (%#p)", (qptraddr)tmp, (void *)tmp);
+    return msg;
+}
+#endif
+
 
 template <> Q_TESTLIB_EXPORT char *QTest::toString<char>(const char &t)
 {

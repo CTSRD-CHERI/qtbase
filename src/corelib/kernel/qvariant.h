@@ -223,6 +223,10 @@ class Q_CORE_EXPORT QVariant
     QVariant(bool b);
     QVariant(double d);
     QVariant(float f);
+#if __has_feature(capabilities)
+    QVariant(__intcap_t c);
+    QVariant(__uintcap_t c);
+#endif
 #ifndef QT_NO_CAST_FROM_ASCII
     QT_ASCII_CAST_WARN QVariant(const char *str);
 #endif
@@ -427,6 +431,10 @@ class Q_CORE_EXPORT QVariant
             qulonglong ull;
             QObject *o;
             void *ptr;
+#if __has_feature(capabilities)
+            __intcap_t intcap;
+            __uintcap_t uintcap;
+#endif
             PrivateShared *shared;
         } data;
         uint type : 30;

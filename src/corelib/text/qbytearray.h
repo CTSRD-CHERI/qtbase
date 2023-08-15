@@ -394,8 +394,21 @@ public:
     Q_REQUIRED_RESULT static QByteArray number(uint, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qlonglong, int base = 10);
     Q_REQUIRED_RESULT static QByteArray number(qulonglong, int base = 10);
+    Q_REQUIRED_RESULT static QByteArray number(long l, int base = 10)
+    {
+        return number(qlonglong(l), base);
+    }
+    Q_REQUIRED_RESULT static QByteArray number(ulong l, int base = 10)
+    {
+        return number(qulonglong(l), base);
+    }
+#if __has_feature(capabilities)
+    Q_REQUIRED_RESULT static QByteArray number(__intcap_t, int base = 10);
+    Q_REQUIRED_RESULT static QByteArray number(__uintcap_t, int base = 10);
+#endif
     Q_REQUIRED_RESULT static QByteArray number(double, char f = 'g', int prec = 6);
     Q_REQUIRED_RESULT static QByteArray fromRawData(const char *, int size);
+    Q_REQUIRED_RESULT static QByteArray fromNulTerminatedRawData(const char *, int size);
 
     class FromBase64Result;
     Q_REQUIRED_RESULT static FromBase64Result fromBase64Encoding(QByteArray &&base64, Base64Options options = Base64Encoding);
@@ -518,7 +531,7 @@ inline const char *QByteArray::data() const
 inline const char *QByteArray::constData() const
 { return d->data(); }
 inline void QByteArray::detach()
-{ if (d->ref.isShared() || (d->offset != sizeof(QByteArrayData))) reallocData(uint(d->size) + 1u, d->detachFlags()); }
+{ if (d->ref.isShared() || (d->dataOffset() != sizeof(QByteArrayData))) reallocData(uint(d->size) + 1u, d->detachFlags()); }
 inline bool QByteArray::isDetached() const
 { return !d->ref.isShared(); }
 inline QByteArray::QByteArray(const QByteArray &a) noexcept : d(a.d)

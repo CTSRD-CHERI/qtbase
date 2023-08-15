@@ -125,11 +125,11 @@ struct QSimplexConstraint
 #ifdef QT_DEBUG
     QString toString() {
         QString result;
-        result += QString::fromLatin1("-- QSimplexConstraint %1 --").arg(quintptr(this), 0, 16);
+        result += QString::fromLatin1("-- QSimplexConstraint %1 --").arg(qptraddr(this), 0, 16);
 
         QHash<QSimplexVariable *, qreal>::const_iterator iter;
         for (iter = variables.constBegin(); iter != variables.constEnd(); ++iter) {
-            result += QString::fromLatin1("  %1 x %2").arg(iter.value()).arg(quintptr(iter.key()), 0, 16);
+            result += QString::fromLatin1("  %1 x %2").arg(iter.value()).arg(qptraddr(iter.key()), 0, 16);
         }
 
         switch (ratio) {

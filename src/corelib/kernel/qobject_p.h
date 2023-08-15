@@ -136,12 +136,12 @@ public:
         };
 
         static SignalVector *asSignalVector(ConnectionOrSignalVector *c) {
-            if (reinterpret_cast<quintptr>(c) & 1)
-                return reinterpret_cast<SignalVector *>(reinterpret_cast<quintptr>(c) & ~quintptr(1u));
+            if (reinterpret_cast<qptraddr>(c) & 1)
+                return reinterpret_cast<SignalVector *>(reinterpret_cast<quintptr>(c) & ~qptraddr(1u));
             return nullptr;
         }
         static Connection *fromSignalVector(SignalVector *v) {
-            return reinterpret_cast<Connection *>(reinterpret_cast<quintptr>(v) | quintptr(1u));
+            return reinterpret_cast<Connection *>(reinterpret_cast<quintptr>(v) | qptraddr(1u));
         }
     };
 
@@ -307,7 +307,8 @@ public:
             SignalVector *newVector = reinterpret_cast<SignalVector *>(malloc(sizeof(SignalVector) + (size + 1) * sizeof(ConnectionList)));
             int start = -1;
             if (vector) {
-                memcpy(newVector, vector, sizeof(SignalVector) + (vector->allocated + 1) * sizeof(ConnectionList));
+                memcpy(newVector, vector,
+                       sizeof(SignalVector) + (vector->count() + 1) * sizeof(ConnectionList));
                 start = vector->count();
             }
             for (int i = start; i < int(size); ++i)

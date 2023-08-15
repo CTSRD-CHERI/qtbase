@@ -556,10 +556,10 @@ namespace QtPrivate {
 
 
 /*
-  quintptr and qptrdiff is guaranteed to be the same size as a pointer, i.e.
+  quintptr and qintptr is guaranteed to be the same size as a pointer, i.e.
 
       sizeof(void *) == sizeof(quintptr)
-      && sizeof(void *) == sizeof(qptrdiff)
+      && sizeof(void *) == sizeof(qintptr)
 
   size_t and qsizetype are not guaranteed to be the same size as a pointer, but
   they usually are.
@@ -569,16 +569,46 @@ template <>    struct QIntegerForSize<1> { typedef quint8  Unsigned; typedef qin
 template <>    struct QIntegerForSize<2> { typedef quint16 Unsigned; typedef qint16 Signed; };
 template <>    struct QIntegerForSize<4> { typedef quint32 Unsigned; typedef qint32 Signed; };
 template <>    struct QIntegerForSize<8> { typedef quint64 Unsigned; typedef qint64 Signed; };
-#if defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
-template <>    struct QIntegerForSize<16> { __extension__ typedef unsigned __int128 Unsigned; __extension__ typedef __int128 Signed; };
+#if defined(__CHERI_PURE_CAPABILITY__)
+template<>
+struct QIntegerForSize<sizeof(void *)>
+{
+    // typedef __uintcap_t Unsigned; typedef __intcap_t Signed;
+};
+#elif defined(Q_CC_GNU) && defined(__SIZEOF_INT128__)
+template<>
+struct QIntegerForSize<16>
+{
+    __extension__ typedef unsigned __int128 Unsigned;
+    __extension__ typedef __int128 Signed;
+};
 #endif
-template <class T> struct QIntegerForSizeof: QIntegerForSize<sizeof(T)> { };
+template<class T>
+struct QIntegerForSizeof : QIntegerForSize<sizeof(T)>
+{
+};
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Signed qregisterint;
 typedef QIntegerForSize<Q_PROCESSOR_WORDSIZE>::Unsigned qregisteruint;
-typedef QIntegerForSizeof<void*>::Unsigned quintptr;
-typedef QIntegerForSizeof<void*>::Signed qptrdiff;
+#ifdef __CHERI_PURE_CAPABILITY__
+// Prevent pointers
+template<class T>
+struct QIntegerForSizeof<T *> : QIntegerForSize<-sizeof(T)>
+{
+};
+typedef uintptr_t quintptr;
+typedef intptr_t qintptr;
+typedef ptrdiff_t qptrdiff;
+#else
+typedef QIntegerForSizeof<void *>::Unsigned quintptr;
+typedef QIntegerForSizeof<void *>::Signed qptrdiff;
 typedef qptrdiff qintptr;
+#endif
 using qsizetype = QIntegerForSizeof<std::size_t>::Signed;
+#ifdef __PTRADDR_TYPE__
+using qptraddr = __PTRADDR_TYPE__;
+#else
+using qptraddr = QIntegerForSizeof<std::ptrdiff_t>::Unsigned;
+#endif
 
 /* moc compats (signals/slots) */
 #ifndef QT_MOC_COMPAT
@@ -990,6 +1020,44 @@ Q_CORE_EXPORT void *qMallocAligned(size_t size, size_t alignment) Q_ALLOC_SIZE(1
 Q_CORE_EXPORT void *qReallocAligned(void *ptr, size_t size, size_t oldsize, size_t alignment) Q_ALLOC_SIZE(2);
 Q_CORE_EXPORT void qFreeAligned(void *ptr);
 
+#if QT_HAS_BUILTIN(__builtin_is_aligned)
+#define qIsAligned(val, alignment) __builtin_is_aligned(val, alignment)
+#else
+template <typename T> inline bool qIsAligned(T val, size_t align) {
+  Q_ASSERT_X((align & (align - 1)) == 0, "qIsAligned",
+             "alignment was not a power of two");
+  return (val & (align - 1)) == 0;
+}
+template <typename T> inline bool qIsAligned(T *val, size_t align) {
+  return qIsAligned(reinterpret_cast<quintptr>(val), align);
+}
+#endif
+#if QT_HAS_BUILTIN(__builtin_align_down)
+#define qAlignDown(val, alignment) __builtin_align_down(val, alignment)
+#else
+template <typename T> inline T qAlignDown(T val, size_t align) {
+  Q_ASSERT_X((align & (align - 1)) == 0, "qAlignDown",
+             "alignment was not a power of two");
+  return val & ~(align - 1);
+}
+template <typename T> inline T *qAlignDown(T *val, size_t align) {
+  return reinterpret_cast<T *>(
+      qAlignDown(reinterpret_cast<quintptr>(val), align));
+}
+#endif
+#if QT_HAS_BUILTIN(__builtin_align_up)
+#define qAlignUp(val, alignment) __builtin_align_up(val, alignment)
+#else
+template <typename T> inline T qAlignUp(T val, size_t align) {
+  Q_ASSERT_X((align & (align - 1)) == 0, "qAlignDown",
+             "alignment was not a power of two");
+  return qAlignDown(val + (align - 1), align);
+}
+template <typename T> inline T *qAlignUp(T *val, size_t align) {
+  return reinterpret_cast<T *>(
+      qAlignUp(reinterpret_cast<quintptr>(val), align));
+}
+#endif
 
 /*
    Avoid some particularly useless warnings from some stupid compilers.
@@ -1280,6 +1348,31 @@ Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") void 
 Q_CORE_EXPORT QT_DEPRECATED_VERSION_X_5_15("use QRandomGenerator instead") int qrand();
 #endif
 
+template<qptraddr lowBitsMask>
+inline qptraddr qGetLowPointerBits(quintptr ptr)
+{
+    Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
+    return static_cast<qptraddr>(ptr) & lowBitsMask;
+}
+
+template<qptraddr lowBitsMask>
+inline quintptr qClearLowPointerBits(quintptr ptr)
+{
+    Q_STATIC_ASSERT_X(lowBitsMask <= 31, "Cannot use more than the low 5 pointer bits");
+    constexpr qptraddr clearingMask = ~qptraddr(lowBitsMask);
+    Q_STATIC_ASSERT(qptrdiff(clearingMask) < 0);
+    return ptr & clearingMask;
+}
+
+// This one is not a template since unlike the mask values the bits parameter
+// might not be a compile-time constant
+// XXXAR: this function is not actually needed since bitwise or works
+// as expected but I added it for symmetry.
+inline quintptr qSetLowPointerBits(quintptr ptr, qptraddr bits) {
+    Q_ASSERT(bits <= 31 && "Cannot use more than the low 5 pointer bits");
+    return ptr | bits;
+}
+
 #define QT_MODULE(x)
 
 #if !defined(QT_BOOTSTRAPPED) && defined(QT_REDUCE_RELOCATIONS) && defined(__ELF__) && \
@@ -1295,6 +1388,16 @@ template <typename T> struct QEnableIf<true, T> { typedef T Type; };
 }
 
 QT_END_NAMESPACE
+
+#if __has_feature(capabilities)
+#define cheri_debug(...) fprintf(stderr, __VA_ARGS__)
+inline qptrdiff cheri_bytes_remaining(void* __capability ptr)
+{
+    return __builtin_cheri_length_get(ptr) - __builtin_cheri_offset_get(ptr);
+}
+#else
+#define cheri_debug(...)
+#endif
 
 // We need to keep QTypeInfo, QSysInfo, QFlags, qDebug & family in qglobal.h for compatibility with Qt 4.
 // Be careful when changing the order of these files.

@@ -82,12 +82,17 @@ void QTestJUnitStreamer::formatStart(const QTestElement *element, QTestCharBuffe
     char indent[20];
     indentForElement(element, indent, sizeof(indent));
 
-    // Errors are written as CDATA within system-err, comments elsewhere
-    if (element->elementType() == QTest::LET_Error) {
-        if (element->parentElement()->elementType() == QTest::LET_SystemError) {
+    // Messages/errors are written as CDATA within system-out, system-err,
+    // respectively, comments elsewhere
+    if (element->elementType() == QTest::LET_Message) {
+        switch (element->parentElement()->elementType()) {
+        case QTest::LET_SystemOutput:
+        case QTest::LET_SystemError:
             QTest::qt_asprintf(formatted, "<![CDATA[");
-        } else {
+            break;
+        default:
             QTest::qt_asprintf(formatted, "%s<!--", indent);
+            break;
         }
         return;
     }
@@ -118,9 +123,11 @@ void QTestJUnitStreamer::formatAttributes(const QTestElement* element, const QTe
 
     QTest::AttributeIndex attrindex = attribute->index();
 
-    // For errors within system-err, we only want to output `message'
-    if (element && element->elementType() == QTest::LET_Error
-        && element->parentElement()->elementType() == QTest::LET_SystemError) {
+    // For messages/errors within system-out, system-err, respectively,
+    // we only want to output `message'
+    if (element && element->elementType() == QTest::LET_Message
+        && (element->parentElement()->elementType() == QTest::LET_SystemOutput
+            || element->parentElement()->elementType() == QTest::LET_SystemError)) {
 
         if (attrindex != QTest::AI_Description) return;
 
@@ -148,12 +155,17 @@ void QTestJUnitStreamer::formatAfterAttributes(const QTestElement *element, QTes
     if (!element || !formatted )
         return;
 
-    // Errors are written as CDATA within system-err, comments elsewhere
-    if (element->elementType() == QTest::LET_Error) {
-        if (element->parentElement()->elementType() == QTest::LET_SystemError) {
+    // Messages/errors are written as CDATA within system-out, system-err,
+    // respectively, comments elsewhere
+    if (element->elementType() == QTest::LET_Message) {
+        switch (element->parentElement()->elementType()) {
+        case QTest::LET_SystemOutput:
+        case QTest::LET_SystemError:
             QTest::qt_asprintf(formatted, "]]>\n");
-        } else {
+            break;
+        default:
             QTest::qt_asprintf(formatted, " -->\n");
+            break;
         }
         return;
     }
@@ -176,13 +188,12 @@ void QTestJUnitStreamer::outputElements(QTestElement *element, bool) const
 {
     QTestCharBuffer buf;
     bool hasChildren;
-    /*
-        Elements are in reverse order of occurrence, so start from the end and work
-        our way backwards.
-    */
-    while (element && element->nextElement()) {
+
+    // Elements are in reverse order of occurrence, so
+    // start from the end and work our way backwards.
+    while (element && element->nextElement())
         element = element->nextElement();
-    }
+
     while (element) {
         hasChildren = element->childElements();
 
@@ -208,10 +219,16 @@ void QTestJUnitStreamer::outputElements(QTestElement *element, bool) const
 void QTestJUnitStreamer::outputElementAttributes(const QTestElement* element, QTestElementAttribute *attribute) const
 {
     QTestCharBuffer buf;
+
+    // Attributes are in reverse order of occurrence, so
+    // start from the end and work our way backwards.
+    while (attribute && attribute->nextElement())
+        attribute = attribute->nextElement();
+
     while (attribute) {
         formatAttributes(element, attribute, &buf);
         outputString(buf.data());
-        attribute = attribute->nextElement();
+        attribute = attribute->previousElement();
     }
 }
 

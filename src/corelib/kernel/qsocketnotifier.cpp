@@ -156,7 +156,7 @@ QSocketNotifier::QSocketNotifier(qintptr socket, Type type, QObject *parent)
     qRegisterMetaType<QSocketDescriptor>();
     qRegisterMetaType<QSocketNotifier::Type>();
 
-    d->sockfd = socket;
+    d->sockfd = QSocketDescriptor::DescriptorType(socket);
     d->sntype = type;
     d->snenabled = true;
 

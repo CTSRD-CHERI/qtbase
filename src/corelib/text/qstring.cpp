@@ -100,7 +100,7 @@
 #define ULLONG_MAX quint64_C(18446744073709551615)
 #endif
 
-#define IS_RAW_DATA(d) ((d)->offset != sizeof(QStringData))
+#define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QStringData))
 
 QT_BEGIN_NAMESPACE
 
@@ -1001,9 +1001,9 @@ static int ucstrncmp(const QChar *a, const QChar *b, size_t l)
         return 0;
 
     // check alignment
-    if ((reinterpret_cast<quintptr>(a) & 2) == (reinterpret_cast<quintptr>(b) & 2)) {
+    if ((reinterpret_cast<qptraddr>(a) & 2) == (reinterpret_cast<qptraddr>(b) & 2)) {
         // both addresses have the same alignment
-        if (reinterpret_cast<quintptr>(a) & 2) {
+        if (reinterpret_cast<qptraddr>(a) & 2) {
             // both addresses are not aligned to 4-bytes boundaries
             // compare the first character
             if (*a != *b)
@@ -2372,9 +2372,11 @@ void QString::reallocData(uint alloc, bool grow)
             Data::deallocate(d);
         d = x;
     } else {
+        qarraydata_dbg("%s: %d, d=%#p\n", __func__, alloc, d);
         Data *p = Data::reallocateUnaligned(d, alloc, allocOptions);
         Q_CHECK_PTR(p);
         d = p;
+        qarraydata_dbg("%s: p->alloc = %d, resulting p=%#p, %ld bytes in p, %ld bytes in data()\n", __func__, p->alloc, p, cheri_bytes_remaining(p), cheri_bytes_remaining(p->data()));
     }
 }
 
@@ -2680,10 +2682,17 @@ QString &QString::append(const QString &str)
         if (d == Data::sharedNull()) {
             operator=(str);
         } else {
-            if (d->ref.isShared() || uint(d->size + str.d->size) + 1u > d->alloc)
+            if (d->ref.isShared() || uint(d->size + str.d->size) + 1u > d->alloc) {
+                qarraydata_dbg("%s: d=%#p, reallocating to %d\n", Q_FUNC_INFO, static_cast<void*>(d), uint(d->size + str.d->size) + 1u);
                 reallocData(uint(d->size + str.d->size) + 1u, true);
+                qarraydata_dbg("%s: after realloc: d=%#p\n", Q_FUNC_INFO, static_cast<void*>(d));
+            }
+            qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d\n", Q_FUNC_INFO,
+                static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size);
             memcpy(d->data() + d->size, str.d->data(), str.d->size * sizeof(QChar));
             d->size += str.d->size;
+            qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d, remaining = %ld\n", Q_FUNC_INFO,
+                 static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size, cheri_bytes_remaining(d->data()));
             d->data()[d->size] = '\0';
         }
     }
@@ -2699,10 +2708,17 @@ QString &QString::append(const QString &str)
 QString &QString::append(const QChar *str, int len)
 {
     if (str && len > 0) {
-        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc)
+        if (d->ref.isShared() || uint(d->size + len) + 1u > d->alloc) {
+            qarraydata_dbg("%s: d=%#p, reallocating to %d\n", Q_FUNC_INFO, static_cast<void*>(d), uint(d->size + len) + 1u);
             reallocData(uint(d->size + len) + 1u, true);
+            qarraydata_dbg("%s: after realloc: d=%#p\n", Q_FUNC_INFO, static_cast<void*>(d));
+        }
+        qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d\n", Q_FUNC_INFO,
+            static_cast<void*>(d),  static_cast<void*>(d->data()), d->alloc, d->size);
         memcpy(d->data() + d->size, str, len * sizeof(QChar));
         d->size += len;
+        qarraydata_dbg("%s: d=%#p, d->data() = %#p, d->alloc = %d, d->size = %d, remaining = %ld\n",
+             Q_FUNC_INFO, static_cast<void*>(d), static_cast<void*>(d->data()), d->alloc, d->size, cheri_bytes_remaining(d->data()));
         d->data()[d->size] = '\0';
     }
     return *this;
@@ -5263,7 +5279,7 @@ QByteArray QString::toLatin1_helper_inplace(QString &s)
     s.d = QString().d;
 
     // do the in-place conversion
-    uchar *dst = reinterpret_cast<uchar *>(ba_d->data());
+    uchar *dst = static_cast<uchar *>(ba_d->boundedData(sizeof(uchar)));
     qt_to_latin1(dst, data, length);
     dst[length] = '\0';
 
@@ -7200,7 +7216,7 @@ QString QString::vasprintf(const char *cformat, va_list ap)
             }
             case 'p': {
                 void *arg = va_arg(ap, void*);
-                const quint64 i = reinterpret_cast<quintptr>(arg);
+                const quint64 i = reinterpret_cast<quint64>(arg);
                 flags |= QLocaleData::ShowBase;
                 subst = QLocaleData::c()->unsLongLongToString(i, precision, 16, width, flags);
                 ++c;
@@ -7806,6 +7822,38 @@ QString QString::number(double n, char f, int prec)
     return QLocaleData::c()->doubleToString(n, prec, form, -1, flags);
 }
 
+#if __has_feature(capabilities)
+/*!
+    \overload
+*/
+QString QString::number(__uintcap_t n, int base)
+{
+#    if defined(QT_CHECK_RANGE)
+    if (base < 2 || base > 36) {
+        qWarning("QString::setNum: Invalid base (%d)", base);
+        base = 10;
+    }
+#    endif
+    qulonglong v = static_cast<qulonglong>(n);
+    return QLocaleData::c()->unsLongLongToString(v, -1, base);
+}
+
+/*!
+    \overload
+*/
+QString QString::number(__intcap_t n, int base)
+{
+#    if defined(QT_CHECK_RANGE)
+    if (base < 2 || base > 36) {
+        qWarning("QString::setNum: Invalid base (%d)", base);
+        base = 10;
+    }
+#    endif
+    qlonglong v = static_cast<qlonglong>(n);
+    return QLocaleData::c()->longLongToString(v, -1, base);
+}
+#endif // __has_feature(capabilities)
+
 namespace {
 template<class ResultList, class StringSource>
 static ResultList splitString(const StringSource &source, const QChar *sep,
@@ -7870,6 +7918,7 @@ QT_WARNING_POP
 */
 QStringList QString::split(const QString &sep, Qt::SplitBehavior behavior, Qt::CaseSensitivity cs) const
 {
+    Q_ASSERT(qIsAligned(this->d, alignof(void *)));
     return splitString<QStringList>(*this, sep.constData(), behavior, cs, sep.size());
 }
 
@@ -7902,6 +7951,7 @@ QStringList QString::split(const QString &sep, SplitBehavior behavior, Qt::CaseS
 QVector<QStringRef> QString::splitRef(const QString &sep, Qt::SplitBehavior behavior,
                                       Qt::CaseSensitivity cs) const
 {
+    Q_ASSERT(qIsAligned(this->d, alignof(void *)));
     return splitString<QVector<QStringRef>>(QStringRef(this), sep.constData(), behavior,
                                             cs, sep.size());
 }
@@ -9475,9 +9525,13 @@ QString &QString::setRawData(const QChar *unicode, int size)
     } else {
         if (unicode) {
             d->size = size;
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = reinterpret_cast<const char *>(unicode) - reinterpret_cast<char *>(d);
+#else
+            d->setPointer(unicode);
+#endif
         } else {
-            d->offset = sizeof(QStringData);
+            d->setOffset(sizeof(QStringData));
             d->size = 0;
         }
     }

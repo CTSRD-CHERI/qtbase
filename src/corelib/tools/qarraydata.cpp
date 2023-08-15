@@ -180,7 +180,16 @@ static inline size_t calculateBlockSize(size_t &capacity, size_t objectSize, siz
 
 static QArrayData *reallocateData(QArrayData *header, size_t allocSize, uint options)
 {
+    qarraydata_dbg("%s: current length = %ld, allocSize=%zd -- h=%#p, offset=%#p\n", __func__,
+        cheri_bytes_remaining(header), allocSize, static_cast<void*>(header),
+        reinterpret_cast<void*>(header->_internal_cheri_offset));
+#ifdef __CHERI_PURE_CAPABILITY__
+    // XXXAR: we could also just move the pointer?
+    Q_ASSERT(!__builtin_cheri_tag_get(reinterpret_cast<void*>(header->_internal_cheri_offset)) &&
+             "To able to use ::realloc QArrayData must not contain pointers!");
+#endif
     header = static_cast<QArrayData *>(::realloc(header, allocSize));
+    qarraydata_dbg("%s: result length = %ld -- h=%#p\n", __func__, cheri_bytes_remaining(header), static_cast<void*>(header));
     if (header)
         header->capacityReserved = bool(options & QArrayData::CapacityReserved);
     return header;
@@ -217,8 +226,14 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
     size_t allocSize = calculateBlockSize(capacity, objectSize, headerSize, options);
     QArrayData *header = static_cast<QArrayData *>(::malloc(allocSize));
     if (header) {
+        // XXXAR: this is a __builtin_align_up (but again we need bootstrap compat)
+        // TODO: add qAlignUp()i
+#if QT_HAS_BUILTIN(__builtin_align_up)
+        quintptr data = __builtin_align_up(quintptr(header) + sizeof(QArrayData), alignment);
+#else
         quintptr data = (quintptr(header) + sizeof(QArrayData) + alignment - 1)
                 & ~(alignment - 1);
+#endif
 
 #if !defined(QT_NO_UNSHARABLE_CONTAINERS)
         header->ref.atomic.storeRelaxed(bool(!(options & Unsharable)));
@@ -228,9 +243,12 @@ QArrayData *QArrayData::allocate(size_t objectSize, size_t alignment,
         header->size = 0;
         header->alloc = capacity;
         header->capacityReserved = bool(options & CapacityReserved);
-        header->offset = data - quintptr(header);
+        // XXX: always store the bounded pointer for purecap to make this more efficient?
+        // We always use an offset except for fromRawData()
+        header->setOffset(reinterpret_cast<const char*>(data) - reinterpret_cast<const char*>(header));
     }
 
+    Q_ASSERT(qIsAligned(header, alignof(void *)));
     return header;
 }
 
@@ -240,12 +258,16 @@ QArrayData *QArrayData::reallocateUnaligned(QArrayData *data, size_t objectSize,
     Q_ASSERT(data);
     Q_ASSERT(data->isMutable());
     Q_ASSERT(!data->ref.isShared());
+    qarraydata_dbg("QArrayData::reallocateUnaligned(%#p, osize=%zd, capacity=%zd, options=%x)\n", data, objectSize, capacity, int(options));
 
     size_t headerSize = sizeof(QArrayData);
     size_t allocSize = calculateBlockSize(capacity, objectSize, headerSize, options);
     QArrayData *header = static_cast<QArrayData *>(reallocateData(data, allocSize, options));
-    if (header)
+    if (header) {
         header->alloc = capacity;
+        qarraydata_dbg("QArrayData::reallocateUnaligned() new alloc=%zd\n", (size_t)header->alloc);
+    }
+    Q_ASSERT(qIsAligned(header, alignof(void *)));
     return header;
 }
 
@@ -256,6 +278,7 @@ void QArrayData::deallocate(QArrayData *data, size_t objectSize,
     Q_ASSERT(alignment >= Q_ALIGNOF(QArrayData)
             && !(alignment & (alignment - 1)));
     Q_UNUSED(objectSize) Q_UNUSED(alignment)
+    Q_ASSERT(qIsAligned(data, alignof(void *)));
 
 #if !defined(QT_NO_UNSHARABLE_CONTAINERS)
     if (data == &qt_array_unsharable_empty)

@@ -75,11 +75,6 @@ class QFileSystemEngine;
 class Q_AUTOTEST_EXPORT QFileSystemMetaData
 {
 public:
-    QFileSystemMetaData()
-        : size_(-1)
-    {
-    }
-
     enum MetaDataFlag {
         // Permissions, overlaps with QFile::Permissions
         OtherReadPermission = 0x00000004,   OtherWritePermission = 0x00000002,  OtherExecutePermission = 0x00000001,
@@ -242,27 +237,27 @@ public:
 private:
     friend class QFileSystemEngine;
 
-    MetaDataFlags knownFlagsMask;
-    MetaDataFlags entryFlags;
+    MetaDataFlags knownFlagsMask = {};
+    MetaDataFlags entryFlags = {};
 
-    qint64 size_;
+    qint64 size_ = Q_INT64_C(-1);
 
     // Platform-specific data goes here:
 #if defined(Q_OS_WIN)
-    DWORD fileAttribute_;
-    FILETIME birthTime_;
-    FILETIME changeTime_;
-    FILETIME lastAccessTime_;
-    FILETIME lastWriteTime_;
+    DWORD fileAttribute_ = 0;
+    FILETIME birthTime_ = 0;
+    FILETIME changeTime_ = 0;
+    FILETIME lastAccessTime_ = 0;
+    FILETIME lastWriteTime_ = 0;
 #else
     // msec precision
-    qint64 accessTime_;
-    qint64 birthTime_;
-    qint64 metadataChangeTime_;
-    qint64 modificationTime_;
+    qint64 accessTime_ = 0;
+    qint64 birthTime_ = 0;
+    qint64 metadataChangeTime_ = 0;
+    qint64 modificationTime_ = 0;
 
-    uint userId_;
-    uint groupId_;
+    uint userId_ = 0;
+    uint groupId_ = 0;
 #endif
 
 };

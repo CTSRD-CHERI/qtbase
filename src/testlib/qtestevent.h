@@ -58,6 +58,11 @@
 
 QT_BEGIN_NAMESPACE
 
+#ifdef QT_WIDGETS_LIB
+# define QT_ONLY_WIDGETLIB_USES
+#else
+# define QT_ONLY_WIDGETLIB_USES Q_DECL_UNUSED_MEMBER
+#endif
 
 class QTestEvent
 {
@@ -103,10 +108,7 @@ class QTestKeyClicksEvent: public QTestEvent
 {
 public:
     inline QTestKeyClicksEvent(const QString &keys, Qt::KeyboardModifiers modifiers, int delay)
-        : _keys(keys), _modifiers(modifiers), _delay(delay)
-        {
-            Q_UNUSED(_delay) // Silence -Werror,-Wunused-private-field
-        }
+        : _keys(keys), _modifiers(modifiers), _delay(delay) {}
     inline QTestEvent *clone() const override { return new QTestKeyClicksEvent(*this); }
 
 #ifdef QT_WIDGETS_LIB
@@ -114,12 +116,18 @@ public:
     {
         QTest::keyClicks(w, _keys, _modifiers, _delay);
     }
+#else
+    inline void silenceWarnings() {
+        Q_UNUSED(_keys)
+        Q_UNUSED(_modifiers)
+        Q_UNUSED(_delay)
+    }
 #endif
 
 private:
-    QString _keys;
-    Qt::KeyboardModifiers _modifiers;
-    int _delay;
+    QT_ONLY_WIDGETLIB_USES QString _keys;
+    QT_ONLY_WIDGETLIB_USES Qt::KeyboardModifiers _modifiers;
+    QT_ONLY_WIDGETLIB_USES int _delay;
 };
 
 class QTestMouseEvent: public QTestEvent
@@ -127,12 +135,7 @@ class QTestMouseEvent: public QTestEvent
 public:
     inline QTestMouseEvent(QTest::MouseAction action, Qt::MouseButton button,
             Qt::KeyboardModifiers modifiers, QPoint position, int delay)
-        : _action(action), _button(button), _modifiers(modifiers), _pos(position), _delay(delay)
-        {
-            Q_UNUSED(_action)
-            Q_UNUSED(_button)
-            Q_UNUSED(_delay)
-        }
+        : _action(action), _button(button), _modifiers(modifiers), _pos(position), _delay(delay) {}
     inline QTestEvent *clone() const override { return new QTestMouseEvent(*this); }
 
 #ifdef QT_WIDGETS_LIB
@@ -140,14 +143,22 @@ public:
     {
         QTest::mouseEvent(_action, w, _button, _modifiers, _pos, _delay);
     }
+#else
+    inline void silenceWarnings() {
+        Q_UNUSED(_action)
+        Q_UNUSED(_button)
+        Q_UNUSED(_modifiers)
+        Q_UNUSED(_pos)
+        Q_UNUSED(_delay)
+    }
 #endif
 
 private:
-    QTest::MouseAction _action;
-    Qt::MouseButton _button;
-    Qt::KeyboardModifiers _modifiers;
-    QPoint _pos;
-    int _delay;
+    QT_ONLY_WIDGETLIB_USES QTest::MouseAction _action;
+    QT_ONLY_WIDGETLIB_USES Qt::MouseButton _button;
+    QT_ONLY_WIDGETLIB_USES Qt::KeyboardModifiers _modifiers;
+    QT_ONLY_WIDGETLIB_USES QPoint _pos;
+    QT_ONLY_WIDGETLIB_USES int _delay;
 };
 #endif //QT_GUI_LIB
 
@@ -155,18 +166,19 @@ private:
 class QTestDelayEvent: public QTestEvent
 {
 public:
-    inline QTestDelayEvent(int msecs): _delay(msecs)
-    {
-        Q_UNUSED(_delay)
-    }
+    inline QTestDelayEvent(int msecs): _delay(msecs) {}
     inline QTestEvent *clone() const override { return new QTestDelayEvent(*this); }
 
 #ifdef QT_WIDGETS_LIB
     inline void simulate(QWidget * /*w*/) override { QTest::qWait(_delay); }
+#else
+    inline void silenceWarnings() {
+        Q_UNUSED(_delay)
+    }
 #endif
 
 private:
-    int _delay;
+    QT_ONLY_WIDGETLIB_USES int _delay;
 };
 
 class QTestEventList: public QList<QTestEvent *>
@@ -229,6 +241,8 @@ public:
     }
 #endif
 };
+
+#undef QT_ONLY_WIDGETLIB_USES
 
 QT_END_NAMESPACE
 

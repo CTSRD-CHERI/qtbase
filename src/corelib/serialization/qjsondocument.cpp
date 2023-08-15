@@ -270,7 +270,7 @@ QJsonDocument &QJsonDocument::operator =(const QJsonDocument &other)
  */
 QJsonDocument QJsonDocument::fromRawData(const char *data, int size, DataValidation validation)
 {
-    if (quintptr(data) & 3) {
+    if (qptraddr(data) & 3) {
         qWarning("QJsonDocument::fromRawData: data has to have 4 byte alignment");
         return QJsonDocument();
     }

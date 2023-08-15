@@ -250,7 +250,7 @@ android: CONFIG += qt_android_deps no_linker_version_script
         verscriptprocess.CONFIG += no_link target_predeps
         verscriptprocess.depends = $$private_api_headers
         verscriptprocess.output = $$verscript
-        verscriptprocess.commands = perl $${PWD}/data/unix/findclasslist.pl < ${QMAKE_FILE_IN} > $@
+        verscriptprocess.commands = /usr/local64/bin/perl $${PWD}/data/unix/findclasslist.pl < ${QMAKE_FILE_IN} > $@
         silent:verscriptprocess.commands = @echo creating linker version script ${QMAKE_FILE_BASE} && $$verscriptprocess.commands
         QMAKE_EXTRA_COMPILERS += verscriptprocess
 

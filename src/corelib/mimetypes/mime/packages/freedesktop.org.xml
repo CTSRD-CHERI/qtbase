@@ -18713,9 +18713,9 @@ command to generate the output files.
     <generic-icon name="text-x-script"/>
     <alias type="text/x-perl"/>
     <magic priority="50">
-      <match type="string" value="eval \&quot;exec /usr/local/bin/perl" offset="0"/>
-      <match type="string" value="/bin/perl" offset="2:16"/>
-      <match type="string" value="/bin/env perl" offset="2:16"/>
+      <match type="string" value="eval \&quot;exec /usr/local64/bin/perl" offset="0"/>
+      <match type="string" value="/usr/local64/bin/perl" offset="2:16"/>
+      <match type="string" value="/usr/local64/bin/perl" offset="2:16"/>
       <match type="string" value="use Test::" offset="0:256"/>
       <match type="string" value="BEGIN {" offset="0:256"/>
     </magic>

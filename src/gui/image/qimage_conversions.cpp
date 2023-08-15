@@ -468,7 +468,7 @@ Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgb32(quint32 *dest_data, con
 {
     int pixel = 0;
     // prolog: align input to 32bit
-    while ((quintptr(src_data) & 0x3) && pixel < len) {
+    while ((qptraddr(src_data) & 0x3) && pixel < len) {
         *dest_data = 0xff000000 | (src_data[0] << 16) | (src_data[1] << 8) | (src_data[2]);
         src_data += 3;
         ++dest_data;
@@ -503,7 +503,7 @@ Q_GUI_EXPORT void QT_FASTCALL qt_convert_rgb888_to_rgbx8888(quint32 *dest_data, 
 {
     int pixel = 0;
     // prolog: align input to 32bit
-    while ((quintptr(src_data) & 0x3) && pixel < len) {
+    while ((qptraddr(src_data) & 0x3) && pixel < len) {
         *dest_data = ARGB2RGBA(0xff000000 | (src_data[0] << 16) | (src_data[1] << 8) | (src_data[2]));
         src_data += 3;
         ++dest_data;

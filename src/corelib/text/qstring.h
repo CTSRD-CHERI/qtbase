@@ -310,6 +310,12 @@ public:
     Q_REQUIRED_RESULT inline QChar back() const { return at(size() - 1); }
     Q_REQUIRED_RESULT inline QCharRef back();
 
+#if __has_feature(capabilities)
+    Q_REQUIRED_RESULT QString arg(__intcap_t a, int fieldwidth=0, int base=10,
+                QChar fillChar = QLatin1Char(' ')) const;
+    Q_REQUIRED_RESULT QString arg(__uintcap_t a, int fieldwidth=0, int base=10,
+                QChar fillChar = QLatin1Char(' ')) const;
+#endif
     Q_REQUIRED_RESULT QString arg(qlonglong a, int fieldwidth=0, int base=10,
                 QChar fillChar = QLatin1Char(' ')) const;
     Q_REQUIRED_RESULT QString arg(qulonglong a, int fieldwidth=0, int base=10,
@@ -801,6 +807,10 @@ public:
     static QString number(ulong, int base=10);
     static QString number(qlonglong, int base=10);
     static QString number(qulonglong, int base=10);
+#if __has_feature(capabilities)
+    static QString number(__intcap_t, int base=10);
+    static QString number(__uintcap_t, int base=10);
+#endif
     static QString number(double, char f='g', int prec=6);
 
     friend Q_CORE_EXPORT bool operator==(const QString &s1, const QString &s2) noexcept;
@@ -964,7 +974,16 @@ public:
     { return QStringView(*this).isValidUtf16(); }
 
     QString(int size, Qt::Initialization);
-    Q_DECL_CONSTEXPR inline QString(QStringDataPtr dd) : d(dd.ptr) {}
+    Q_DECL_CONSTEXPR inline QString(QStringDataPtr dd) : d(dd.ptr) {
+#ifdef __CHERI_PURE_CAPABILITY__
+        QT_WARNING_PUSH
+        QT_WARNING_DISABLE_CLANG("-Wc++14-extensions")
+        if (!__builtin_is_constant_evaluated()) {
+            Q_ASSERT(qIsAligned(this->d, alignof(void *)));
+        }
+        QT_WARNING_POP
+#endif
+    }
 
 private:
 #if defined(QT_NO_CAST_FROM_ASCII)
@@ -1085,7 +1104,7 @@ inline QChar *QString::data()
 inline const QChar *QString::constData() const
 { return reinterpret_cast<const QChar*>(d->data()); }
 inline void QString::detach()
-{ if (d->ref.isShared() || (d->offset != sizeof(QStringData))) reallocData(uint(d->size) + 1u); }
+{ if (d->ref.isShared() || (d->dataOffset() != sizeof(QStringData))) reallocData(uint(d->size) + 1u); }
 inline bool QString::isDetached() const
 { return !d->ref.isShared(); }
 inline void QString::clear()
@@ -1120,6 +1139,12 @@ inline QString QString::arg(short a, int fieldWidth, int base, QChar fillChar) c
 { return arg(qlonglong(a), fieldWidth, base, fillChar); }
 inline QString QString::arg(ushort a, int fieldWidth, int base, QChar fillChar) const
 { return arg(qulonglong(a), fieldWidth, base, fillChar); }
+#if __has_feature(capabilities)
+inline QString QString::arg(__intcap_t a, int fieldWidth, int base, QChar fillChar) const
+{ return arg(qlonglong(a), fieldWidth, base, fillChar); }
+inline QString QString::arg(__uintcap_t a, int fieldWidth, int base, QChar fillChar) const
+{ return arg(qulonglong(a), fieldWidth, base, fillChar); }
+#endif
 #if QT_STRINGVIEW_LEVEL < 2
 inline QString QString::arg(const QString &a1, const QString &a2) const
 { return qToStringViewIgnoringNull(*this).arg(a1, a2); }
@@ -2089,7 +2114,8 @@ inline QString &&asString(QString &&s)              { return std::move(s); }
 
 namespace QtPrivate {
 
-struct ArgBase {
+// alignas() needed to work around https://git.morello-project.org/morello/llvm-project/-/issues/52
+struct alignas(QStringView) ArgBase {
     enum Tag : uchar { L1, U8, U16 } tag;
 };
 

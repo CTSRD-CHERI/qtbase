@@ -105,7 +105,8 @@ QStringList QKqueueFileSystemWatcherEngine::addPaths(const QStringList &paths,
         fd = qt_safe_open(QFile::encodeName(path), O_RDONLY);
 #endif
         if (fd == -1) {
-            perror("QKqueueFileSystemWatcherEngine::addPaths: open");
+            qWarning("QKqueueFileSystemWatcherEngine::addPaths(%s): open: %s", qPrintable(path),
+                     strerror(errno));
             continue;
         }
         if (fd >= (int)FD_SETSIZE / 2 && fd < (int)FD_SETSIZE) {
@@ -118,7 +119,8 @@ QStringList QKqueueFileSystemWatcherEngine::addPaths(const QStringList &paths,
 
         QT_STATBUF st;
         if (QT_FSTAT(fd, &st) == -1) {
-            perror("QKqueueFileSystemWatcherEngine::addPaths: fstat");
+            qWarning("QKqueueFileSystemWatcherEngine::addPaths(%s): fstat: %s", qPrintable(path),
+                     strerror(errno));
             ::close(fd);
             continue;
         }
@@ -144,7 +146,8 @@ QStringList QKqueueFileSystemWatcherEngine::addPaths(const QStringList &paths,
                0,
                0);
         if (kevent(kqfd, &kev, 1, 0, 0, 0) == -1) {
-            perror("QKqueueFileSystemWatcherEngine::addPaths: kevent");
+            qWarning("QKqueueFileSystemWatcherEngine::addPaths(%s): kevent: %s", qPrintable(path),
+                     strerror(errno));
             ::close(fd);
             continue;
         }
@@ -203,13 +206,14 @@ void QKqueueFileSystemWatcherEngine::readFromKqueue()
         struct timespec ts = { 0, 0 }; // 0 ts, because we want to poll
         EINTR_LOOP(r, kevent(kqfd, 0, 0, &kev, 1, &ts));
         if (r < 0) {
-            perror("QKqueueFileSystemWatcherEngine: error during kevent wait");
+            qWarning("QKqueueFileSystemWatcherEngine: error during kevent wait: %s",
+                     strerror(errno));
             return;
         } else if (r == 0) {
             // polling returned no events, so stop
             break;
         } else {
-            int fd = kev.ident;
+            int fd = (int)kev.ident;
 
             DEBUG() << "QKqueueFileSystemWatcherEngine: processing kevent" << kev.ident << kev.filter;
 

@@ -1444,7 +1444,7 @@ QString qFormatLogMessage(QtMsgType type, const QMessageLogContext &context, con
             message.append(QString::number(qt_gettid()));
         } else if (token == qthreadptrTokenC) {
             message.append(QLatin1String("0x"));
-            message.append(QString::number(qlonglong(QThread::currentThread()->currentThread()), 16));
+            message.append(QString::number((qptraddr)QThread::currentThread()->currentThread(), 16));
 #ifdef QLOGGING_HAVE_BACKTRACE
         } else if (token == backtraceTokenC) {
             QMessagePattern::BacktraceParams backtraceParams = pattern->backtraceArgs.at(backtraceArgsIdx);

@@ -4642,7 +4642,7 @@ static void blend_color_rgb16(int count, const QSpan *spans, void *userData)
             ushort c = qConvertRgb32To16(color);
             ushort *target = ((ushort *)data->rasterBuffer->scanLine(spans->y)) + spans->x;
             int len = spans->len;
-            bool pre = (((quintptr)target) & 0x3) != 0;
+            bool pre = (((qptraddr)target) & 0x3) != 0;
             bool post = false;
             if (pre) {
                 // skip to word boundary
@@ -4995,14 +4995,14 @@ static inline void blend_sourceOver_rgb16_rgb16(quint16 *Q_DECL_RESTRICT dest,
                                                 const quint8 alpha,
                                                 const quint8 ialpha)
 {
-    const int dstAlign = ((quintptr)dest) & 0x3;
+    const int dstAlign = ((qptraddr)dest) & 0x3;
     if (dstAlign) {
         *dest = interpolate_pixel_rgb16_255(*src, alpha, *dest, ialpha);
         ++dest;
         ++src;
         --length;
     }
-    const int srcAlign = ((quintptr)src) & 0x3;
+    const int srcAlign = ((qptraddr)src) & 0x3;
     int length32 = length >> 1;
     if (length32 && srcAlign == 0) {
         while (length32--) {

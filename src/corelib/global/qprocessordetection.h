@@ -392,10 +392,15 @@
    the size of the register). On some architectures where a pointer could be
    smaller than the register, the macro is defined above.
 
-   Falls back to QT_POINTER_SIZE if not set explicitly for the platform.
+   Falls back to __SIZEOF_SIZE_T__ then QT_POINTER_SIZE if not set explicitly
+   for the platform.
 */
 #ifndef Q_PROCESSOR_WORDSIZE
-#  define Q_PROCESSOR_WORDSIZE        QT_POINTER_SIZE
+#  if defined __SIZEOF_SIZE_T__
+#    define Q_PROCESSOR_WORDSIZE    __SIZEOF_SIZE_T__
+#  else
+#    define Q_PROCESSOR_WORDSIZE    QT_POINTER_SIZE
+#  endif
 #endif
 
 

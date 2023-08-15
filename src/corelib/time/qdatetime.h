@@ -257,13 +257,13 @@ class Q_CORE_EXPORT QDateTime
     // ### Qt 6: revisit the optimization
     struct ShortData {
 #if Q_BYTE_ORDER == Q_LITTLE_ENDIAN
-        quintptr status : 8;
+        qsizetype status : 8;
 #endif
         // note: this is only 24 bits on 32-bit systems...
-        qintptr msecs : sizeof(void *) * 8 - 8;
+        qptrdiff msecs : sizeof(qptrdiff) * 8 - 8;
 
 #if Q_BYTE_ORDER == Q_BIG_ENDIAN
-        quintptr status : 8;
+        qsizetype status : 8;
 #endif
     };
 

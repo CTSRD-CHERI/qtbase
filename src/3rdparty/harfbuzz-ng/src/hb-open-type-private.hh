@@ -131,8 +131,12 @@ static inline Type& StructAfter(TObject &X)
  */
 
 /* Global nul-content Null pool.  Enlarge as necessary. */
-
+#ifndef __CHERI_PURE_CAPABILITY__
 #define HB_NULL_POOL_SIZE 264
+#else
+// XXXAR: not entirely sure what this should be, let's just multiply by 2
+#define HB_NULL_POOL_SIZE (264 * 2)
+#endif
 static_assert (HB_NULL_POOL_SIZE % sizeof (void *) == 0, "Align HB_NULL_POOL_SIZE.");
 extern HB_INTERNAL const void * const _hb_NullPool[HB_NULL_POOL_SIZE / sizeof (void *)];
 

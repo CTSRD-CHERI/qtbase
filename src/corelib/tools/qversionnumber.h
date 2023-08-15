@@ -87,7 +87,7 @@ class QVersionNumber
         };
 
         // set the InlineSegmentMarker and set length to zero
-        SegmentStorage() noexcept : dummy(1) {}
+        SegmentStorage() noexcept : dummy(0) { setInlineSize(0); }
 
         SegmentStorage(const QVector<int> &seg)
         {
@@ -122,7 +122,7 @@ class QVersionNumber
         SegmentStorage(SegmentStorage &&other) noexcept
             : dummy(other.dummy)
         {
-            other.dummy = 1;
+            other.setInlineSize(0);
         }
 
         SegmentStorage &operator=(SegmentStorage &&other) noexcept
@@ -195,13 +195,14 @@ class QVersionNumber
         }
         void setInlineData(const int *data, int len)
         {
+#if Q_BYTE_ORDER == Q_LITTLE_ENDIAN && !defined(__CHERI_PURE_CAPABILITY__)
             dummy = 1 + len * 2;
-#if Q_BYTE_ORDER == Q_LITTLE_ENDIAN
             for (int i = 0; i < len; ++i)
-                dummy |= quintptr(data[i] & 0xFF) << (8 * (i + 1));
-#elif Q_BYTE_ORDER == Q_BIG_ENDIAN
+                dummy |= qptraddr(data[i] & 0xFF) << (8 * (i + 1));
+#elif Q_BYTE_ORDER == Q_BIG_ENDIAN && !defined(__CHERI_PURE_CAPABILITY__)
+            dummy = 1 + len * 2;
             for (int i = 0; i < len; ++i)
-                dummy |= quintptr(data[i] & 0xFF) << (8 * (sizeof(void *) - i - 1));
+                dummy |= qptraddr(data[i] & 0xFF) << (8 * (sizeof(void *) - i - 1));
 #else
             // the code above is equivalent to:
             setInlineSize(len);

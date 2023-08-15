@@ -208,7 +208,15 @@ struct QGlyphLayout
 
     int numGlyphs;
 
-    inline QGlyphLayout() : numGlyphs(0) {}
+    inline QGlyphLayout()
+        : offsets(Q_NULLPTR),
+          glyphs(Q_NULLPTR),
+          advances(Q_NULLPTR),
+          justifications(Q_NULLPTR),
+          attributes(Q_NULLPTR),
+          numGlyphs(0)
+    {
+    }
 
     inline explicit QGlyphLayout(char *address, int totalGlyphs)
     {

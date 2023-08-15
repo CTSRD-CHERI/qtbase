@@ -149,10 +149,12 @@
             "headers": "sqlite3.h",
             "sources": [
                 { "type": "pkgConfig", "args": "sqlite3" },
+                { "type": "pkgConfig", "args": "--static sqlite3" },
                 "-lsqlite3"
             ],
             "use": [
-                { "lib": "zlib", "condition": "!config.win32 && features.system-zlib" }
+                { "lib": "zlib", "condition": "!config.win32 && features.system-zlib" },
+                { "lib": "thread" }
             ]
         }
     },

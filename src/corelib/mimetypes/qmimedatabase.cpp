@@ -60,6 +60,11 @@
 
 QT_BEGIN_NAMESPACE
 
+namespace QtPrivate {
+Q_LOGGING_CATEGORY(lcMimeDatabase, "qt.core.mimedatabase");
+}
+using namespace QtPrivate;
+
 Q_GLOBAL_STATIC(QMimeDatabasePrivate, staticQMimeDatabase)
 
 QMimeDatabasePrivate *QMimeDatabasePrivate::instance()
@@ -102,8 +107,15 @@ void QMimeDatabasePrivate::loadProviders()
     const auto fdoIterator = std::find_if(mimeDirs.constBegin(), mimeDirs.constEnd(), [](const QString &mimeDir) -> bool {
         return QFileInfo::exists(mimeDir + QStringLiteral("/packages/freedesktop.org.xml")); }
     );
-    const bool needInternalDB = QMimeXMLProvider::InternalDatabaseAvailable && fdoIterator == mimeDirs.constEnd();
-    //qDebug() << "mime dirs:" << mimeDirs;
+    const bool needInternalDB =
+            QMimeXMLProvider::InternalDatabaseAvailable && fdoIterator == mimeDirs.constEnd();
+    if (mimeDirs.isEmpty()) {
+        qCWarning(lcMimeDatabase) << "Could not find any mime/ directories in "
+                                  << QStandardPaths::standardLocations(
+                                             QStandardPaths::GenericDataLocation);
+    } else {
+        qCDebug(lcMimeDatabase) << "mime dirs:" << mimeDirs;
+    }
 
     Providers currentProviders;
     std::swap(m_providers, currentProviders);
@@ -124,7 +136,7 @@ void QMimeDatabasePrivate::loadProviders()
 #if defined(QT_USE_MMAP)
             if (qEnvironmentVariableIsEmpty("QT_NO_MIME_CACHE") && fileInfo.exists()) {
                 provider.reset(new QMimeBinaryProvider(this, mimeDir));
-                //qDebug() << "Created binary provider for" << mimeDir;
+                qCDebug(lcMimeDatabase) << "Created binary provider for" << mimeDir;
                 if (!provider->isValid()) {
                     provider.reset();
                 }
@@ -132,7 +144,8 @@ void QMimeDatabasePrivate::loadProviders()
 #endif
             if (!provider) {
                 provider.reset(new QMimeXMLProvider(this, mimeDir));
-                //qDebug() << "Created XML provider for" << mimeDir;
+                qCWarning(lcMimeDatabase) << "Created XML provider for" << mimeDir
+                           << "\n    Consider running \"update-mime-database\"";
             }
             m_providers.push_back(std::move(provider));
         } else {
@@ -140,7 +153,7 @@ void QMimeDatabasePrivate::loadProviders()
             provider->ensureLoaded();
             if (!provider->isValid()) {
                 provider.reset(new QMimeXMLProvider(this, mimeDir));
-                //qDebug() << "Created XML provider to replace binary provider for" << mimeDir;
+                qCDebug(lcMimeDatabase) << "Created XML provider to replace binary provider for" << mimeDir;
             }
             m_providers.push_back(std::move(provider));
         }
@@ -148,6 +161,7 @@ void QMimeDatabasePrivate::loadProviders()
     // mimeDirs is sorted "most local first, most global last"
     // so the internal XML DB goes at the end
     if (needInternalDB) {
+        qCDebug(lcMimeDatabase) << "using internal mime database";
         // Check if we already have a provider for the InternalDatabase
         const auto isInternal = [](const std::unique_ptr<QMimeProviderBase> &prov)
         {

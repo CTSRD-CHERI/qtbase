@@ -81,7 +81,7 @@ hb_segment_properties_hash (const hb_segment_properties_t *p)
 {
   return (unsigned int) p->direction ^
 	 (unsigned int) p->script ^
-	 (intptr_t) (p->language);
+	 (ptrdiff_t) (p->language);
 }
 
 
@@ -200,7 +200,7 @@ hb_buffer_t::get_scratch_buffer (unsigned int *size)
   out_len = 0;
   out_info = info;
 
-  assert ((uintptr_t) pos % sizeof (scratch_buffer_t) == 0);
+  assert ((size_t) pos % sizeof (scratch_buffer_t) == 0);
   *size = allocated * sizeof (pos[0]) / sizeof (scratch_buffer_t);
   return (scratch_buffer_t *) (void *) pos;
 }

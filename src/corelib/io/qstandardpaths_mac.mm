@@ -184,6 +184,24 @@ QStringList QStandardPaths::standardLocations(StandardLocation type)
         dirs << writableLocation(PicturesLocation) << QLatin1String("assets-library://");
 #endif
 
+#if !defined(QT_BOOTSTRAPPED) && defined(Q_OS_MACOS)
+#ifdef QT_STANDARDPATHS_ADDITIONAL_DATADIRS
+    if (type == AppDataLocation || type == AppLocalDataLocation || type == GenericDataLocation) {
+        QStringList extraDataDirs;
+        // Add the value of -additional-datadir configure argument to the list.
+        // This allows e.g. homebrew to use a Qt build that is configured to search
+        // for generic data in /usr/local/share instead of requiring it to be in
+        // /Library/Application Support which is not writable from the homebrew sandbox.
+        extraDataDirs = QStringList(QT_STANDARDPATHS_ADDITIONAL_DATADIRS);
+        if (type == AppDataLocation || type == AppLocalDataLocation) {
+            for (QString &dir : extraDataDirs)
+                appendOrganizationAndApp(dir);
+        }
+        dirs << extraDataDirs;
+    }
+#endif
+#endif
+
     if (type == GenericDataLocation || type == FontsLocation || type == ApplicationsLocation
             || type == AppDataLocation || type == AppLocalDataLocation
             || type == GenericCacheLocation || type == CacheLocation) {

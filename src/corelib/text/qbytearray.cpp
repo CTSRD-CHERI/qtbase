@@ -65,13 +65,13 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define IS_RAW_DATA(d) ((d)->offset != sizeof(QByteArrayData))
+#define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QByteArrayData))
 
 QT_BEGIN_NAMESPACE
 
 // Latin 1 case system, used by QByteArray::to{Upper,Lower}() and qstr(n)icmp():
 /*
-#!/usr/bin/perl -l
+#!/usr/local64/bin/perl -l
 use feature "unicode_strings";
 for (0..255) {
     $up = uc(chr($_));
@@ -100,7 +100,7 @@ static const uchar latin1_uppercased[256] = {
 };
 
 /*
-#!/usr/bin/perl -l
+#!/usr/local64/bin/perl -l
 use feature "unicode_strings";
 for (0..255) {
     $up = lc(chr($_));
@@ -1866,11 +1866,17 @@ void QByteArray::expand(int i)
 QByteArray QByteArray::nulTerminated() const
 {
     // is this fromRawData?
-    if (!IS_RAW_DATA(d))
+    if (!IS_RAW_DATA(d)) {
+        // XXXAR: for CHERI we need hack in data() to treat sharedNull as having length 1
+        qarraydata_dbg("QByteArray::nulTerminated() IS_RAW_DATA: %#p -- data()= %#p\n", static_cast<const void*>(d), d->data());
         return *this;           // no, then we're sure we're zero terminated
+    }
 
+    qarraydata_dbg("QByteArray::nulTerminated() not raw data: %#p, data()= %#p\n", static_cast<const void*>(d), d->data());
     QByteArray copy(*this);
+    qarraydata_dbg("QByteArray::nulTerminated() not raw data copy: %#p, copy.data() = %#p\n", static_cast<const void*>(copy.d), copy.d->data());
     copy.detach();
+    qarraydata_dbg("QByteArray::nulTerminated() copy detached: %#p -- copy.data() = %#p\n", static_cast<const void*>(copy.d), copy.d->data());
     return copy;
 }
 
@@ -4417,6 +4423,24 @@ QByteArray QByteArray::number(qulonglong n, int base)
     return s;
 }
 
+#if __has_feature(capabilities)
+/*!
+    \overload
+*/
+QByteArray QByteArray::number(__intcap_t n, int base)
+{
+    return QByteArray::number(qlonglong(n), base);
+}
+
+/*!
+    \overload
+*/
+QByteArray QByteArray::number(__uintcap_t n, int base)
+{
+    return QByteArray::number(qulonglong(n), base);
+}
+#endif
+
 /*!
     \overload
 
@@ -4503,6 +4527,15 @@ QByteArray QByteArray::fromRawData(const char *data, int size)
     return QByteArray(dataPtr);
 }
 
+QByteArray QByteArray::fromNulTerminatedRawData(const char *data, int size)
+{
+    Q_CHECK_PTR(data);
+    Data *x = Data::fromRawData(data, size + 1, Data::WithNulTerminator);
+    Q_CHECK_PTR(x);
+    QByteArrayDataPtr dataPtr = { x };
+    return QByteArray(dataPtr);
+}
+
 /*!
     \since 4.7
 
@@ -4524,10 +4557,26 @@ QByteArray &QByteArray::setRawData(const char *data, uint size)
     } else {
         if (data) {
             d->size = size;
+#ifndef __CHERI_PURE_CAPABILITY__
             d->offset = data - reinterpret_cast<char *>(d);
+#else
+            d->setPointer(data);
+#endif
         } else {
-            d->offset = sizeof(QByteArrayData);
+            // If we get passed a null pointer we still ensure that data()
+            // returns a zero-length null terminated string
+            d->setOffset(sizeof(QByteArrayData));
             d->size = 0;
+            // If d->alloc is zero set it to one to allow writing to the first byte of
+            // d->data(). On capability architectures like CHERI data() will return
+            // a capability with length set to max(alloc, size) and if both of these are
+            // zero we will get a trap when attempting to write the '\0'.
+            // FIXME: Due to the way that malloc works we should generally have at least
+            // one free byte after the QByteArrayData object but we should probably
+            // actually check that there is enough allocated space.
+            if (d->alloc == 0)
+                d->alloc = 1;
+            *d->data() = 0;
         }
     }
     return *this;
