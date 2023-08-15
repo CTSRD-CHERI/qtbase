@@ -702,13 +702,14 @@ void QPrintDialogPrivate::selectPrinter(const QPrinter::OutputFormat outputForma
         else
             options.grayscale->setChecked(true);
 
-        // keep duplex value explicitly set by user, if any, and selected printer supports it;
-        // use device default otherwise
+        // duplex priorities to be as follows:
+        // 1) a user-selected duplex value in the dialog has highest prority
+        // 2) duplex value set in the QPrinter
         QPrint::DuplexMode duplex;
         if (explicitDuplexMode != QPrint::DuplexAuto && supportedDuplexMode.contains(explicitDuplexMode))
             duplex = explicitDuplexMode;
         else
-            duplex = top->d->m_currentPrintDevice.defaultDuplexMode();
+            duplex = static_cast<QPrint::DuplexMode>(p->duplex());
         switch (duplex) {
         case QPrint::DuplexNone:
             options.noDuplex->setChecked(true); break;
@@ -1242,10 +1243,10 @@ void QUnixPrintWidgetPrivate::_q_printerChanged(int index)
             QString filename = widget.filename->text();
             widget.filename->setText(filename);
             widget.lOutput->setEnabled(true);
-            if (optionsPane)
-                optionsPane->selectPrinter(QPrinter::PdfFormat);
             printer->setOutputFormat(QPrinter::PdfFormat);
             m_currentPrintDevice = QPrintDevice();
+            if (optionsPane)
+                optionsPane->selectPrinter(QPrinter::PdfFormat);
             return;
         }
     }

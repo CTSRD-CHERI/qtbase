@@ -169,8 +169,7 @@ static void set_thread_data(QThreadData *data)
 
 static void clear_thread_data()
 {
-    currentThreadData = nullptr;
-    pthread_setspecific(current_thread_data_key, nullptr);
+    set_thread_data(nullptr);
 }
 
 template <typename T>
@@ -296,7 +295,7 @@ void *QThreadPrivate::start(void *arg)
             QMutexLocker locker(&thr->d_func()->mutex);
 
             // do we need to reset the thread priority?
-            if (int(thr->d_func()->priority) & ThreadPriorityResetFlag) {
+            if (thr->d_func()->priority & ThreadPriorityResetFlag) {
                 thr->d_func()->setPriority(QThread::Priority(thr->d_func()->priority & ~ThreadPriorityResetFlag));
             }
 
@@ -316,10 +315,10 @@ void *QThreadPrivate::start(void *arg)
             // Sets the name of the current thread. We can only do this
             // when the thread is starting, as we don't have a cross
             // platform way of setting the name of an arbitrary thread.
-            if (Q_LIKELY(thr->objectName().isEmpty()))
+            if (Q_LIKELY(thr->d_func()->objectName.isEmpty()))
                 setCurrentThreadName(thr->metaObject()->className());
             else
-                setCurrentThreadName(thr->objectName().toLocal8Bit());
+                setCurrentThreadName(std::exchange(thr->d_func()->objectName, {}).toLocal8Bit());
         }
 #endif
 
@@ -671,7 +670,7 @@ void QThread::start(Priority priority)
                 // could not set scheduling hints, fallback to inheriting them
                 // we'll try again from inside the thread
                 pthread_attr_setinheritsched(&attr, PTHREAD_INHERIT_SCHED);
-                d->priority = Priority(priority | ThreadPriorityResetFlag);
+                d->priority = static_cast<std::underlying_type<QThread::Priority>::type>(priority) | ThreadPriorityResetFlag;
             }
             break;
         }
@@ -702,7 +701,10 @@ void QThread::start(Priority priority)
         pthread_attr_setthreadname(&attr, metaObject()->className());
     else
         pthread_attr_setthreadname(&attr, objectName().toLocal8Bit());
+#else
+    d->objectName = objectName();
 #endif
+
     pthread_t threadId;
     int code = pthread_create(&threadId, &attr, QThreadPrivate::start, this);
     if (code == EPERM) {

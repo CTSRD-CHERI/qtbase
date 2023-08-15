@@ -163,6 +163,8 @@ QT_BEGIN_NAMESPACE
 
     \value ShowShortcutsInContextMenus (bool) Whether to display shortcut key sequences in context menus.
 
+    \value ButtonPressKeys (QList<Qt::Key>) A list of keys that can be used to press buttons via keyboard input.
+
     \sa themeHint(), QStyle::pixelMetric()
 */
 
@@ -563,6 +565,8 @@ QVariant QPlatformTheme::defaultThemeHint(ThemeHint hint)
         }
     case MouseQuickSelectionThreshold:
         return QVariant(10);
+    case ButtonPressKeys:
+        return QVariant::fromValue(QList<Qt::Key>({ Qt::Key_Space, Qt::Key_Select }));
     }
     return QVariant();
 }

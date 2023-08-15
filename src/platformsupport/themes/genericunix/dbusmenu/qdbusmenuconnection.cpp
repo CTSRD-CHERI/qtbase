@@ -69,6 +69,7 @@ const QString MenuBarPath = QLatin1String("/MenuBar");
 */
 QDBusMenuConnection::QDBusMenuConnection(QObject *parent, const QString &serviceName)
     : QObject(parent)
+    , m_serviceName(serviceName)
     , m_connection(serviceName.isNull() ? QDBusConnection::sessionBus()
                                         : QDBusConnection::connectToBus(QDBusConnection::SessionBus, serviceName))
     , m_dbusWatcher(new QDBusServiceWatcher(StatusNotifierWatcherService, m_connection, QDBusServiceWatcher::WatchForRegistration, this))
@@ -81,6 +82,12 @@ QDBusMenuConnection::QDBusMenuConnection(QObject *parent, const QString &service
     else
         qCDebug(qLcMenu) << "StatusNotifierHost is not registered";
 #endif
+}
+
+QDBusMenuConnection::~QDBusMenuConnection()
+{
+  if (!m_serviceName.isEmpty() && m_connection.isConnected())
+      QDBusConnection::disconnectFromBus(m_serviceName);
 }
 
 void QDBusMenuConnection::dbusError(const QDBusError &error)
@@ -105,13 +112,7 @@ void QDBusMenuConnection::unregisterTrayIconMenu(QDBusTrayIcon *item)
 
 bool QDBusMenuConnection::registerTrayIcon(QDBusTrayIcon *item)
 {
-    bool success = connection().registerService(item->instanceId());
-    if (!success) {
-        qWarning() << "failed to register service" << item->instanceId();
-        return false;
-    }
-
-    success = connection().registerObject(StatusNotifierItemPath, item);
+    bool success = connection().registerObject(StatusNotifierItemPath, item);
     if (!success) {
         unregisterTrayIcon(item);
         qWarning() << "failed to register" << item->instanceId() << StatusNotifierItemPath;
@@ -126,21 +127,18 @@ bool QDBusMenuConnection::registerTrayIcon(QDBusTrayIcon *item)
 
 bool QDBusMenuConnection::registerTrayIconWithWatcher(QDBusTrayIcon *item)
 {
+    Q_UNUSED(item);
     QDBusMessage registerMethod = QDBusMessage::createMethodCall(
                 StatusNotifierWatcherService, StatusNotifierWatcherPath, StatusNotifierWatcherService,
                 QLatin1String("RegisterStatusNotifierItem"));
-    registerMethod.setArguments(QVariantList() << item->instanceId());
+    registerMethod.setArguments(QVariantList() << m_connection.baseService());
     return m_connection.callWithCallback(registerMethod, this, SIGNAL(trayIconRegistered()), SLOT(dbusError(QDBusError)));
 }
 
-bool QDBusMenuConnection::unregisterTrayIcon(QDBusTrayIcon *item)
+void QDBusMenuConnection::unregisterTrayIcon(QDBusTrayIcon *item)
 {
     unregisterTrayIconMenu(item);
     connection().unregisterObject(StatusNotifierItemPath);
-    bool success = connection().unregisterService(item->instanceId());
-    if (!success)
-        qWarning() << "failed to unregister service" << item->instanceId();
-    return success;
 }
 #endif // QT_NO_SYSTEMTRAYICON
 

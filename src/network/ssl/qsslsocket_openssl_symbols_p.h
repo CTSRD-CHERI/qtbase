@@ -237,7 +237,6 @@ Q_AUTOTEST_EXPORT int q_EVP_PKEY_up_ref(EVP_PKEY *a);
 EVP_PKEY_CTX *q_EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
 void q_EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
 int q_EVP_PKEY_param_check(EVP_PKEY_CTX *ctx);
-int q_EVP_PKEY_base_id(EVP_PKEY *a);
 int q_RSA_bits(RSA *a);
 Q_AUTOTEST_EXPORT int q_OPENSSL_sk_num(OPENSSL_STACK *a);
 Q_AUTOTEST_EXPORT void q_OPENSSL_sk_pop_free(OPENSSL_STACK *a, void (*b)(void *));
@@ -246,7 +245,7 @@ Q_AUTOTEST_EXPORT void q_OPENSSL_sk_push(OPENSSL_STACK *st, void *data);
 Q_AUTOTEST_EXPORT void q_OPENSSL_sk_free(OPENSSL_STACK *a);
 Q_AUTOTEST_EXPORT void * q_OPENSSL_sk_value(OPENSSL_STACK *a, int b);
 int q_SSL_session_reused(SSL *a);
-unsigned long q_SSL_CTX_set_options(SSL_CTX *ctx, unsigned long op);
+qssloptions q_SSL_CTX_set_options(SSL_CTX *ctx, qssloptions op);
 int q_OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings);
 size_t q_SSL_get_client_random(SSL *a, unsigned char *out, size_t outlen);
 size_t q_SSL_SESSION_get_master_key(const SSL_SESSION *session, unsigned char *out, size_t outlen);
@@ -510,7 +509,6 @@ const SSL_CIPHER *q_SSL_get_current_cipher(SSL *a);
 int q_SSL_version(const SSL *a);
 int q_SSL_get_error(SSL *a, int b);
 STACK_OF(X509) *q_SSL_get_peer_cert_chain(SSL *a);
-X509 *q_SSL_get_peer_certificate(SSL *a);
 long q_SSL_get_verify_result(const SSL *a);
 SSL *q_SSL_new(SSL_CTX *a);
 SSL_CTX *q_SSL_get_SSL_CTX(SSL *a);
@@ -582,10 +580,7 @@ DH *q_DH_new();
 void q_DH_free(DH *dh);
 DH *q_d2i_DHparams(DH **a, const unsigned char **pp, long length);
 int q_i2d_DHparams(DH *a, unsigned char **p);
-
-#ifndef OPENSSL_NO_DEPRECATED_3_0
 int q_DH_check(DH *dh, int *codes);
-#endif // OPENSSL_NO_DEPRECATED_3_0
 
 BIGNUM *q_BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret);
 #define q_SSL_CTX_set_tmp_dh(ctx, dh) q_SSL_CTX_ctrl((ctx), SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
@@ -753,6 +748,17 @@ void q_CRYPTO_free(void *str, const char *file, int line);
 
 int q_SSL_CTX_get_security_level(const SSL_CTX *ctx);
 void q_SSL_CTX_set_security_level(SSL_CTX *ctx, int level);
+
+// Here we have the ones that make difference between OpenSSL pre/post v3:
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
+X509 *q_SSL_get1_peer_certificate(SSL *a);
+#define q_SSL_get_peer_certificate q_SSL_get1_peer_certificate
+int q_EVP_PKEY_get_base_id(const EVP_PKEY *pkey);
+#define q_EVP_PKEY_base_id q_EVP_PKEY_get_base_id
+#else
+X509 *q_SSL_get_peer_certificate(SSL *a);
+int q_EVP_PKEY_base_id(EVP_PKEY *a);
+#endif // OPENSSL_VERSION_MAJOR >= 3
 
 QT_END_NAMESPACE
 

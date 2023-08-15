@@ -409,7 +409,7 @@ init_context:
         break;
     case QSsl::DtlsV1_0OrLater:
         minVersion = DTLS1_VERSION;
-        maxVersion = DTLS_MAX_VERSION;
+        maxVersion = 0;
         break;
     case QSsl::DtlsV1_2:
         minVersion = DTLS1_2_VERSION;
@@ -417,7 +417,7 @@ init_context:
         break;
     case QSsl::DtlsV1_2OrLater:
         minVersion = DTLS1_2_VERSION;
-        maxVersion = DTLS_MAX_VERSION;
+        maxVersion = 0;
         break;
     case QSsl::TlsV1_3OrLater:
 #ifdef TLS1_3_VERSION
@@ -455,7 +455,7 @@ init_context:
     }
 
     // Enable bug workarounds.
-    long options = QSslSocketBackendPrivate::setupOpenSslOptions(configuration.protocol(), configuration.d->sslOptions);
+    qssloptions options = QSslSocketBackendPrivate::setupOpenSslOptions(configuration.protocol(), configuration.d->sslOptions);
     q_SSL_CTX_set_options(sslContext->ctx, options);
 
     // Tell OpenSSL to release memory early

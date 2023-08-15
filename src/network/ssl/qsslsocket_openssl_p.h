@@ -107,6 +107,12 @@
 
 QT_BEGIN_NAMESPACE
 
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
+typedef uint64_t qssloptions;
+#else
+typedef unsigned long qssloptions;
+#endif
+
 struct QSslErrorEntry {
     int code;
     int depth;
@@ -171,7 +177,7 @@ public:
     QVector<QSslError> ocspErrors;
     QByteArray ocspResponseDer;
 
-    Q_AUTOTEST_EXPORT static long setupOpenSslOptions(QSsl::SslProtocol protocol, QSsl::SslOptions sslOptions);
+    Q_AUTOTEST_EXPORT static qssloptions setupOpenSslOptions(QSsl::SslProtocol protocol, QSsl::SslOptions sslOptions);
     static QSslCipher QSslCipher_from_SSL_CIPHER(const SSL_CIPHER *cipher);
     static QList<QSslCertificate> STACKOFX509_to_QSslCertificates(STACK_OF(X509) *x509);
     static QList<QSslError> verify(const QList<QSslCertificate> &certificateChain, const QString &hostName);

@@ -168,6 +168,7 @@ private slots:
     void checkMenuItemPosWhenStyleSheetIsSet();
     void checkEmbeddedLineEditWhenStyleSheetIsSet();
     void propagateStyleChanges();
+    void buttonPressKeys();
 
 private:
     PlatformInputContext m_platformInputContext;
@@ -1682,6 +1683,16 @@ void tst_QComboBox::setModel()
     QCOMPARE(box.rootModelIndex(), rootModelIndex);
     box.setModel(box.model());
     QCOMPARE(box.rootModelIndex(), rootModelIndex);
+
+    // check that setting the same model as the completer's doesn't crash
+    QCompleter *completer = new QCompleter(&box);
+    box.setEditable(true);
+    box.setCompleter(completer);
+    auto *listModel = new QStringListModel({ "one", "two" }, completer);
+    completer->setModel(listModel);
+    QCOMPARE(listModel->rowCount(), 2); // make sure it wasn't deleted
+    box.setModel(listModel);
+    QCOMPARE(listModel->rowCount(), 2); // make sure it wasn't deleted
 }
 
 void tst_QComboBox::setCustomModelAndView()
@@ -3630,6 +3641,25 @@ void tst_QComboBox::propagateStyleChanges()
     combo.setSizeAdjustPolicy(QComboBox::AdjustToContents);
     combo.setStyle(&frameStyle);
     QVERIFY(frameStyle.inquired);
+}
+
+void tst_QComboBox::buttonPressKeys()
+{
+    QComboBox comboBox;
+    comboBox.setEditable(false);
+    comboBox.addItem(QString::number(1));
+    comboBox.addItem(QString::number(2));
+    const auto buttonPressKeys = QGuiApplicationPrivate::platformTheme()
+                                         ->themeHint(QPlatformTheme::ButtonPressKeys)
+                                         .value<QList<Qt::Key>>();
+    for (int i = 0; i < buttonPressKeys.length(); ++i) {
+        QTest::keyClick(&comboBox, buttonPressKeys[i]);
+        // On some platforms, a window will not be immediately visible,
+        // but take some event-loop iterations to complete.
+        // Using QTRY_VERIFY to deal with that.
+        QTRY_VERIFY(comboBox.view()->isVisible());
+        comboBox.hidePopup();
+    }
 }
 
 QTEST_MAIN(tst_QComboBox)

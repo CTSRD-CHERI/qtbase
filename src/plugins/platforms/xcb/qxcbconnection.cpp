@@ -488,12 +488,12 @@ void QXcbConnection::printXcbError(const char *message, xcb_generic_error_t *err
     uint clamped_error_code = qMin<uint>(error->error_code, (sizeof(xcb_errors) / sizeof(xcb_errors[0])) - 1);
     uint clamped_major_code = qMin<uint>(error->major_code, (sizeof(xcb_protocol_request_codes) / sizeof(xcb_protocol_request_codes[0])) - 1);
 
-    qCWarning(lcQpaXcb, "%s: %d (%s), sequence: %d, resource id: %d, major code: %d (%s), minor code: %d",
-             message,
-             int(error->error_code), xcb_errors[clamped_error_code],
-             int(error->sequence), int(error->resource_id),
-             int(error->major_code), xcb_protocol_request_codes[clamped_major_code],
-             int(error->minor_code));
+    qCDebug(lcQpaXcb, "%s: %d (%s), sequence: %d, resource id: %d, major code: %d (%s), minor code: %d",
+            message,
+            int(error->error_code), xcb_errors[clamped_error_code],
+            int(error->sequence), int(error->resource_id),
+            int(error->major_code), xcb_protocol_request_codes[clamped_major_code],
+            int(error->minor_code));
 }
 
 static Qt::MouseButtons translateMouseButtons(int s)
@@ -702,6 +702,8 @@ void QXcbConnection::handleXcbEvent(xcb_generic_event_t *event)
             QXcbVirtualDesktop *virtualDesktop = virtualDesktopForRootWindow(propertyNotify->window);
             if (virtualDesktop)
                 virtualDesktop->updateWorkArea();
+        } else if (propertyNotify->atom == atom(QXcbAtom::_NET_SUPPORTED)) {
+            m_wmSupport->updateNetWMAtoms();
         } else {
             HANDLE_PLATFORM_WINDOW_EVENT(xcb_property_notify_event_t, window, handlePropertyNotifyEvent);
         }
@@ -750,7 +752,7 @@ void QXcbConnection::handleXcbEvent(xcb_generic_event_t *event)
                 case XCB_XKB_NEW_KEYBOARD_NOTIFY: {
                     xcb_xkb_new_keyboard_notify_event_t *ev = &xkb_event->new_keyboard_notify;
                     if (ev->changed & XCB_XKB_NKN_DETAIL_KEYCODES)
-                        m_keyboard->updateKeymap(ev);
+                        m_keyboard->updateKeymap();
                     break;
                 }
                 default:

@@ -755,6 +755,9 @@ QVariant QGnomeTheme::themeHint(QPlatformTheme::ThemeHint hint) const
         return QVariant(QChar(0x2022));
     case QPlatformTheme::UiEffects:
         return QVariant(int(HoverEffect));
+    case QPlatformTheme::ButtonPressKeys:
+        return QVariant::fromValue(
+                QList<Qt::Key>({ Qt::Key_Space, Qt::Key_Return, Qt::Key_Enter, Qt::Key_Select }));
     default:
         break;
     }

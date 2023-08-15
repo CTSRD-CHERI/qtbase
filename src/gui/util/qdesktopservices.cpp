@@ -54,6 +54,8 @@
 #include <qpa/qplatformintegration.h>
 #include <qdir.h>
 
+#include <QtCore/private/qlocking_p.h>
+
 QT_BEGIN_NAMESPACE
 
 class QOpenUrlHandlerRegistry : public QObject
@@ -81,6 +83,7 @@ Q_GLOBAL_STATIC(QOpenUrlHandlerRegistry, handlerRegistry)
 
 void QOpenUrlHandlerRegistry::handlerDestroyed(QObject *handler)
 {
+    const auto lock = qt_scoped_lock(mutex);
     HandlerHash::Iterator it = handlers.begin();
     while (it != handlers.end()) {
         if (it->receiver == handler) {
@@ -294,7 +297,8 @@ void QDesktopServices::setUrlHandler(const QString &scheme, QObject *receiver, c
     h.name = method;
     registry->handlers.insert(scheme.toLower(), h);
     QObject::connect(receiver, SIGNAL(destroyed(QObject*)),
-                     registry, SLOT(handlerDestroyed(QObject*)));
+                     registry, SLOT(handlerDestroyed(QObject*)),
+                     Qt::DirectConnection);
 }
 
 /*!

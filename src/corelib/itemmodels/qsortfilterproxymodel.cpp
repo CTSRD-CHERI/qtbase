@@ -939,8 +939,9 @@ void QSortFilterProxyModelPrivate::insert_source_items(
                 q->beginInsertColumns(proxy_parent, proxy_start, proxy_end);
         }
 
-        for (int i = 0; i < source_items.size(); ++i)
-            proxy_to_source.insert(proxy_start + i, source_items.at(i));
+        // TODO: use the range QList::insert() overload once it is implemented (QTBUG-58633).
+        proxy_to_source.insert(proxy_start, source_items.size(), 0);
+        std::copy(source_items.cbegin(), source_items.cend(), proxy_to_source.begin() + proxy_start);
 
         build_source_to_proxy_mapping(proxy_to_source, source_to_proxy);
 
@@ -3123,8 +3124,9 @@ bool QSortFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex &
 
     if (d->filter_data.isEmpty())
         return true;
+
+    int column_count = d->model->columnCount(source_parent);
     if (d->filter_column == -1) {
-        int column_count = d->model->columnCount(source_parent);
         for (int column = 0; column < column_count; ++column) {
             QModelIndex source_index = d->model->index(source_row, column, source_parent);
             QString key = d->model->data(source_index, d->filter_role).toString();
@@ -3133,9 +3135,10 @@ bool QSortFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex &
         }
         return false;
     }
-    QModelIndex source_index = d->model->index(source_row, d->filter_column, source_parent);
-    if (!source_index.isValid()) // the column may not exist
+
+    if (d->filter_column >= column_count) // the column may not exist
         return true;
+    QModelIndex source_index = d->model->index(source_row, d->filter_column, source_parent);
     QString key = d->model->data(source_index, d->filter_role).toString();
     return d->filter_data.hasMatch(key);
 }

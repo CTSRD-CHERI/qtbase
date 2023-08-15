@@ -42,6 +42,7 @@
 
 #include <QtCore/qglobal.h>
 #include <QtCore/qatomic.h>
+#include <QtCore/qtsan_impl.h>
 #include <new>
 
 #if __has_include(<chrono>)
@@ -77,19 +78,37 @@ public:
 
     // BasicLockable concept
     inline void lock() QT_MUTEX_LOCK_NOEXCEPT {
+        QtTsan::mutexPreLock(this, 0u);
+
         if (!fastTryLock())
             lockInternal();
+
+        QtTsan::mutexPostLock(this, 0u, 0);
     }
 
     // BasicLockable concept
     inline void unlock() noexcept {
         Q_ASSERT(d_ptr.loadRelaxed()); //mutex must be locked
+
+        QtTsan::mutexPreUnlock(this, 0u);
+
         if (!fastTryUnlock())
             unlockInternal();
+
+        QtTsan::mutexPostUnlock(this, 0u);
     }
 
     bool tryLock() noexcept {
-        return fastTryLock();
+        unsigned tsanFlags = QtTsan::TryLock;
+        QtTsan::mutexPreLock(this, tsanFlags);
+
+        const bool success = fastTryLock();
+
+        if (!success)
+            tsanFlags |= QtTsan::TryLockFailed;
+        QtTsan::mutexPostLock(this, tsanFlags, 0);
+
+        return success;
     }
 
     // Lockable concept
@@ -134,8 +153,16 @@ public:
 #else
     QMutex() { d_ptr.storeRelaxed(nullptr); }
 #endif
+#if QT_DEPRECATED_SINCE(5,15)
     enum RecursionMode { NonRecursive, Recursive };
+    QT_DEPRECATED_VERSION_X(5, 15, "Use QRecursiveMutex instead of a recursive QMutex")
     explicit QMutex(RecursionMode mode);
+
+    QT_DEPRECATED_VERSION_X(5, 15, "Use QRecursiveMutex instead of a recursive QMutex")
+    bool isRecursive() const noexcept
+    { return QBasicMutex::isRecursive(); }
+#endif
+
     ~QMutex();
 
     // BasicLockable concept
@@ -165,9 +192,6 @@ public:
         return try_lock_for(timePoint - Clock::now());
     }
 #endif
-
-    bool isRecursive() const noexcept
-    { return QBasicMutex::isRecursive(); }
 
 private:
     Q_DISABLE_COPY(QMutex)
