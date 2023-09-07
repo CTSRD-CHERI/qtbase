@@ -169,7 +169,7 @@ static inline const QByteArray stringData(const QMetaObject *mo, int index)
 static inline QLatin1String stringDataView(const QMetaObject *mo, int index)
 {
     const QByteArrayData &d = mo->d.stringdata[index];
-    const char *string = reinterpret_cast<const char *>(d.data());
+    const char *string = reinterpret_cast<const char *>(d.boundedData(sizeof(char)));
     return QLatin1String(string, d.size);
 }
 
