@@ -56,7 +56,7 @@ QShapedPixmapWindow::QShapedPixmapWindow(QScreen *screen)
     QSurfaceFormat format;
     format.setAlphaBufferSize(8);
     setFormat(format);
-    setFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::X11BypassWindowManagerHint
+    setFlags(Qt::FramelessWindowHint | Qt::BypassWindowManagerHint
              | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
 }
 
@@ -112,3 +112,5 @@ void QShapedPixmapWindow::updateGeometry(const QPoint &pos)
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qshapedpixmapdndwindow_p.cpp"

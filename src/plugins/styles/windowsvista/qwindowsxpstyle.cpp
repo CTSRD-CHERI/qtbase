@@ -325,7 +325,7 @@ void QWindowsXPStylePrivate::cleanupVistaTreeViewTheming()
 
 /* \internal
     Closes all open theme data handles to ensure that we don't leak
-    resources, and that we don't refere to old handles when for
+    resources, and that we don't refer to old handles when for
     example the user changes the theme style.
 */
 void QWindowsXPStylePrivate::cleanupHandleMap()
@@ -572,7 +572,7 @@ bool QWindowsXPStylePrivate::hasAlphaChannel(const QRect &rect)
     The rule of thumb for premultiplied pixmaps is that the color
     values of a pixel can never be higher than the alpha values, so
     we use this to our advantage here, and fix all instances where
-    this occures.
+    this occurs.
 */
 bool QWindowsXPStylePrivate::fixAlphaChannel(const QRect &rect)
 {
@@ -600,7 +600,7 @@ bool QWindowsXPStylePrivate::fixAlphaChannel(const QRect &rect)
     Swaps the alpha values on certain pixels:
         0xFF?????? -> 0x00??????
         0x00?????? -> 0xFF??????
-    Used to determin the mask of a non-alpha transparent pixmap in
+    Used to determine the mask of a non-alpha transparent pixmap in
     the native doublebuffer, and swap the alphas so we may paint
     the image as a Premultiplied QImage with drawImage(), and obtain
     the mask transparency.
@@ -784,7 +784,7 @@ bool QWindowsXPStylePrivate::drawBackgroundDirectly(HDC dc, XPThemeData &themeDa
     It should only be used when the painteengine doesn't provide a proper
     HDC for direct painting (e.g. when doing a grabWidget(), painting to
     other pixmaps etc), or when special transformations are needed (e.g.
-    flips (horizonal mirroring only, vertical are handled by the theme
+    flips (horizontal mirroring only, vertical are handled by the theme
     engine).
 
     \a correctionFactor is an additional factor used to scale up controls
@@ -999,7 +999,7 @@ bool QWindowsXPStylePrivate::drawBackgroundThruNativeBuffer(XPThemeData &themeDa
 #endif
         img = QImage(bufferPixels, bufferW, bufferH, format);
         if (hasCorrectionFactor)
-            img = img.scaled(w, h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            img = img.scaled(img.size() * correctionFactor, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         img.setDevicePixelRatio(additionalDevicePixelRatio);
     }
 
@@ -2498,7 +2498,7 @@ static void populateMdiButtonTheme(const QStyle *proxy, const QWidget *widget,
 // Calculate an small (max 2), empirical correction factor for scaling up
 // WP_MDICLOSEBUTTON, WP_MDIRESTOREBUTTON, WP_MDIMINBUTTON, which are too
 // small on High DPI screens (QTBUG-75927).
-qreal mdiButtonCorrectionFactor(XPThemeData &theme, const QPaintDevice *pd = nullptr)
+static qreal mdiButtonCorrectionFactor(XPThemeData &theme, const QPaintDevice *pd = nullptr)
 {
     const auto dpr = pd ? pd->devicePixelRatioF() : qApp->devicePixelRatio();
     const QSizeF nativeSize = QSizeF(theme.size()) / dpr;
@@ -3957,7 +3957,7 @@ static QList<PropPair> all_props;
     directly.
     Since we cannot rely on the pixel data we get from Microsoft
     when drawing into the DIB section, we use this function to
-    see the actual data we got, and can determin the appropriate
+    see the actual data we got, and can determine the appropriate
     action.
 */
 void QWindowsXPStylePrivate::dumpNativeDIB(int w, int h)

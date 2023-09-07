@@ -414,6 +414,11 @@ inline void QLibraryStore::cleanup()
                 // see https://bugzilla.novell.com/show_bug.cgi?id=622977
                 // and http://sourceware.org/bugzilla/show_bug.cgi?id=11941
                 lib->unload(QLibraryPrivate::NoUnloadSys);
+#elif defined(Q_OS_DARWIN)
+                // We cannot fully unload libraries, as we don't know if there are
+                // lingering references (in system threads e.g.) to Objective-C classes
+                // defined in the library.
+                lib->unload(QLibraryPrivate::NoUnloadSys);
 #else
                 lib->unload();
 #endif
@@ -802,11 +807,11 @@ void QLibraryPrivate::updatePluginState()
                  debug ? "debug" : "release");
         }
         errorString = QLibrary::tr("The plugin '%1' uses incompatible Qt library. (%2.%3.%4) [%5]")
-            .arg(fileName)
-            .arg((qt_version&0xff0000) >> 16)
-            .arg((qt_version&0xff00) >> 8)
-            .arg(qt_version&0xff)
-            .arg(debug ? QLatin1String("debug") : QLatin1String("release"));
+            .arg(fileName,
+                 QString::number((qt_version & 0xff0000) >> 16),
+                 QString::number((qt_version & 0xff00) >> 8),
+                 QString::number(qt_version & 0xff),
+                 debug ? QLatin1String("debug") : QLatin1String("release"));
 #ifndef QT_NO_DEBUG_PLUGIN_CHECK
     } else if(debug != QLIBRARY_AS_DEBUG) {
         //don't issue a qWarning since we will hopefully find a non-debug? --Sam

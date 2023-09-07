@@ -84,8 +84,8 @@ QT_BEGIN_NAMESPACE
     \list
 
     \li For a line edit that accepts integers from 10 to 1000 inclusive,
-    42 and 123 are \l Acceptable, the empty string and 5 are \l
-    Intermediate, and "asdf" and 1114 is \l Invalid.
+    42 and 123 are \l Acceptable, the empty string, 5, or 1234 are \l
+    Intermediate, and "asdf" and 10114 is \l Invalid.
 
     \li For an editable combobox that accepts URLs, any well-formed URL
     is \l Acceptable, "http://example.com/," is \l Intermediate
@@ -500,7 +500,7 @@ void QIntValidator::setRange(int bottom, int top)
     \brief the validator's lowest acceptable value
 
     By default, this property's value is derived from the lowest signed
-    integer available (typically -2147483647).
+    integer available (-2147483648).
 
     \sa setRange()
 */
@@ -514,7 +514,7 @@ void QIntValidator::setBottom(int bottom)
     \brief the validator's highest acceptable value
 
     By default, this property's value is derived from the highest signed
-    integer available (typically 2147483647).
+    integer available (2147483647).
 
     \sa setRange()
 */
@@ -1094,5 +1094,7 @@ void QRegularExpressionValidatorPrivate::setRegularExpression(const QRegularExpr
 #endif // QT_CONFIG(regularexpression)
 
 QT_END_NAMESPACE
+
+#include "moc_qvalidator.cpp"
 
 #endif // QT_NO_VALIDATOR

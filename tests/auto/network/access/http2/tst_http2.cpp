@@ -110,9 +110,13 @@ private slots:
     void connectToHost_data();
     void connectToHost();
     void maxFrameSize();
+    void http2DATAFrames();
 
     void authenticationRequired_data();
     void authenticationRequired();
+
+    void redirect_data();
+    void redirect();
 
 protected slots:
     // Slots to listen to our in-process server:
@@ -271,6 +275,10 @@ void tst_Http2::singleRequest()
     request.setAttribute(h2Attribute, QVariant(true));
 
     auto reply = manager->get(request);
+#if QT_CONFIG(ssl)
+    QSignalSpy encSpy(reply, &QNetworkReply::encrypted);
+#endif // QT_CONFIG(ssl)
+
     connect(reply, &QNetworkReply::finished, this, &tst_Http2::replyFinished);
     // Since we're using self-signed certificates,
     // ignore SSL errors:
@@ -285,6 +293,11 @@ void tst_Http2::singleRequest()
 
     QCOMPARE(reply->error(), QNetworkReply::NoError);
     QVERIFY(reply->isFinished());
+
+#if QT_CONFIG(ssl)
+    if (connectionType == H2Type::h2Alpn || connectionType == H2Type::h2Direct)
+        QCOMPARE(encSpy.count(), 1);
+#endif // QT_CONFIG(ssl)
 }
 
 void tst_Http2::multipleRequests()
@@ -771,6 +784,89 @@ void tst_Http2::maxFrameSize()
     QVERIFY(serverGotSettingsACK);
 }
 
+void tst_Http2::http2DATAFrames()
+{
+    using namespace Http2;
+
+    {
+        // 0. DATA frame with payload, no padding.
+
+        FrameWriter writer(FrameType::DATA, FrameFlag::EMPTY, 1);
+        writer.append(uchar(1));
+        writer.append(uchar(2));
+        writer.append(uchar(3));
+
+        const Frame frame = writer.outboundFrame();
+        const auto &buffer = frame.buffer;
+        // Frame's header is 9 bytes + 3 bytes of payload
+        // (+ 0 bytes of padding and no padding length):
+        QCOMPARE(int(buffer.size()), 12);
+
+        QVERIFY(!frame.padding());
+        QCOMPARE(int(frame.payloadSize()), 3);
+        QCOMPARE(int(frame.dataSize()), 3);
+        QCOMPARE(frame.dataBegin() - buffer.data(), 9);
+        QCOMPARE(char(*frame.dataBegin()), uchar(1));
+    }
+
+    {
+        // 1. DATA with padding.
+
+        const int padLength = 10;
+        FrameWriter writer(FrameType::DATA, FrameFlag::END_STREAM | FrameFlag::PADDED, 1);
+        writer.append(uchar(padLength)); // The length of padding is 1 byte long.
+        writer.append(uchar(1));
+        for (int i = 0; i < padLength; ++i)
+            writer.append(uchar(0));
+
+        const Frame frame = writer.outboundFrame();
+        const auto &buffer = frame.buffer;
+        // Frame's header is 9 bytes + 1 byte for padding length
+        // + 1 byte of data + 10 bytes of padding:
+        QCOMPARE(int(buffer.size()), 21);
+
+        QCOMPARE(frame.padding(), padLength);
+        QCOMPARE(int(frame.payloadSize()), 12); // Includes padding, its length + data.
+        QCOMPARE(int(frame.dataSize()), 1);
+
+        // Skipping 9 bytes long header and padding length:
+        QCOMPARE(frame.dataBegin() - buffer.data(), 10);
+
+        QCOMPARE(char(frame.dataBegin()[0]), uchar(1));
+        QCOMPARE(char(frame.dataBegin()[1]), uchar(0));
+
+        QVERIFY(frame.flags().testFlag(FrameFlag::END_STREAM));
+        QVERIFY(frame.flags().testFlag(FrameFlag::PADDED));
+    }
+    {
+        // 2. DATA with PADDED flag, but 0 as padding length.
+
+        FrameWriter writer(FrameType::DATA, FrameFlag::END_STREAM | FrameFlag::PADDED, 1);
+
+        writer.append(uchar(0)); // Number of padding bytes is 1 byte long.
+        writer.append(uchar(1));
+
+        const Frame frame = writer.outboundFrame();
+        const auto &buffer = frame.buffer;
+
+        // Frame's header is 9 bytes + 1 byte for padding length + 1 byte of data
+        // + 0 bytes of padding:
+        QCOMPARE(int(buffer.size()), 11);
+
+        QCOMPARE(frame.padding(), 0);
+        QCOMPARE(int(frame.payloadSize()), 2); // Includes padding (0 bytes), its length + data.
+        QCOMPARE(int(frame.dataSize()), 1);
+
+        // Skipping 9 bytes long header and padding length:
+        QCOMPARE(frame.dataBegin() - buffer.data(), 10);
+
+        QCOMPARE(char(*frame.dataBegin()), uchar(1));
+
+        QVERIFY(frame.flags().testFlag(FrameFlag::END_STREAM));
+        QVERIFY(frame.flags().testFlag(FrameFlag::PADDED));
+    }
+}
+
 void tst_Http2::authenticationRequired_data()
 {
     QTest::addColumn<bool>("success");
@@ -787,6 +883,7 @@ void tst_Http2::authenticationRequired_data()
 void tst_Http2::authenticationRequired()
 {
     clearHTTP2State();
+    serverPort = 0;
     QFETCH(const bool, responseHEADOnly);
     POSTResponseHEADOnly = responseHEADOnly;
 
@@ -855,6 +952,76 @@ void tst_Http2::authenticationRequired()
     QCOMPARE(isAuthenticated(reqAuthHeader), success);
     if (success)
         QCOMPARE(receivedBody, expectedBody);
+    // In the `!success` case we need to wait for the server to emit this or it might cause issues
+    // in the next test running after this. In the `success` case we anyway expect it to have been
+    // received.
+    QTRY_VERIFY(serverGotSettingsACK);
+}
+
+void tst_Http2::redirect_data()
+{
+    QTest::addColumn<int>("maxRedirects");
+    QTest::addColumn<int>("redirectCount");
+    QTest::addColumn<bool>("success");
+
+    QTest::addRow("1-redirects-none-allowed-failure") << 0 << 1 << false;
+    QTest::addRow("1-redirects-success") << 1 << 1 << true;
+    QTest::addRow("2-redirects-1-allowed-failure") << 1 << 2 << false;
+}
+
+void tst_Http2::redirect()
+{
+    QFETCH(const int, maxRedirects);
+    QFETCH(const int, redirectCount);
+    QFETCH(const bool, success);
+    const QByteArray redirectUrl = "/b.html";
+
+    clearHTTP2State();
+    serverPort = 0;
+
+    ServerPtr targetServer(newServer(defaultServerSettings, defaultConnectionType()));
+    targetServer->setRedirect(redirectUrl, redirectCount);
+
+    QMetaObject::invokeMethod(targetServer.data(), "startServer", Qt::QueuedConnection);
+    runEventLoop();
+
+    QVERIFY(serverPort != 0);
+
+    nRequests = 1 + maxRedirects;
+
+    auto originalUrl = requestUrl(defaultConnectionType());
+    auto url = originalUrl;
+    url.setPath("/index.html");
+    QNetworkRequest request(url);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, QVariant(true));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setMaximumRedirectsAllowed(maxRedirects);
+
+    QScopedPointer<QNetworkReply> reply;
+    reply.reset(manager->get(request));
+
+    if (success) {
+        connect(reply.get(), &QNetworkReply::finished, this, &tst_Http2::replyFinished);
+    } else {
+        connect(reply.get(), &QNetworkReply::errorOccurred, this,
+                &tst_Http2::replyFinishedWithError);
+    }
+
+    // Since we're using self-signed certificates,
+    // ignore SSL errors:
+    reply->ignoreSslErrors();
+
+    runEventLoop();
+    STOP_ON_FAILURE
+
+    if (success) {
+        QCOMPARE(reply->error(), QNetworkReply::NoError);
+        QCOMPARE(reply->url().toString(),
+                 originalUrl.resolved(QString::fromLatin1(redirectUrl)).toString());
+    } else if (maxRedirects < redirectCount) {
+        QCOMPARE(reply->error(), QNetworkReply::TooManyRedirectsError);
+    }
+    QTRY_VERIFY(serverGotSettingsACK);
 }
 
 void tst_Http2::serverStarted(quint16 port)

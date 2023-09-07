@@ -982,7 +982,15 @@ QAction *QToolButton::defaultAction() const
     return d->defaultAction;
 }
 
-
+/*!
+  \reimp
+ */
+void QToolButton::checkStateSet()
+{
+    Q_D(QToolButton);
+    if (d->defaultAction && d->defaultAction->isCheckable())
+        d->defaultAction->setChecked(isChecked());
+}
 
 /*!
   \reimp

@@ -189,6 +189,17 @@ static int checked_var_value(const char *varname)
     return ok ? value : 1;
 }
 
+static bool is_fatal_count_down(QAtomicInt &n)
+{
+    // it's fatal if the current value is exactly 1,
+    // otherwise decrement if it's non-zero
+
+    int v = n.loadRelaxed();
+    while (v != 0 && !n.testAndSetRelaxed(v, v - 1, v))
+        ;
+    return v == 1; // we exited the loop, so either v == 0 or CAS succeeded to set n from v to v-1
+}
+
 static bool isFatal(QtMsgType msgType)
 {
     if (msgType == QtFatalMsg)
@@ -196,18 +207,12 @@ static bool isFatal(QtMsgType msgType)
 
     if (msgType == QtCriticalMsg) {
         static QAtomicInt fatalCriticals = checked_var_value("QT_FATAL_CRITICALS");
-
-        // it's fatal if the current value is exactly 1,
-        // otherwise decrement if it's non-zero
-        return fatalCriticals.loadRelaxed() && fatalCriticals.fetchAndAddRelaxed(-1) == 1;
+        return is_fatal_count_down(fatalCriticals);
     }
 
     if (msgType == QtWarningMsg || msgType == QtCriticalMsg) {
         static QAtomicInt fatalWarnings = checked_var_value("QT_FATAL_WARNINGS");
-
-        // it's fatal if the current value is exactly 1,
-        // otherwise decrement if it's non-zero
-        return fatalWarnings.loadRelaxed() && fatalWarnings.fetchAndAddRelaxed(-1) == 1;
+        return is_fatal_count_down(fatalWarnings);
     }
 
     return false;
@@ -1543,7 +1548,7 @@ static bool slog2_default_handler(QtMsgType type, const QMessageLogContext &cont
         // Set as the default buffer
         slog2_set_default_buffer(buffer_handle);
     }
-    int severity;
+    int severity = SLOG2_INFO;
     //Determines the severity level
     switch (type) {
     case QtDebugMsg:
@@ -1669,7 +1674,7 @@ static bool android_default_message_handler(QtMsgType type,
 #endif //Q_OS_ANDROID
 
 #ifdef Q_OS_WIN
-static void win_outputDebugString_helper(QStringView message)
+static void win_outputDebugString_helper(const QString &message)
 {
     const int maxOutputStringLength = 32766;
     static QBasicMutex m;
@@ -1681,7 +1686,7 @@ static void win_outputDebugString_helper(QStringView message)
         wchar_t *messagePart = new wchar_t[maxOutputStringLength + 1];
         for (int i = 0; i < message.length(); i += maxOutputStringLength ) {
             const int length = std::min(message.length() - i, maxOutputStringLength );
-            const int len = message.mid(i, length).toWCharArray(messagePart);
+            const int len = QStringView{message}.mid(i, length).toWCharArray(messagePart);
             Q_ASSERT(len == length);
             messagePart[len] = 0;
             OutputDebugString(messagePart);

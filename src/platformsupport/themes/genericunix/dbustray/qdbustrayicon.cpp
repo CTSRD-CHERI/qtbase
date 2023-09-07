@@ -53,6 +53,7 @@
 #include <qrect.h>
 #include <qloggingcategory.h>
 #include <qstandardpaths.h>
+#include <qfileinfo.h>
 #include <qdir.h>
 #include <qmetaobject.h>
 #include <qpa/qplatformintegration.h>

@@ -289,7 +289,7 @@ void tst_QBuffer::seek()
 
 void tst_QBuffer::invalidSeeks()
 {
-    if constexpr (sizeof(qsizetype) == sizeof(qint64)) {
+    if (sizeof(qsizetype) == sizeof(qint64)) {
         // sizeof(qsizetype) == sizeof(qint64), so +1 would overflow
         QSKIP("This is a 32-bit-only test.");
     } else {

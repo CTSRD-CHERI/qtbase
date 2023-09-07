@@ -266,8 +266,6 @@ public:
 
 void tst_QtConcurrentThreadEngine::threadCount()
 {
-   //QTBUG-23333: This test is unstable
-
     const int repeats = 10;
     for (int i = 0; i < repeats; ++i) {
         ThreadCountUser t;
@@ -300,6 +298,7 @@ void tst_QtConcurrentThreadEngine::threadCount()
         if (count != 1)
             QEXPECT_FAIL("", "QTBUG-23333", Abort);
         QCOMPARE(count, 1);
+        QVERIFY(!threads.contains(QThread::currentThread()));
     }
 }
 

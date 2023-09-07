@@ -4694,6 +4694,8 @@ QImage QImage::smoothScaled(int w, int h) const {
 static QImage rotated90(const QImage &image)
 {
     QImage out(image.height(), image.width(), image.format());
+    if (out.isNull())
+        return out;
     copyMetadata(&out, image);
     if (image.colorCount() > 0)
         out.setColorTable(image.colorTable());
@@ -4722,6 +4724,8 @@ static QImage rotated180(const QImage &image)
         return image.mirrored(true, true);
 
     QImage out(image.width(), image.height(), image.format());
+    if (out.isNull())
+        return out;
     copyMetadata(&out, image);
     if (image.colorCount() > 0)
         out.setColorTable(image.colorTable());
@@ -4734,6 +4738,8 @@ static QImage rotated180(const QImage &image)
 static QImage rotated270(const QImage &image)
 {
     QImage out(image.height(), image.width(), image.format());
+    if (out.isNull())
+        return out;
     copyMetadata(&out, image);
     if (image.colorCount() > 0)
         out.setColorTable(image.colorTable());
@@ -4975,7 +4981,8 @@ void QImage::convertToColorSpace(const QColorSpace &colorSpace)
         qWarning() << "QImage::convertToColorSpace: Output colorspace is not valid";
         return;
     }
-    detach();
+    if (d->colorSpace == colorSpace)
+        return;
     applyColorTransform(d->colorSpace.transformationToColorSpace(colorSpace));
     d->colorSpace = colorSpace;
 }
@@ -5017,6 +5024,14 @@ QColorSpace QImage::colorSpace() const
 */
 void QImage::applyColorTransform(const QColorTransform &transform)
 {
+    detach();
+    if (!d)
+        return;
+    if (pixelFormat().colorModel() == QPixelFormat::Indexed) {
+        for (int i = 0; i < d->colortable.size(); ++i)
+            d->colortable[i] = transform.map(d->colortable[i]);
+        return;
+    }
     QImage::Format oldFormat = format();
     if (depth() > 32) {
         if (format() != QImage::Format_RGBX64 && format() != QImage::Format_RGBA64
@@ -5052,14 +5067,14 @@ void QImage::applyColorTransform(const QColorTransform &transform)
     if (depth() > 32) {
         transformSegment = [&](int yStart, int yEnd) {
             for (int y = yStart; y < yEnd; ++y) {
-                QRgba64 *scanline = reinterpret_cast<QRgba64 *>(scanLine(y));
+                QRgba64 *scanline = reinterpret_cast<QRgba64 *>(d->data + y * d->bytes_per_line);
                 transform.d->apply(scanline, scanline, width(), flags);
             }
         };
     } else {
         transformSegment = [&](int yStart, int yEnd) {
             for (int y = yStart; y < yEnd; ++y) {
-                QRgb *scanline = reinterpret_cast<QRgb *>(scanLine(y));
+                QRgb *scanline = reinterpret_cast<QRgb *>(d->data + y * d->bytes_per_line);
                 transform.d->apply(scanline, scanline, width(), flags);
             }
         };
@@ -5648,3 +5663,5 @@ QMap<QString, QString> qt_getImageTextFromDescription(const QString &description
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qimage.cpp"

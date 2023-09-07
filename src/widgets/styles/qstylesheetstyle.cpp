@@ -2441,11 +2441,12 @@ static QWidget *embeddedWidget(QWidget *w)
 }
 
 /** \internal
-  in case w is an embedded widget, return the container widget
-  (i.e, the widget for which the rules actualy apply)
-  (exemple, if w is a lineedit embedded in a combobox, return the combobox)
+  Returns the widget whose style rules apply to \a w.
 
-  if w is not embedded, return w itself
+  When \a w is an embedded widget, this is the container widget.
+  For example, if w is a line edit embedded in a combobox, this returns the combobox.
+  When \a w is not embedded, this function return \a w itself.
+
 */
 static QWidget *containerWidget(const QWidget *w)
 {
@@ -2648,6 +2649,9 @@ void QStyleSheetStyle::setProperties(QWidget *w)
 #endif
         default: v = decl.d->values.at(0).variant; break;
         }
+
+        if (propertyL1 == "styleSheet" && value == v)
+            continue;
 
         w->setProperty(propertyL1, v);
     }
@@ -4449,14 +4453,17 @@ void QStyleSheetStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption *op
 
     case PE_PanelLineEdit:
         if (const QStyleOptionFrame *frm = qstyleoption_cast<const QStyleOptionFrame *>(opt)) {
-#if QT_CONFIG(spinbox)
-            if (w && qobject_cast<const QAbstractSpinBox *>(w->parentWidget())) {
-                QRenderRule spinboxRule = renderRule(w->parentWidget(), opt);
-                if (!spinboxRule.hasNativeBorder() || !spinboxRule.baseStyleCanDraw())
-                    return;
-                rule = spinboxRule;
+            // Fall back to container widget's render rule
+            if (w) {
+                QWidget *container = containerWidget(w);
+                if (container != w) {
+                    QRenderRule containerRule = renderRule(container, opt);
+                    if (!containerRule.hasNativeBorder() || !containerRule.baseStyleCanDraw())
+                        return;
+                    rule = containerRule;
+                }
             }
-#endif
+
             if (rule.hasNativeBorder()) {
                 QStyleOptionFrame frmOpt(*frm);
                 rule.configurePalette(&frmOpt.palette, QPalette::Text, QPalette::Base);
@@ -5171,18 +5178,19 @@ QSize QStyleSheetStyle::sizeFromContents(ContentsType ct, const QStyleOption *op
                 QSize sz(csz);
                 if (mi->text.contains(QLatin1Char('\t')))
                     sz.rwidth() += 12; //as in QCommonStyle
-                bool checkable = mi->checkType != QStyleOptionMenuItem::NotCheckable;
                 if (!mi->icon.isNull()) {
                     const int pmSmall = pixelMetric(PM_SmallIconSize);
                     const QSize pmSize = mi->icon.actualSize(QSize(pmSmall, pmSmall));
-                    sz.rwidth() += pmSize.width() + 4;
-                } else if (checkable) {
+                    sz.rwidth() += std::max(mi->maxIconWidth, pmSize.width()) + 4;
+                } else if (mi->menuHasCheckableItems) {
                     QRenderRule subSubRule = renderRule(w, opt, PseudoElement_MenuCheckMark);
                     QRect checkmarkRect = positionRect(w, subRule, subSubRule, PseudoElement_MenuCheckMark, opt->rect, opt->direction);
                     sz.rwidth() += std::max(mi->maxIconWidth, checkmarkRect.width()) + 4;
+                } else {
+                    sz.rwidth() += mi->maxIconWidth;
                 }
                 if (subRule.hasFont) {
-                    QFontMetrics fm(subRule.font);
+                    QFontMetrics fm(subRule.font.resolve(mi->font));
                     const QRect r = fm.boundingRect(QRect(), Qt::TextSingleLine | Qt::TextShowMnemonic, mi->text);
                     sz = sz.expandedTo(r.size());
                 }

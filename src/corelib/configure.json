@@ -355,7 +355,7 @@
                     "std::future<int> f = std::async([]() { return 42; });",
                     "(void)f.get();"
                 ],
-                "qmake": "unix:LIBS += -lpthread"
+                "qmake": "unix:!vxworks:LIBS += -lpthread"
             }
         },
         "cxx11_random": {
@@ -1045,6 +1045,7 @@
             "label": "QTimeZone",
             "purpose": "Provides support for time-zone handling.",
             "section": "Utilities",
+            "condition": "!config.wasm",
             "output": [ "publicFeature" ]
         },
         "datetimeparser": {

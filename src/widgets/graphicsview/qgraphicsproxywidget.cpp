@@ -832,6 +832,10 @@ bool QGraphicsProxyWidget::event(QEvent *event)
         return QGraphicsWidget::event(event);
 
     switch (event->type()) {
+    case QEvent::WindowActivate:
+    case QEvent::WindowDeactivate:
+        QCoreApplication::sendEvent(d->widget, event);
+        break;
     case QEvent::StyleChange:
         // Propagate style changes to the embedded widget.
         if (!d->styleChangeMode) {
@@ -1550,6 +1554,10 @@ void QGraphicsProxyWidget::paint(QPainter *painter, const QStyleOptionGraphicsIt
     const QRect exposedWidgetRect = (option->exposedRect & rect()).toAlignedRect();
     if (exposedWidgetRect.isEmpty())
         return;
+
+    // When rendering to pdf etc. painting may go outside widget boundaries unless clipped
+    if (painter->device()->devType() != QInternal::Widget && (flags() & ItemClipsChildrenToShape))
+        painter->setClipRect(d->widget->geometry(), Qt::IntersectClip);
 
     d->widget->render(painter, exposedWidgetRect.topLeft(), exposedWidgetRect);
 }

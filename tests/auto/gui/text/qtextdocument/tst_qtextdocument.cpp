@@ -197,6 +197,12 @@ private slots:
     void clearUndoRedoStacks();
     void mergeFontFamilies();
 
+    void contentsChangeIndices_data();
+    void contentsChangeIndices();
+
+    void insertHtmlWithComments_data();
+    void insertHtmlWithComments();
+
 private:
     void backgroundImage_checkExpectedHtml(const QTextDocument &doc);
     void buildRegExpData();
@@ -3715,6 +3721,101 @@ void tst_QTextDocument::clearUndoRedoStacks()
     QVERIFY(!doc.isUndoAvailable());
 }
 
+
+void tst_QTextDocument::contentsChangeIndices_data()
+{
+    QTest::addColumn<QString>("html");
+    // adding list entries change the entire block, so change position is
+    // not the same as the cursor position if this value is >= 0
+    QTest::addColumn<int>("expectedBegin");
+
+    QTest::addRow("text") << "Test" << -1;
+    QTest::addRow("unnumbered list") << "<ul><li>Test</li></ul>" << 0;
+    QTest::addRow("numbered list") << "<ol><li>Test</li></ol>" << 0;
+    QTest::addRow("table") << "<table><tr><td>Test</td></tr></table>" << -1;
+}
+
+void tst_QTextDocument::contentsChangeIndices()
+{
+    QFETCH(QString, html);
+    QFETCH(int, expectedBegin);
+
+    QTextDocument doc;
+    QTestDocumentLayout *layout = new QTestDocumentLayout(&doc);
+    doc.setDocumentLayout(layout);
+    doc.setHtml(QString("<html><body>%1</body></html>").arg(html));
+
+    int documentLength = 0;
+    int cursorLength = 0;
+    int changeBegin = 0;
+    int changeRemoved = 0;
+    int changeAdded = 0;
+    connect(&doc, &QTextDocument::contentsChange, this, [&](int pos, int removed, int added){
+        documentLength = doc.characterCount();
+
+        QTextCursor cursor(&doc);
+        cursor.movePosition(QTextCursor::End);
+        // includes end-of-paragraph character
+        cursorLength = cursor.position() + 1;
+
+        changeBegin = pos;
+        changeRemoved = removed;
+        changeAdded = added;
+    });
+
+    QTextCursor cursor(&doc);
+    cursor.movePosition(QTextCursor::End);
+    if (expectedBegin < 0)
+        expectedBegin = cursor.position();
+    cursor.insertBlock();
+
+    const int changeEnd = changeBegin + changeAdded;
+
+    QVERIFY(documentLength > 0);
+    QCOMPARE(documentLength, cursorLength);
+    QVERIFY(documentLength >= changeEnd);
+    QCOMPARE(changeBegin, expectedBegin);
+    QCOMPARE(changeAdded - changeRemoved, 1);
+}
+
+void tst_QTextDocument::insertHtmlWithComments_data()
+{
+    QTest::addColumn<QString>("html");
+    QTest::addColumn<QStringList>("expectedBlocks");
+
+    QTest::newRow("commentless") << "<p>first</p><p>second</p><p>third</p>"
+                                 << QStringList { "first", "second", "third" };
+    QTest::newRow("normal") << "<p>first</p><!--<p>second</p>--><p>third</p>"
+                            << QStringList { "first", "third" };
+    QTest::newRow("nonClosing") << "<p>first</p><!--<p>second</p><p>third</p>"
+                                << QStringList { "first" };
+    QTest::newRow("immediatelyClosing") << "<p>first</p><!----><p>second</p><p>third</p>"
+                                        << QStringList { "first", "second", "third" };
+    QTest::newRow("fake") << "<p>first</p><!-<p>second</p><p>third</p>"
+                          << QStringList { "first", "second", "third" };
+    QTest::newRow("endingNonExistant") << "<p>first</p>--><p>second</p><p>third</p>"
+                                       << QStringList { "first", "-->", "second", "third" };
+}
+
+void tst_QTextDocument::insertHtmlWithComments()
+{
+    QFETCH(QString, html);
+    QFETCH(QStringList, expectedBlocks);
+
+    QTextDocument doc;
+    doc.setHtml(html);
+
+    QCOMPARE(doc.blockCount(), expectedBlocks.count());
+
+    QStringList blockContent;
+    auto currentBlock = doc.begin();
+    while (currentBlock != doc.end()) {
+        blockContent.append(currentBlock.text());
+        currentBlock = currentBlock.next();
+    }
+
+    QCOMPARE(blockContent, expectedBlocks);
+}
 
 QTEST_MAIN(tst_QTextDocument)
 #include "tst_qtextdocument.moc"

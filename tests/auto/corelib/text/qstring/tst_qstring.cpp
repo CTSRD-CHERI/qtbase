@@ -600,6 +600,7 @@ private slots:
     void isValidUtf16_data();
     void isValidUtf16();
     void unicodeStrings();
+    void vasprintfWithPrecision();
 };
 
 template <class T> const T &verifyZeroTermination(const T &t) { return t; }
@@ -1321,6 +1322,9 @@ void tst_QString::asprintfS()
     QCOMPARE(QString::asprintf("%-10.10s", "Hello" ), QLatin1String("Hello     "));
     QCOMPARE(QString::asprintf("%-10.3s", "Hello" ), QLatin1String("Hel       "));
     QCOMPARE(QString::asprintf("%-5.5s", "Hello" ), QLatin1String("Hello"));
+    QCOMPARE(QString::asprintf("%*s", 4, "Hello"), QLatin1String("Hello"));
+    QCOMPARE(QString::asprintf("%*s", 10, "Hello"), QLatin1String("     Hello"));
+    QCOMPARE(QString::asprintf("%-*s", 10, "Hello"), QLatin1String("Hello     "));
 
     // Check utf8 conversion for %s
     QCOMPARE(QString::asprintf("%s", "\303\266\303\244\303\274\303\226\303\204\303\234\303\270\303\246\303\245\303\230\303\206\303\205"), QString::fromLatin1("\366\344\374\326\304\334\370\346\345\330\306\305"));
@@ -1340,6 +1344,9 @@ void tst_QString::asprintfS()
         QCOMPARE(QString::asprintf("%-10.10ls", qUtf16Printable("Hello")), QLatin1String("Hello     "));
         QCOMPARE(QString::asprintf("%-10.3ls",  qUtf16Printable("Hello")), QLatin1String("Hel       "));
         QCOMPARE(QString::asprintf("%-5.5ls",   qUtf16Printable("Hello")), QLatin1String("Hello"));
+        QCOMPARE(QString::asprintf("%*ls",   4, qUtf16Printable("Hello")), QLatin1String("Hello"));
+        QCOMPARE(QString::asprintf("%*ls",  10, qUtf16Printable("Hello")), QLatin1String("     Hello"));
+        QCOMPARE(QString::asprintf("%-*ls", 10, qUtf16Printable("Hello")), QLatin1String("Hello     "));
 
         // Check utf16 is preserved for %ls
         QCOMPARE(QString::asprintf("%ls",
@@ -7179,6 +7186,35 @@ void tst_QString::isValidUtf16()
 {
     QFETCH(QString, string);
     QTEST(string.isValidUtf16(), "valid");
+}
+
+static QString doVasprintf(const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+    const QString result = QString::vasprintf(msg, args);
+    va_end(args);
+    return result;
+}
+
+void tst_QString::vasprintfWithPrecision()
+{
+    {
+        const char *msg = "Endpoint %.*s with";
+        static const char arg0[3] = { 'a', 'b', 'c' };
+        static const char arg1[4] = { 'a', 'b', 'c', '\0' };
+        QCOMPARE(doVasprintf(msg, 3, arg0), QStringLiteral("Endpoint abc with"));
+        QCOMPARE(doVasprintf(msg, 9, arg1), QStringLiteral("Endpoint abc with"));
+        QCOMPARE(doVasprintf(msg, 0, nullptr), QStringLiteral("Endpoint  with"));
+    }
+
+    {
+        const char *msg = "Endpoint %.*ls with";
+        static const ushort arg0[3] = { 'a', 'b', 'c' };
+        static const ushort arg1[4] = { 'a', 'b', 'c', '\0' };
+        QCOMPARE(doVasprintf(msg, 3, arg0), QStringLiteral("Endpoint abc with"));
+        QCOMPARE(doVasprintf(msg, 9, arg1), QStringLiteral("Endpoint abc with"));
+        QCOMPARE(doVasprintf(msg, 0, nullptr), QStringLiteral("Endpoint  with"));
+    }
 }
 
 QTEST_APPLESS_MAIN(tst_QString)

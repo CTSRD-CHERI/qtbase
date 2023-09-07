@@ -73,6 +73,7 @@ public:
         Mono = 0x08,
         Link = 0x10
     };
+    Q_ENUM(CharFormat)
     Q_DECLARE_FLAGS(CharFormats, CharFormat)
 };
 
@@ -207,6 +208,9 @@ void tst_QTextMarkdownImporter::lists_data()
     QTest::newRow("numeric lists nested in empty lists")
             << "- \n    1.  a\n    2.  b\n- c\n  1.\n       + d\n" << 4 << false
             << "- \n    1.  a\n    2.  b\n- c 1. + d\n";
+    QTest::newRow("styled spans in list items")
+            << "1.  normal text\n2.  **bold** text\n3.  `code` in the item\n4.  *italic* text\n5.  _underlined_ text\n" << 5 << false
+            << "1.  normal text\n2.  **bold** text\n3.  `code` in the item\n4.  *italic* text\n5.  *underlined* text\n";
 }
 
 void tst_QTextMarkdownImporter::lists()
@@ -218,11 +222,22 @@ void tst_QTextMarkdownImporter::lists()
 
     QTextDocument doc;
     doc.setMarkdown(input); // QTBUG-78870 : don't crash
+
+#ifdef DEBUG_WRITE_HTML
+    {
+        QFile out("/tmp/" + QLatin1String(QTest::currentDataTag()) + ".html");
+        out.open(QFile::WriteOnly);
+        out.write(doc.toHtml().toLatin1());
+        out.close();
+    }
+#endif
+
     QTextFrame::iterator iterator = doc.rootFrame()->begin();
     QTextFrame *currentFrame = iterator.currentFrame();
     int i = 0;
     int itemCount = 0;
     bool emptyItems = true;
+    QString firstItemFontFamily;
     while (!iterator.atEnd()) {
         // There are no child frames
         QCOMPARE(iterator.currentFrame(), currentFrame);
@@ -235,6 +250,21 @@ void tst_QTextMarkdownImporter::lists()
         }
         qCDebug(lcTests, "%d %s%s", i,
                 (block.textList() ? "<li>" : "<p>"), qPrintable(block.text()));
+        QTextCharFormat listItemFmt = block.charFormat();
+        QFont listItemFont = listItemFmt.font();
+        // QTextDocumentLayoutPrivate::drawListItem() uses listItemFont to render numbers in an ordered list.
+        // We want that to be consistent, regardless whether the list item's text begins with a styled span.
+        if (firstItemFontFamily.isEmpty())
+            firstItemFontFamily = listItemFont.family();
+        else
+            QCOMPARE(listItemFont.family(), firstItemFontFamily);
+        QCOMPARE(listItemFont.bold(), false);
+        QCOMPARE(listItemFont.italic(), false);
+        QCOMPARE(listItemFont.underline(), false);
+        QCOMPARE(listItemFont.fixedPitch(), false);
+        QCOMPARE(listItemFmt.fontItalic(), false);
+        QCOMPARE(listItemFmt.fontUnderline(), false);
+        QCOMPARE(listItemFmt.fontFixedPitch(), false);
         ++iterator;
         ++i;
     }
@@ -324,12 +354,14 @@ void tst_QTextMarkdownImporter::nestedSpans()
                          << "weight" << fmt.fontWeight() << "italic" << fmt.fontItalic()
                          << "strikeout" << fmt.fontStrikeOut() << "anchor" << fmt.isAnchor()
                          << "monospace" << QFontInfo(fmt.font()).fixedPitch() // depends on installed fonts (QTBUG-75649)
-                                        << fmt.fontFixedPitch() // returns false even when font family is "monospace"
-                                        << fmt.hasProperty(QTextFormat::FontFixedPitch); // works
-        QCOMPARE(fmt.fontWeight() > 50, expectedFormat.testFlag(Bold));
+                                        << fmt.fontFixedPitch()
+                                        << fmt.hasProperty(QTextFormat::FontFixedPitch)
+                         << "expected" << expectedFormat;
+        QCOMPARE(fmt.fontWeight() > QFont::Normal, expectedFormat.testFlag(Bold));
         QCOMPARE(fmt.fontItalic(), expectedFormat.testFlag(Italic));
         QCOMPARE(fmt.fontStrikeOut(), expectedFormat.testFlag(Strikeout));
         QCOMPARE(fmt.isAnchor(), expectedFormat.testFlag(Link));
+        QCOMPARE(fmt.fontFixedPitch(), expectedFormat.testFlag(Mono));
         QCOMPARE(fmt.hasProperty(QTextFormat::FontFixedPitch), expectedFormat.testFlag(Mono));
         ++iterator;
     }

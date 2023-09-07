@@ -281,6 +281,7 @@ private Q_SLOTS:
     void ioGetFromFileSpecial();
     void ioGetFromFile_data();
     void ioGetFromFile();
+    void ioGetFromFileUrl();
     void ioGetFromFtp_data();
     void ioGetFromFtp();
     void ioGetFromFtpWithReuse();
@@ -3298,6 +3299,18 @@ void tst_QNetworkReply::ioGetFromFile()
     QCOMPARE(reply->header(QNetworkRequest::ContentLengthHeader).toLongLong(), file.size());
     QCOMPARE(qint64(reader.data.size()), file.size());
     QCOMPARE(reader.data, data);
+}
+
+void tst_QNetworkReply::ioGetFromFileUrl()
+{
+    // This immediately fails on non-windows platforms:
+    QNetworkRequest request(QUrl("file://unc-server/some/path"));
+    QNetworkReplyPtr reply(manager.get(request));
+    QSignalSpy finishedSpy(reply.get(), &QNetworkReply::finished);
+    // QTBUG-105618: This would, on non-Windows platforms, never happen because the signal
+    // was emitted before the constructor finished, leaving no chance at all to connect to the
+    // signal
+    QVERIFY(finishedSpy.wait());
 }
 
 void tst_QNetworkReply::ioGetFromFtp_data()
@@ -9279,9 +9292,16 @@ void tst_QNetworkReply::autoDeleteRepliesAttribute_data()
 {
     QTest::addColumn<QUrl>("destination");
 
-    QTest::newRow("http") << QUrl("http://QInvalidDomain.qt/test");
-    QTest::newRow("https") << QUrl("https://QInvalidDomain.qt/test");
-    QTest::newRow("ftp") << QUrl("ftp://QInvalidDomain.qt/test");
+    QUrl webServerUrl = QtNetworkSettings::httpServerIp().toString();
+    webServerUrl.setPath("/notfound");
+    webServerUrl.setScheme("http");
+    QTest::newRow("http") << webServerUrl;
+    webServerUrl.setScheme("https");
+    QTest::newRow("https") << webServerUrl;
+    QUrl ftpServerUrl = QtNetworkSettings::ftpServerName();
+    ftpServerUrl.setScheme("ftp");
+    ftpServerUrl.setPath("/test/notfound");
+    QTest::newRow("ftp") << ftpServerUrl;
     QTest::newRow("file") << QUrl("file:///thisfolderdoesn'texist/probably.txt");
 #ifdef Q_OS_WIN
     // Only supported on windows.

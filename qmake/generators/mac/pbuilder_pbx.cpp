@@ -868,6 +868,7 @@ ProjectBuilderMakefileGenerator::writeMakeParts(QTextStream &t)
           << "\t\t\t" << writeSettings("shellScript", "make -C " + IoUtils::shellQuoteUnix(Option::output_dir)
                                                       + " -f " + IoUtils::shellQuoteUnix(mkfile)) << ";\n"
           << "\t\t\t" << writeSettings("showEnvVarsInLog", "0") << ";\n"
+          << "\t\t\t" << writeSettings("alwaysOutOfDate", "1") << ";\n"
           << "\t\t};\n";
    }
 
@@ -2059,6 +2060,12 @@ ProjectBuilderMakefileGenerator::writeSettings(const QString &var, const ProStri
         ret += val;
     }
     return ret;
+}
+
+bool
+ProjectBuilderMakefileGenerator::inhibitMakeDirOutPath(const ProKey &path) const
+{
+    return path == "OBJECTS_DIR";
 }
 
 QT_END_NAMESPACE

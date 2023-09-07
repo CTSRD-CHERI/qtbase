@@ -93,7 +93,7 @@
 
 - (void)resetMouseButtons
 {
-    qCDebug(lcQpaMouse) << "Reseting mouse buttons";
+    qCDebug(lcQpaMouse) << "Resetting mouse buttons";
     m_buttons = Qt::NoButton;
     m_frameStrutButtons = Qt::NoButton;
 }
@@ -184,6 +184,39 @@
     qCInfo(lcQpaMouse) << eventType << "at" << qtWindowPoint << "with" << m_frameStrutButtons << "in" << self.window;
     QWindowSystemInterface::handleFrameStrutMouseEvent(m_platformWindow->window(),
         timestamp, qtWindowPoint, qtScreenPoint, m_frameStrutButtons, button, eventType);
+}
+
+- (bool)closePopups:(NSEvent *)theEvent
+{
+    QList<QCocoaWindow *> *popups = QCocoaIntegration::instance()->popupWindowStack();
+    if (!popups->isEmpty()) {
+        // Check if the click is outside all popups.
+        bool inside = false;
+        QPointF qtScreenPoint = QCocoaScreen::mapFromNative([self screenMousePoint:theEvent]);
+        for (QList<QCocoaWindow *>::const_iterator it = popups->begin(); it != popups->end(); ++it) {
+            if ((*it)->geometry().contains(qtScreenPoint.toPoint())) {
+                inside = true;
+                break;
+            }
+        }
+        // Close the popups if the click was outside.
+        if (!inside) {
+            bool selfClosed = false;
+            Qt::WindowType type = QCocoaIntegration::instance()->activePopupWindow()->window()->type();
+            while (QCocoaWindow *popup = QCocoaIntegration::instance()->popPopupWindow()) {
+                selfClosed = self == popup->view();
+                QWindowSystemInterface::handleCloseEvent(popup->window());
+                QWindowSystemInterface::flushWindowSystemEvents();
+                if (!m_platformWindow)
+                    return true; // Bail out if window was destroyed
+            }
+            // Consume the mouse event when closing the popup, except for tool tips
+            // were it's expected that the event is processed normally.
+            if (type != Qt::ToolTip || selfClosed)
+                 return true;
+        }
+    }
+    return false;
 }
 @end
 
@@ -390,34 +423,8 @@
     // that particular poup type (for example context menus). However, Qt expects
     // that plain popup QWindows will also be closed, so we implement the logic
     // here as well.
-    QList<QCocoaWindow *> *popups = QCocoaIntegration::instance()->popupWindowStack();
-    if (!popups->isEmpty()) {
-        // Check if the click is outside all popups.
-        bool inside = false;
-        QPointF qtScreenPoint = QCocoaScreen::mapFromNative([self screenMousePoint:theEvent]);
-        for (QList<QCocoaWindow *>::const_iterator it = popups->begin(); it != popups->end(); ++it) {
-            if ((*it)->geometry().contains(qtScreenPoint.toPoint())) {
-                inside = true;
-                break;
-            }
-        }
-        // Close the popups if the click was outside.
-        if (!inside) {
-            bool selfClosed = false;
-            Qt::WindowType type = QCocoaIntegration::instance()->activePopupWindow()->window()->type();
-            while (QCocoaWindow *popup = QCocoaIntegration::instance()->popPopupWindow()) {
-                selfClosed = self == popup->view();
-                QWindowSystemInterface::handleCloseEvent(popup->window());
-                QWindowSystemInterface::flushWindowSystemEvents();
-                if (!m_platformWindow)
-                    return; // Bail out if window was destroyed
-            }
-            // Consume the mouse event when closing the popup, except for tool tips
-            // were it's expected that the event is processed normally.
-            if (type != Qt::ToolTip || selfClosed)
-                 return;
-        }
-    }
+    if ([self closePopups:theEvent])
+        return;
 
     QPointF qtWindowPoint;
     QPointF qtScreenPoint;
@@ -664,14 +671,18 @@
         // had time to emit a momentum phase event.
         if ([NSApp nextEventMatchingMask:NSEventMaskScrollWheel untilDate:[NSDate distantPast]
                 inMode:@"QtMomementumEventSearchMode" dequeue:NO].momentumPhase == NSEventPhaseBegan) {
-            Q_ASSERT(pixelDelta.isNull() && angleDelta.isNull());
-            return; // Ignore this event, as it has a delta of 0,0
+            return; // Ignore, even if it has delta
+        } else {
+            phase = Qt::ScrollEnd;
+            m_scrolling = false;
         }
-        phase = Qt::ScrollEnd;
-        m_scrolling = false;
     } else if (theEvent.momentumPhase == NSEventPhaseBegan) {
         Q_ASSERT(!pixelDelta.isNull() && !angleDelta.isNull());
-        phase = Qt::ScrollUpdate; // Send as update, it has a delta
+        // If we missed finding a momentum NSEventPhaseBegan when the non-momentum
+        // phase ended we need to treat this as a scroll begin, to not confuse client
+        // code. Otherwise we treat it as a continuation of the existing scroll.
+        phase = m_scrolling ? Qt::ScrollUpdate : Qt::ScrollBegin;
+        m_scrolling = true;
     } else if (theEvent.momentumPhase == NSEventPhaseChanged) {
         phase = Qt::ScrollMomentum;
     } else if (theEvent.phase == NSEventPhaseCancelled
@@ -681,6 +692,16 @@
         m_scrolling = false;
     } else {
         Q_ASSERT(theEvent.momentumPhase != NSEventPhaseStationary);
+    }
+
+    // Sanitize deltas for events that should not result in scrolling.
+    // On macOS 12.1 this phase has been observed to report deltas.
+    if (theEvent.phase == NSEventPhaseCancelled) {
+        if (!pixelDelta.isNull() || !angleDelta.isNull()) {
+            qCInfo(lcQpaMouse) << "Ignoring unexpected delta for" << theEvent;
+            pixelDelta = QPoint();
+            angleDelta = QPoint();
+        }
     }
 
     // Prevent keyboard modifier state from changing during scroll event streams.

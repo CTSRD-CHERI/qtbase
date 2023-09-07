@@ -491,3 +491,5 @@ bool QXdgDesktopPortalFileDialog::useNativeFileDialog(QXdgDesktopPortalFileDialo
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qxdgdesktopportalfiledialog_p.cpp"

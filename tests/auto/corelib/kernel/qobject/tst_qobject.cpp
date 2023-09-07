@@ -158,6 +158,7 @@ private slots:
     void nullReceiver();
     void functorReferencesConnection();
     void disconnectDisconnects();
+    void declarativeData();
 };
 
 struct QObjectCreatedOnShutdown
@@ -3024,6 +3025,16 @@ void tst_QObject::recursiveSignalEmission()
     QSKIP("No qprocess support", SkipAll);
 #else
     QProcess proc;
+
+    // Add the executable's directory to path so that we can find the test helper next to it
+    // in a cross-platform way. We must do this because the CWD is not pointing to this directory
+    // in debug-and-release builds.
+    QByteArray pathEnv = qgetenv("PATH");
+    qputenv("PATH",
+            pathEnv + QDir::listSeparator().toLatin1()
+                    + QCoreApplication::applicationDirPath().toLocal8Bit());
+    auto restore = qScopeGuard([&] { qputenv("PATH", pathEnv); });
+
     // signalbug helper app should always be next to this test binary
     const QString path = QStringLiteral("signalbug_helper");
     proc.start(path);
@@ -7678,6 +7689,82 @@ void tst_QObject::disconnectDisconnects()
 // Test for QtPrivate::HasQ_OBJECT_Macro
 Q_STATIC_ASSERT(QtPrivate::HasQ_OBJECT_Macro<tst_QObject>::Value);
 Q_STATIC_ASSERT(!QtPrivate::HasQ_OBJECT_Macro<SiblingDeleter>::Value);
+
+#ifdef QT_BUILD_INTERNAL
+/*
+    Since QObjectPrivate stores the declarativeData pointer in a union with the pointer
+    to the currently destroyed child, calls to the QtDeclarative handlers need to be
+    correctly guarded. QTBUG-105286
+*/
+namespace QtDeclarative {
+static QAbstractDeclarativeData *theData;
+
+static void destroyed(QAbstractDeclarativeData *data, QObject *)
+{
+    QCOMPARE(data, theData);
+}
+static void signalEmitted(QAbstractDeclarativeData *data, QObject *, int, void **)
+{
+    QCOMPARE(data, theData);
+}
+// we can't use QCOMPARE in the next two functions, as they don't return void
+static int receivers(QAbstractDeclarativeData *data, const QObject *, int)
+{
+    QTest::qCompare(data, theData, "data", "theData", __FILE__, __LINE__);
+    return 0;
+}
+static bool isSignalConnected(QAbstractDeclarativeData *data, const QObject *, int)
+{
+    QTest::qCompare(data, theData, "data", "theData", __FILE__, __LINE__);
+    return true;
+}
+
+class Object : public QObject
+{
+    Q_OBJECT
+public:
+    using QObject::QObject;
+    ~Object()
+    {
+        if (Object *p = static_cast<Object *>(parent()))
+            p->emitSignal();
+    }
+
+    void emitSignal()
+    {
+        emit theSignal();
+    }
+
+signals:
+    void theSignal();
+};
+
+}
+#endif
+
+void tst_QObject::declarativeData()
+{
+#ifdef QT_BUILD_INTERNAL
+    QScopedValueRollback destroyed(QAbstractDeclarativeData::destroyed,
+                                   QtDeclarative::destroyed);
+    QScopedValueRollback signalEmitted(QAbstractDeclarativeData::signalEmitted,
+                                       QtDeclarative::signalEmitted);
+    QScopedValueRollback receivers(QAbstractDeclarativeData::receivers,
+                                   QtDeclarative::receivers);
+    QScopedValueRollback isSignalConnected(QAbstractDeclarativeData::isSignalConnected,
+                                           QtDeclarative::isSignalConnected);
+
+    QtDeclarative::Object p;
+    QObjectPrivate *priv = QObjectPrivate::get(&p);
+    priv->declarativeData = QtDeclarative::theData = new QAbstractDeclarativeData;
+
+    connect(&p, &QtDeclarative::Object::theSignal, &p, []{
+    });
+
+    QtDeclarative::Object *child = new QtDeclarative::Object;
+    child->setParent(&p);
+#endif
+}
 
 QTEST_MAIN(tst_QObject)
 #include "tst_qobject.moc"

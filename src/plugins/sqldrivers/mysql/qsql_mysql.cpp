@@ -360,12 +360,9 @@ static bool qIsInteger(int t)
 
 void QMYSQLResultPrivate::bindBlobs()
 {
-    int i;
-    const MYSQL_FIELD *fieldInfo;
     MYSQL_BIND *bind;
-
-    for(i = 0; i < fields.count(); ++i) {
-        fieldInfo = fields.at(i).myField;
+    for (int i = 0; i < fields.count(); ++i) {
+        const MYSQL_FIELD *fieldInfo = fields.at(i).myField;
         if (qIsBlob(inBinds[i].buffer_type) && meta && fieldInfo) {
             bind = &inBinds[i];
             bind->buffer_length = fieldInfo->max_length;
@@ -378,7 +375,6 @@ void QMYSQLResultPrivate::bindBlobs()
 
 bool QMYSQLResultPrivate::bindInValues()
 {
-    MYSQL_BIND *bind;
     int i = 0;
 
     if (!meta)
@@ -394,7 +390,7 @@ bool QMYSQLResultPrivate::bindInValues()
     const MYSQL_FIELD *fieldInfo;
 
     while((fieldInfo = mysql_fetch_field(meta))) {
-        bind = &inBinds[i];
+        MYSQL_BIND *bind = &inBinds[i];
 
         QMyField &f = fields[i];
         f.myField = fieldInfo;
@@ -1595,3 +1591,5 @@ bool QMYSQLDriver::isIdentifierEscaped(const QString &identifier, IdentifierType
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qsql_mysql_p.cpp"

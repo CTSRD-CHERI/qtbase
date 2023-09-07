@@ -905,34 +905,7 @@ void QAndroidInputContext::update(Qt::InputMethodQueries queries)
     QSharedPointer<QInputMethodQueryEvent> query = focusObjectInputMethodQuery(queries);
     if (query.isNull())
         return;
-
-    if (query->value(Qt::ImCursorPosition).toInt() >= 0 &&
-            query->value(Qt::ImSurroundingText).toString() != nullptr &&
-            query->value(Qt::ImSurroundingText).toString()
-            .left(query->value(Qt::ImCursorPosition).toInt()).length()>=0) {
-        // Cursos position should be always valid
-        // when object is composing
-        if (focusObjectIsComposing())
-            return;
-        if (m_focusObject->isWidgetType())
-            updateCursorPosition();
-        else
-            updateCursorPositionInRange(query);
-    }
-}
-
-void QAndroidInputContext::updateCursorPositionInRange(const QSharedPointer<QInputMethodQueryEvent> &query)
-{
-    QObject *input = qGuiApp->focusObject();
-    QList<QInputMethodEvent::Attribute> attributes;
-    attributes.append(QInputMethodEvent::Attribute(QInputMethodEvent::Cursor,
-                                                   query->value(Qt::ImCursorPosition).toInt(), 1));
-
-    QInputMethodEvent event(QString(), attributes);
-    QCoreApplication::sendEvent(input, &event);
-    QtAndroidInput::updateSelection(query->value(Qt::ImCursorPosition).toInt(),
-                                    query->value(Qt::ImCursorPosition).toInt(), 0,
-                                    query->value(Qt::ImSurroundingText).toString().length());
+#warning TODO extract the needed data from query
 }
 
 void QAndroidInputContext::invokeAction(QInputMethod::Action action, int cursorPosition)
@@ -964,6 +937,12 @@ void QAndroidInputContext::showInputPanel()
     QSharedPointer<QInputMethodQueryEvent> query = focusObjectInputMethodQuery();
     if (query.isNull())
         return;
+
+    disconnect(m_updateCursorPosConnection);
+    if (qGuiApp->focusObject()->metaObject()->indexOfSignal("cursorPositionChanged(int,int)") >= 0) // QLineEdit breaks the pattern
+        m_updateCursorPosConnection = connect(qGuiApp->focusObject(), SIGNAL(cursorPositionChanged(int,int)), this, SLOT(updateCursorPosition()));
+    else
+        m_updateCursorPosConnection = connect(qGuiApp->focusObject(), SIGNAL(cursorPositionChanged()), this, SLOT(updateCursorPosition()));
 
     QRect rect = inputItemRectangle();
     QtAndroidInput::showSoftwareKeyboard(rect.left(), rect.top(), rect.width(), rect.height(),
@@ -1230,13 +1209,21 @@ bool QAndroidInputContext::focusObjectStopComposing()
 
     m_composingCursor = -1;
 
-    // Moving Qt's cursor to where the preedit cursor used to be
-    QList<QInputMethodEvent::Attribute> attributes;
-    attributes.append(QInputMethodEvent::Attribute(QInputMethodEvent::Selection, localCursorPos, 0));
-
-    QInputMethodEvent event(QString(), attributes);
-    event.setCommitString(m_composingText);
-    sendInputMethodEvent(&event);
+    {
+        // commit the composing test
+        QList<QInputMethodEvent::Attribute> attributes;
+        QInputMethodEvent event(QString(), attributes);
+        event.setCommitString(m_composingText);
+        sendInputMethodEvent(&event);
+    }
+    {
+        // Moving Qt's cursor to where the preedit cursor used to be
+        QList<QInputMethodEvent::Attribute> attributes;
+        attributes.append(
+                QInputMethodEvent::Attribute(QInputMethodEvent::Selection, localCursorPos, 0));
+        QInputMethodEvent event(QString(), attributes);
+        sendInputMethodEvent(&event);
+    }
 
     return true;
 }

@@ -65,6 +65,7 @@ import android.os.Looper;
 import android.content.ClipboardManager;
 import android.content.ClipboardManager.OnPrimaryClipChangedListener;
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -102,6 +103,7 @@ public class QtNative
     private static int m_displayMetricsScreenHeightPixels = 0;
     private static int m_displayMetricsDesktopWidthPixels = 0;
     private static int m_displayMetricsDesktopHeightPixels = 0;
+    private static float m_displayMetricsRefreshRate = 60;
     private static double m_displayMetricsXDpi = .0;
     private static double m_displayMetricsYDpi = .0;
     private static double m_displayMetricsScaledDensity = 1.0;
@@ -617,7 +619,7 @@ public class QtNative
                                       m_displayMetricsYDpi,
                                       m_displayMetricsScaledDensity,
                                       m_displayMetricsDensity,
-                                      true);
+                                      m_displayMetricsRefreshRate);
                 }
             });
             m_qtThread.post(new Runnable() {
@@ -640,7 +642,7 @@ public class QtNative
                                                     double YDpi,
                                                     double scaledDensity,
                                                     double density,
-                                                    boolean forceUpdate)
+                                                    float refreshRate)
     {
         /* Fix buggy dpi report */
         if (XDpi < android.util.DisplayMetrics.DENSITY_LOW)
@@ -650,15 +652,9 @@ public class QtNative
 
         synchronized (m_mainActivityMutex) {
             if (m_started) {
-                setDisplayMetrics(screenWidthPixels,
-                                  screenHeightPixels,
-                                  desktopWidthPixels,
-                                  desktopHeightPixels,
-                                  XDpi,
-                                  YDpi,
-                                  scaledDensity,
-                                  density,
-                                  forceUpdate);
+                setDisplayMetrics(screenWidthPixels, screenHeightPixels, desktopWidthPixels,
+                                  desktopHeightPixels, XDpi, YDpi, scaledDensity, density,
+                                  refreshRate);
             } else {
                 m_displayMetricsScreenWidthPixels = screenWidthPixels;
                 m_displayMetricsScreenHeightPixels = screenHeightPixels;
@@ -668,6 +664,7 @@ public class QtNative
                 m_displayMetricsYDpi = YDpi;
                 m_displayMetricsScaledDensity = scaledDensity;
                 m_displayMetricsDensity = density;
+                m_displayMetricsRefreshRate = refreshRate;
             }
         }
     }
@@ -715,9 +712,11 @@ public class QtNative
             }
             return 1;
         }
-        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN && index == event.getActionIndex()) {
+        if (action == MotionEvent.ACTION_DOWN
+            || action == MotionEvent.ACTION_POINTER_DOWN && index == event.getActionIndex()) {
             return 0;
-        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_UP && index == event.getActionIndex()) {
+        } else if (action == MotionEvent.ACTION_UP
+            || action == MotionEvent.ACTION_POINTER_UP && index == event.getActionIndex()) {
             return 3;
         }
         return 2;
@@ -767,6 +766,10 @@ public class QtNative
 
                 case MotionEvent.ACTION_UP:
                     touchEnd(id, 2);
+                    break;
+
+                case MotionEvent.ACTION_CANCEL:
+                    touchCancel(id);
                     break;
 
                 default:
@@ -945,25 +948,25 @@ public class QtNative
         return m_activityDelegate.isKeyboardVisible() && !m_isKeyboardHiding;
     }
 
-    private static void notifyAccessibilityLocationChange()
+    private static void notifyAccessibilityLocationChange(final int viewId)
     {
         runAction(new Runnable() {
             @Override
             public void run() {
                 if (m_activityDelegate != null) {
-                    m_activityDelegate.notifyAccessibilityLocationChange();
+                    m_activityDelegate.notifyAccessibilityLocationChange(viewId);
                 }
             }
         });
     }
 
-    private static void notifyObjectHide(final int viewId)
+    private static void notifyObjectHide(final int viewId, final int parentId)
     {
         runAction(new Runnable() {
             @Override
             public void run() {
                 if (m_activityDelegate != null) {
-                    m_activityDelegate.notifyObjectHide(viewId);
+                    m_activityDelegate.notifyObjectHide(viewId, parentId);
                 }
             }
         });
@@ -976,6 +979,18 @@ public class QtNative
             public void run() {
                 if (m_activityDelegate != null) {
                     m_activityDelegate.notifyObjectFocus(viewId);
+                }
+            }
+        });
+    }
+
+    private static void notifyValueChanged(final int viewId, final String value)
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                if (m_activityDelegate != null) {
+                    m_activityDelegate.notifyValueChanged(viewId, value);
                 }
             }
         });
@@ -1031,10 +1046,8 @@ public class QtNative
     {
         try {
             if (m_clipboardManager != null && m_clipboardManager.hasPrimaryClip()) {
-                ClipData primaryClip = m_clipboardManager.getPrimaryClip();
-                for (int i = 0; i < primaryClip.getItemCount(); ++i)
-                    if (primaryClip.getItemAt(i).getText() != null)
-                        return true;
+                ClipDescription primaryClipDescription = m_clipboardManager.getPrimaryClipDescription();
+                return primaryClipDescription.hasMimeType("text/*");
             }
         } catch (Exception e) {
             Log.e(QtTAG, "Failed to get clipboard data", e);
@@ -1089,10 +1102,8 @@ public class QtNative
     {
         try {
             if (m_clipboardManager != null && m_clipboardManager.hasPrimaryClip()) {
-                ClipData primaryClip = m_clipboardManager.getPrimaryClip();
-                for (int i = 0; i < Objects.requireNonNull(primaryClip).getItemCount(); ++i)
-                    if (primaryClip.getItemAt(i).getHtmlText() != null)
-                        return true;
+                ClipDescription primaryClipDescription = m_clipboardManager.getPrimaryClipDescription();
+                return primaryClipDescription.hasMimeType("text/html");
             }
         } catch (Exception e) {
             Log.e(QtTAG, "Failed to get clipboard data", e);
@@ -1128,10 +1139,8 @@ public class QtNative
     {
         try {
             if (m_clipboardManager != null && m_clipboardManager.hasPrimaryClip()) {
-                ClipData primaryClip = m_clipboardManager.getPrimaryClip();
-                for (int i = 0; i < primaryClip.getItemCount(); ++i)
-                    if (primaryClip.getItemAt(i).getUri() != null)
-                        return true;
+                ClipDescription primaryClipDescription = m_clipboardManager.getPrimaryClipDescription();
+                return primaryClipDescription.hasMimeType("text/uri-list");
             }
         } catch (Exception e) {
             Log.e(QtTAG, "Failed to get clipboard data", e);
@@ -1353,8 +1362,9 @@ public class QtNative
                                                 double YDpi,
                                                 double scaledDensity,
                                                 double density,
-                                                boolean forceUpdate);
+                                                float refreshRate);
     public static native void handleOrientationChanged(int newRotation, int nativeOrientation);
+    public static native void handleRefreshRateChanged(float refreshRate);
     // screen methods
 
     // pointer methods
@@ -1365,6 +1375,7 @@ public class QtNative
     public static native void touchBegin(int winId);
     public static native void touchAdd(int winId, int pointerId, int action, boolean primary, int x, int y, float major, float minor, float rotation, float pressure);
     public static native void touchEnd(int winId, int action);
+    public static native void touchCancel(int winId);
     public static native void longPress(int winId, int x, int y);
     // pointer methods
 

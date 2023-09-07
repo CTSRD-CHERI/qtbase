@@ -414,6 +414,25 @@ void QtFontFamily::ensurePopulated()
     Q_ASSERT_X(populated, Q_FUNC_INFO, qPrintable(name));
 }
 
+/*!
+    \internal
+
+    Tests if the given family \a family supports writing system \a writingSystem,
+    including the special case for Han script mapping to several subsequent writing systems
+*/
+static bool familySupportsWritingSystem(QtFontFamily *family, size_t writingSystem)
+{
+    Q_ASSERT(family != nullptr);
+    Q_ASSERT(writingSystem != QFontDatabase::Any && writingSystem < QFontDatabase::WritingSystemsCount);
+
+    size_t ws = writingSystem;
+    do {
+        if ((family->writingSystems[ws] & QtFontFamily::Supported) != 0)
+            return true;
+    } while (writingSystem >= QFontDatabase::SimplifiedChinese && writingSystem <= QFontDatabase::Japanese && ++ws <= QFontDatabase::Japanese);
+
+    return false;
+}
 
 struct FallbacksCacheKey {
     QString family;
@@ -826,7 +845,7 @@ QStringList QPlatformFontDatabase::fallbacksForFamily(const QString &family, QFo
 
         f->ensurePopulated();
 
-        if (writingSystem > QFontDatabase::Any && f->writingSystems[writingSystem] != QtFontFamily::Supported)
+        if (writingSystem > QFontDatabase::Any && !familySupportsWritingSystem(f, writingSystem))
             continue;
 
         for (int j = 0; j < f->count; ++j) {
@@ -1219,9 +1238,13 @@ static bool matchFamilyName(const QString &familyName, QtFontFamily *f)
 
     Tries to find the best match for a given request and family/foundry
 */
-static int match(int script, const QFontDef &request,
-                 const QString &family_name, const QString &foundry_name,
-                 QtFontDesc *desc, const QList<int> &blacklistedFamilies)
+static int match(int script,
+                 const QFontDef &request,
+                 const QString &family_name,
+                 const QString &foundry_name,
+                 QtFontDesc *desc,
+                 const QList<int> &blacklistedFamilies,
+                 unsigned int *resultingScore = nullptr)
 {
     int result = -1;
 
@@ -1271,8 +1294,10 @@ static int match(int script, const QFontDef &request,
         test.family->ensurePopulated();
 
         // Check if family is supported in the script we want
-        if (writingSystem != QFontDatabase::Any && !(test.family->writingSystems[writingSystem] & QtFontFamily::Supported))
+        if (writingSystem != QFontDatabase::Any
+                && !familySupportsWritingSystem(test.family, writingSystem)) {
             continue;
+        }
 
         // as we know the script is supported, we can be sure
         // to find a matching font here.
@@ -1296,6 +1321,10 @@ static int match(int script, const QFontDef &request,
         if (newscore < 10) // xlfd instead of FT... just accept it
             break;
     }
+
+    if (resultingScore != nullptr)
+        *resultingScore = score;
+
     return result;
 }
 
@@ -2480,13 +2509,12 @@ bool QFontDatabasePrivate::isApplicationFont(const QString &fileName)
     with removeApplicationFont() or to retrieve the list of family names contained
     in the font.
 
+//! [add-application-font-doc]
     The function returns -1 if the font could not be loaded.
 
     Currently only TrueType fonts, TrueType font collections, and OpenType fonts are
     supported.
-
-    \note Adding application fonts on Unix/X11 platforms without fontconfig is
-    currently not supported.
+//! [add-application-font-doc]
 
     \sa addApplicationFontFromData(), applicationFontFamilies(), removeApplicationFont()
 */
@@ -2514,12 +2542,7 @@ int QFontDatabase::addApplicationFont(const QString &fileName)
     with removeApplicationFont() or to retrieve the list of family names contained
     in the font.
 
-    The function returns -1 if the font could not be loaded.
-
-    Currently only TrueType fonts and TrueType font collections are supported.
-
-    \b{Note:} Adding application fonts on Unix/X11 platforms without fontconfig is
-    currently not supported.
+    \include qfontdatabase.cpp add-application-font-doc
 
     \sa addApplicationFont(), applicationFontFamilies(), removeApplicationFont()
 */
@@ -2654,7 +2677,9 @@ bool QFontDatabase::supportsThreadedFontRendering()
 /*!
     \internal
 */
-QFontEngine *QFontDatabase::findFont(const QFontDef &request, int script)
+QFontEngine *QFontDatabase::findFont(const QFontDef &request,
+                                     int script,
+                                     bool preferScriptOverFamily)
 {
     QMutexLocker locker(fontDatabaseMutex());
 
@@ -2696,11 +2721,20 @@ QFontEngine *QFontDatabase::findFont(const QFontDef &request, int script)
     parseFontName(requestFamily, foundry_name, family_name);
     QtFontDesc desc;
     QList<int> blackListed;
-    int index = match(multi ? QChar::Script_Common : script, request, family_name, foundry_name, &desc, blackListed);
-    if (index < 0 && QGuiApplicationPrivate::platformIntegration()->fontDatabase()->populateFamilyAliases(family_name)) {
+    unsigned int score = UINT_MAX;
+    int index = match(multi ? QChar::Script_Common : script, request, family_name, foundry_name, &desc, blackListed, &score);
+    if (score > 0 && QGuiApplicationPrivate::platformIntegration()->fontDatabase()->populateFamilyAliases(family_name)) {
         // We populated familiy aliases (e.g. localized families), so try again
         index = match(multi ? QChar::Script_Common : script, request, family_name, foundry_name, &desc, blackListed);
     }
+
+    // If we do not find a match and NoFontMerging is set, use the requested font even if it does
+    // not support the script.
+    //
+    // (we do this at the end to prefer foundries that support the script if they exist)
+    if (index < 0 && !multi && !preferScriptOverFamily)
+        index = match(QChar::Script_Common, request, family_name, foundry_name, &desc, blackListed);
+
     if (index >= 0) {
         QFontDef fontDef = request;
 
@@ -2893,10 +2927,8 @@ Q_GUI_EXPORT QStringList qt_sort_families_by_writing_system(QChar::Script script
         }
 
         uint order = i;
-        if (testFamily == nullptr
-              || (testFamily->writingSystems[writingSystem] & QtFontFamily::Supported) == 0) {
+        if (testFamily == nullptr || !familySupportsWritingSystem(testFamily, writingSystem))
             order |= 1u << 31;
-        }
 
         supported.insert(order, family);
     }
@@ -2905,4 +2937,6 @@ Q_GUI_EXPORT QStringList qt_sort_families_by_writing_system(QChar::Script script
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qfontdatabase.cpp"
 

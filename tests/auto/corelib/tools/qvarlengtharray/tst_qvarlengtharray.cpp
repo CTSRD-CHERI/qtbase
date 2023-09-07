@@ -37,6 +37,8 @@ class tst_QVarLengthArray : public QObject
 {
     Q_OBJECT
 private slots:
+    void defaultConstructor_int() { defaultConstructor<int>(); }
+    void defaultConstructor_QString() { defaultConstructor<QString>(); }
     void append();
     void removeLast();
     void oldTests();
@@ -63,6 +65,8 @@ private slots:
     void implicitDefaultCtor();
 
 private:
+    template <typename T>
+    void defaultConstructor();
     template<typename T>
     void initializeList();
 };
@@ -81,6 +85,23 @@ struct Tracker
 };
 
 int Tracker::count = 0;
+
+template <typename T>
+void tst_QVarLengthArray::defaultConstructor()
+{
+    {
+        QVarLengthArray<T, 123> vla;
+        QCOMPARE(vla.size(), 0);
+        QVERIFY(vla.empty());
+        QVERIFY(vla.isEmpty());
+        QCOMPARE(vla.begin(), vla.end());
+        QCOMPARE(vla.capacity(), 123);
+    }
+    {
+        QVarLengthArray<T> vla;
+        QCOMPARE(vla.capacity(), 256);    // notice, should we change the default
+    }
+}
 
 void tst_QVarLengthArray::append()
 {
@@ -277,12 +298,12 @@ void tst_QVarLengthArray::appendIsStronglyExceptionSafe()
         QVarLengthArray<Thrower, 2> vla(1);
         {
             Thrower t;
-            const QScopedValueRollback rb(throwOnCopyNow, true);
+            const QScopedValueRollback<bool> rb(throwOnCopyNow, true);
             QVERIFY_EXCEPTION_THROWN(vla.push_back(t), int);
             QCOMPARE(vla.size(), 1);
         }
         {
-            const QScopedValueRollback rb(throwOnMoveNow, true);
+            const QScopedValueRollback<bool> rb(throwOnMoveNow, true);
             QVERIFY_EXCEPTION_THROWN(vla.push_back({}), int);
             QCOMPARE(vla.size(), 1);
         }

@@ -701,6 +701,10 @@ static const struct {
     { Qt::Key_TouchpadToggle,  QT_TRANSLATE_NOOP("QShortcut", "Touchpad Toggle") },
     { Qt::Key_TouchpadOn,  QT_TRANSLATE_NOOP("QShortcut", "Touchpad On") },
     { Qt::Key_TouchpadOff,  QT_TRANSLATE_NOOP("QShortcut", "Touchpad Off") },
+    { Qt::Key_Shift,  QT_TRANSLATE_NOOP("QShortcut", "Shift") },
+    { Qt::Key_Control,  QT_TRANSLATE_NOOP("QShortcut", "Control") },
+    { Qt::Key_Alt,  QT_TRANSLATE_NOOP("QShortcut", "Alt") },
+    { Qt::Key_Meta,  QT_TRANSLATE_NOOP("QShortcut", "Meta") },
 
 };
 static Q_CONSTEXPR int numKeyNames = sizeof keyname / sizeof *keyname;
@@ -1693,3 +1697,5 @@ QDebug operator<<(QDebug dbg, const QKeySequence &p)
 */
 
 QT_END_NAMESPACE
+
+#include "moc_qkeysequence.cpp"

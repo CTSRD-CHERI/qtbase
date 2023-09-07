@@ -145,9 +145,13 @@
     UIWindow *uiWindow = self.window;
 
     if (uiWindow.screen != [UIScreen mainScreen] && self.subviews.count == 1) {
-        // Removing the last view of an external screen, go back to mirror mode
-        uiWindow.screen = [UIScreen mainScreen];
-        uiWindow.hidden = YES;
+        // We're about to remove the last view of an external screen, so go back
+        // to mirror mode, but defer it until after the view has been removed,
+        // to ensure that we don't try to layout the view that's being removed.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            uiWindow.hidden = YES;
+            uiWindow.screen = [UIScreen mainScreen];
+        });
     }
 }
 
@@ -246,6 +250,7 @@
 @implementation QIOSViewController {
     BOOL m_updatingProperties;
     QMetaObject::Connection m_focusWindowChangeConnection;
+    QMetaObject::Connection m_appStateChangedConnection;
 }
 
 #ifndef Q_OS_TVOS
@@ -274,7 +279,7 @@
         });
 
         QIOSApplicationState *applicationState = &QIOSIntegration::instance()->applicationState;
-        QObject::connect(applicationState, &QIOSApplicationState::applicationStateDidChange,
+        m_appStateChangedConnection = QObject::connect(applicationState, &QIOSApplicationState::applicationStateDidChange,
             [self](Qt::ApplicationState oldState, Qt::ApplicationState newState) {
                 if (oldState == Qt::ApplicationSuspended && newState != Qt::ApplicationSuspended) {
                     // We may have ignored an earlier layout because the application was suspended,
@@ -294,6 +299,7 @@
 - (void)dealloc
 {
     QObject::disconnect(m_focusWindowChangeConnection);
+    QObject::disconnect(m_appStateChangedConnection);
     [super dealloc];
 }
 

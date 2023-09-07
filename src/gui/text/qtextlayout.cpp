@@ -1173,10 +1173,17 @@ void QTextLayout::draw(QPainter *p, const QPointF &pos, const QVector<FormatRang
                 QRectF fullLineRect(tl.rect());
                 fullLineRect.translate(position);
                 fullLineRect.setRight(QFIXED_MAX);
-                if (!selectionEndInLine)
-                    region.addRect(clipIfValid(QRectF(lineRect.topRight(), fullLineRect.bottomRight()), clip));
-                if (!selectionStartInLine)
-                    region.addRect(clipIfValid(QRectF(fullLineRect.topLeft(), lineRect.bottomLeft()), clip));
+
+                const bool rightToLeft = d->isRightToLeft();
+
+                if (!selectionEndInLine) {
+                    region.addRect(clipIfValid(rightToLeft ? QRectF(fullLineRect.topLeft(), lineRect.bottomLeft())
+                                                           : QRectF(lineRect.topRight(), fullLineRect.bottomRight()), clip));
+                }
+                if (!selectionStartInLine) {
+                    region.addRect(clipIfValid(rightToLeft ? QRectF(lineRect.topRight(), fullLineRect.bottomRight())
+                                                           : QRectF(fullLineRect.topLeft(), lineRect.bottomLeft()), clip));
+                }
             } else if (!selectionEndInLine
                 && isLastLineInBlock
                 &&!(d->option.flags() & QTextOption::ShowLineAndParagraphSeparators)) {
@@ -1329,10 +1336,13 @@ void QTextLayout::drawCursor(QPainter *p, const QPointF &pos, int cursorPosition
     bool rightToLeft = d->isRightToLeft();
     if (itm >= 0) {
         const QScriptItem &si = d->layoutData->items.at(itm);
-        if (si.ascent > 0)
-            base = si.ascent;
-        if (si.descent > 0)
-            descent = si.descent;
+        // objects need some special treatment as they can have special alignment or be floating
+        if (si.analysis.flags != QScriptAnalysis::Object) {
+            if (si.ascent > 0)
+                base = si.ascent;
+            if (si.descent > 0)
+                descent = si.descent;
+        }
         rightToLeft = si.analysis.bidiLevel % 2;
     }
     qreal y = position.y() + (sl.y + sl.base() - base).toReal();
@@ -1343,7 +1353,20 @@ void QTextLayout::drawCursor(QPainter *p, const QPointF &pos, int cursorPosition
     QPainter::CompositionMode origCompositionMode = p->compositionMode();
     if (p->paintEngine()->hasFeature(QPaintEngine::RasterOpModes))
         p->setCompositionMode(QPainter::RasterOp_NotDestination);
-    p->fillRect(QRectF(x, y, qreal(width), (base + descent).toReal()), p->pen().brush());
+    const QTransform &deviceTransform = p->deviceTransform();
+    const qreal xScale = deviceTransform.m11();
+    if (deviceTransform.type() != QTransform::TxScale || std::trunc(xScale) == xScale) {
+        p->fillRect(QRectF(x, y, qreal(width), (base + descent).toReal()), p->pen().brush());
+    } else {
+        // Ensure consistently rendered cursor width under fractional scaling
+        const QPen origPen = p->pen();
+        QPen pen(origPen.brush(), qRound(width * xScale), Qt::SolidLine, Qt::FlatCap);
+        pen.setCosmetic(true);
+        const qreal center = x + qreal(width) / 2;
+        p->setPen(pen);
+        p->drawLine(QPointF(center, y), QPointF(center, y + (base + descent).toReal()));
+        p->setPen(origPen);
+    }
     p->setCompositionMode(origCompositionMode);
     if (toggleAntialiasing)
         p->setRenderHint(QPainter::Antialiasing, false);
@@ -1980,7 +2003,8 @@ void QTextLine::layout_helper(int maxGlyphs)
 
                 if (lbh.currentPosition >= eng->layoutData->string.length()
                     || isBreakableSpace
-                    || attributes[lbh.currentPosition].lineBreak) {
+                    || attributes[lbh.currentPosition].lineBreak
+                    || lbh.tmpData.textWidth >= QFIXED_MAX) {
                     sb_or_ws = true;
                     break;
                 } else if (attributes[lbh.currentPosition].graphemeBoundary) {
@@ -2142,11 +2166,14 @@ found:
         eng->maxWidth = qMax(eng->maxWidth, line.textWidth);
     } else {
         eng->minWidth = qMax(eng->minWidth, lbh.minw);
-        eng->maxWidth += line.textWidth;
+        if (qAddOverflow(eng->maxWidth, line.textWidth, &eng->maxWidth))
+            eng->maxWidth = QFIXED_MAX;
     }
 
-    if (line.textWidth > 0 && item < eng->layoutData->items.size())
-        eng->maxWidth += lbh.spaceData.textWidth;
+    if (line.textWidth > 0 && item < eng->layoutData->items.size()) {
+        if (qAddOverflow(eng->maxWidth, lbh.spaceData.textWidth, &eng->maxWidth))
+            eng->maxWidth = QFIXED_MAX;
+    }
 
     line.textWidth += trailingSpace;
     if (lbh.spaceData.length) {

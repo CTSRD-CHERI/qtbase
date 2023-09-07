@@ -54,7 +54,7 @@ void wrapInFunction()
 
 //! [0]
 QDir("/home/user/Documents")
-QDir("C:/Documents and Settings")
+QDir("C:/Users")
 //! [0]
 
 
@@ -154,7 +154,7 @@ if (d1 != d2)
 
 
 //! [12]
-C:/Documents and Settings/Username
+C:/Users/Username
 //! [12]
 
 
@@ -182,4 +182,17 @@ namespace MyNamespace
 Q_CLEANUP_RESOURCE(myapp);
 //! [15]
 
+//! [16]
+QString absolute = "/local/bin";
+QString relative = "local/bin";
+QFileInfo absFile(absolute);
+QFileInfo relFile(relative);
+
+QDir::setCurrent(QDir::rootPath());
+// absFile and relFile now point to the same file
+
+QDir::setCurrent("/tmp");
+// absFile now points to "/local/bin",
+// while relFile points to "/tmp/local/bin"
+//! [16]
 }

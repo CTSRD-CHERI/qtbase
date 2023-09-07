@@ -93,6 +93,8 @@ enum {
 
 QT_BEGIN_NAMESPACE
 
+Q_LOGGING_CATEGORY(lcQpaWindow, "qt.qpa.window");
+
 Q_DECLARE_TYPEINFO(xcb_rectangle_t, Q_PRIMITIVE_TYPE);
 
 #undef FocusIn
@@ -258,7 +260,7 @@ enum : quint32 {
             | XCB_EVENT_MASK_POINTER_MOTION,
 
     transparentForInputEventMask = baseEventMask
-            | XCB_EVENT_MASK_VISIBILITY_CHANGE | XCB_EVENT_MASK_RESIZE_REDIRECT
+            | XCB_EVENT_MASK_VISIBILITY_CHANGE
             | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
             | XCB_EVENT_MASK_COLOR_MAP_CHANGE | XCB_EVENT_MASK_OWNER_GRAB_BUTTON
 };
@@ -297,11 +299,6 @@ void QXcbWindow::create()
         return;
     }
 
-    QPlatformWindow::setGeometry(rect);
-
-    if (platformScreen != currentScreen)
-        QWindowSystemInterface::handleWindowScreenChanged(window(), platformScreen->QPlatformScreen::screen());
-
     const QSize minimumSize = windowMinimumSize();
     if (rect.width() > 0 || rect.height() > 0) {
         rect.setWidth(qBound(1, rect.width(), XCOORD_MAX));
@@ -312,6 +309,11 @@ void QXcbWindow::create()
         rect.setWidth(QHighDpi::toNativePixels(int(defaultWindowWidth), platformScreen->QPlatformScreen::screen()));
         rect.setHeight(QHighDpi::toNativePixels(int(defaultWindowHeight), platformScreen->QPlatformScreen::screen()));
     }
+
+    QPlatformWindow::setGeometry(rect);
+
+    if (platformScreen != currentScreen)
+        QWindowSystemInterface::handleWindowScreenChanged(window(), platformScreen->QPlatformScreen::screen());
 
     xcb_window_t xcb_parent_id = platformScreen->root();
     if (parent()) {
@@ -555,6 +557,7 @@ void QXcbWindow::destroy()
     }
 
     m_mapped = false;
+    m_recreationReasons = RecreationNotNeeded;
 
     if (m_pendingSyncRequest)
         m_pendingSyncRequest->invalidate();
@@ -689,6 +692,11 @@ void QXcbWindow::setVisible(bool visible)
 void QXcbWindow::show()
 {
     if (window()->isTopLevel()) {
+        if (m_recreationReasons != RecreationNotNeeded) {
+            qCDebug(lcQpaWindow) << "QXcbWindow: need to recreate window" << window() << m_recreationReasons;
+            create();
+            m_recreationReasons = RecreationNotNeeded;
+        }
 
         // update WM_NORMAL_HINTS
         propagateSizeHints();
@@ -903,6 +911,12 @@ void QXcbWindow::setWindowFlags(Qt::WindowFlags flags)
         flags |= Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::X11BypassWindowManagerHint;
     if (type == Qt::Popup)
         flags |= Qt::X11BypassWindowManagerHint;
+
+    Qt::WindowFlags oldflags = window()->flags();
+    if ((oldflags & Qt::WindowStaysOnTopHint) != (flags & Qt::WindowStaysOnTopHint))
+        m_recreationReasons |= WindowStaysOnTopHintChanged;
+    if ((oldflags & Qt::WindowStaysOnBottomHint) != (flags & Qt::WindowStaysOnBottomHint))
+        m_recreationReasons |= WindowStaysOnBottomHintChanged;
 
     const quint32 mask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK;
     const quint32 values[] = {
@@ -1331,9 +1345,10 @@ void QXcbWindow::setWindowIcon(const QIcon &icon)
 
     if (!icon_data.isEmpty()) {
         // Ignore icon exceeding maximum xcb request length
-        if (icon_data.size() > xcb_get_maximum_request_length(xcb_connection())) {
-            qWarning("Ignoring window icon: Size %u exceeds maximum xcb request length %u.",
-                     icon_data.size(), xcb_get_maximum_request_length(xcb_connection()));
+        if (quint64(icon_data.size()) > quint64(xcb_get_maximum_request_length(xcb_connection()))) {
+            qWarning() << "Ignoring window icon" << icon_data.size()
+                       << "exceeds maximum xcb request length"
+                       << xcb_get_maximum_request_length(xcb_connection());
             return;
         }
         xcb_change_property(xcb_connection(),

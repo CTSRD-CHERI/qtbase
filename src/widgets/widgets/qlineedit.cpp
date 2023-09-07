@@ -82,8 +82,7 @@
 #include "private/qapplication_p.h"
 #include "private/qshortcutmap_p.h"
 #include "qkeysequence.h"
-#define ACCEL_KEY(k) ((!QCoreApplication::testAttribute(Qt::AA_DontShowIconsInMenus) \
-                        && QGuiApplication::styleHints()->showShortcutsInContextMenus()) \
+#define ACCEL_KEY(k) (!QCoreApplication::testAttribute(Qt::AA_DontShowShortcutsInContextMenus) \
                       && !QGuiApplicationPrivate::instance()->shortcutMap.hasShortcutForKeySequence(k) ? \
                       QLatin1Char('\t') + QKeySequence(k).toString(QKeySequence::NativeText) : QString())
 #else
@@ -1901,8 +1900,11 @@ void QLineEdit::focusInEvent(QFocusEvent *e)
             d->control->moveCursor(d->control->nextMaskBlank(0));
         else if (!d->control->hasSelectedText())
             selectAll();
+        else
+            updateMicroFocus();
     } else if (e->reason() == Qt::MouseFocusReason) {
         d->clickCausedFocus = 1;
+        updateMicroFocus();
     }
 #ifdef QT_KEYPAD_NAVIGATION
     if (!QApplicationPrivate::keypadNavigationEnabled() || (hasEditFocus() && ( e->reason() == Qt::PopupFocusReason))) {
@@ -1985,21 +1987,28 @@ void QLineEdit::paintEvent(QPaintEvent *)
     p.setClipRect(r);
 
     QFontMetrics fm = fontMetrics();
+    int fmHeight = 0;
+    if (d->shouldShowPlaceholderText())
+        fmHeight = fm.boundingRect(d->placeholderText).height();
+    else
+        fmHeight = fm.boundingRect(d->control->text() + d->control->preeditAreaText()).height();
+    fmHeight = qMax(fmHeight, fm.height());
+
     Qt::Alignment va = QStyle::visualAlignment(d->control->layoutDirection(), QFlag(d->alignment));
     switch (va & Qt::AlignVertical_Mask) {
      case Qt::AlignBottom:
-         d->vscroll = r.y() + r.height() - fm.height() - QLineEditPrivate::verticalMargin;
+         d->vscroll = r.y() + r.height() - fmHeight - QLineEditPrivate::verticalMargin;
          break;
      case Qt::AlignTop:
          d->vscroll = r.y() + QLineEditPrivate::verticalMargin;
          break;
      default:
          //center
-         d->vscroll = r.y() + (r.height() - fm.height() + 1) / 2;
+         d->vscroll = r.y() + (r.height() - fmHeight + 1) / 2;
          break;
     }
     QRect lineRect(r.x() + QLineEditPrivate::horizontalMargin, d->vscroll,
-                   r.width() - 2 * QLineEditPrivate::horizontalMargin, fm.height());
+                   r.width() - 2 * QLineEditPrivate::horizontalMargin, fmHeight);
 
     if (d->shouldShowPlaceholderText()) {
         if (!d->placeholderText.isEmpty()) {

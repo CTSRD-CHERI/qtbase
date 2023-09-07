@@ -292,6 +292,7 @@ private slots:
     void clearButtonVisibleAfterSettingText_QTBUG_45518();
     void sideWidgets();
     void sideWidgetsActionEvents();
+    void sideWidgetsEffectiveMargins();
 
     void shouldShowPlaceholderText_data();
     void shouldShowPlaceholderText();
@@ -4646,6 +4647,71 @@ void tst_QLineEdit::sideWidgetsActionEvents()
     QCOMPARE(toolButton2->x(), toolButton1X);
 }
 
+/*!
+    Verify that side widgets are positioned correctly and result in
+    correct effective text margins.
+*/
+void tst_QLineEdit::sideWidgetsEffectiveMargins()
+{
+#ifndef QT_BUILD_INTERNAL
+    QSKIP("This test requires a developer build.");
+#else
+    QLineEdit edit;
+    edit.setPlaceholderText("placeholder");
+    edit.setClearButtonEnabled(true);
+    edit.show();
+    QLineEditPrivate *priv = QLineEditPrivate::get(&edit);
+    const auto sideWidgetParameters = priv->sideWidgetParameters();
+    const int sideWidgetWidth = sideWidgetParameters.widgetWidth + sideWidgetParameters.margin;
+    QVERIFY(QTest::qWaitForWindowExposed(&edit));
+
+    QCOMPARE(priv->effectiveTextMargins().left(), 0);
+    QCOMPARE(priv->effectiveTextMargins().right(), 0);
+
+    edit.setText("Left to right"); // clear button fades in on the right
+    QCOMPARE(priv->effectiveTextMargins().left(), 0);
+    QCOMPARE(priv->effectiveTextMargins().right(), sideWidgetWidth);
+    edit.clear();
+    QCOMPARE(priv->effectiveTextMargins().left(), 0);
+    QCOMPARE(priv->effectiveTextMargins().right(), 0);
+
+    edit.setLayoutDirection(Qt::RightToLeft);
+    edit.setText("ئۇيغۇر تىلى"); // clear button fades in on the left
+    QCOMPARE(priv->effectiveTextMargins().left(), sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), 0);
+    edit.clear();
+    QCOMPARE(priv->effectiveTextMargins().left(), 0);
+    QCOMPARE(priv->effectiveTextMargins().right(), 0);
+
+    edit.setLayoutDirection(Qt::LeftToRight);
+
+    const QIcon leftIcon = edit.style()->standardIcon(QStyle::SP_FileIcon);
+    const QIcon rightIcon = edit.style()->standardIcon(QStyle::SP_DirIcon);
+    edit.addAction(leftIcon, QLineEdit::ActionPosition::LeadingPosition);
+    QCOMPARE(priv->effectiveTextMargins().left(), sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), 0);
+
+    edit.addAction(rightIcon, QLineEdit::ActionPosition::TrailingPosition);
+    QCOMPARE(priv->effectiveTextMargins().left(), sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), sideWidgetWidth);
+
+    edit.setText("Left to right"); // clear button on the right
+    QCOMPARE(priv->effectiveTextMargins().left(), sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), 2 * sideWidgetWidth);
+    edit.clear();
+    QCOMPARE(priv->effectiveTextMargins().left(), sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), sideWidgetWidth);
+
+    edit.setLayoutDirection(Qt::RightToLeft);
+    edit.setText("ئۇيغۇر تىلى"); // clear button fades in on the left
+    QCOMPARE(priv->effectiveTextMargins().left(), 2 * sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), sideWidgetWidth);
+    edit.clear();
+    QCOMPARE(priv->effectiveTextMargins().left(), sideWidgetWidth);
+    QCOMPARE(priv->effectiveTextMargins().right(), sideWidgetWidth);
+#endif
+}
+
 Q_DECLARE_METATYPE(Qt::AlignmentFlag)
 void tst_QLineEdit::shouldShowPlaceholderText_data()
 {
@@ -4893,7 +4959,7 @@ void tst_QLineEdit::testQuickSelectionWithMouse()
     QVERIFY(lineEdit.selectedText().endsWith(suffix));
     QTest::mouseMove(lineEdit.windowHandle(), center + QPoint(20, 0));
     qCDebug(lcTests) << "Selected text:" << lineEdit.selectedText();
-#ifdef Q_PROCESSOR_ARM
+#if defined(Q_PROCESSOR_ARM) && !defined(Q_OS_MACOS)
     QEXPECT_FAIL("", "Currently fails on gcc-armv7, needs investigation.", Continue);
 #endif
     QCOMPARE(lineEdit.selectedText(), partialSelection);

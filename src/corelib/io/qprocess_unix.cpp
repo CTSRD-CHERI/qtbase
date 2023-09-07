@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2021 The Qt Company Ltd.
 ** Copyright (C) 2022 Intel Corporation.
 ** Contact: https://www.qt.io/licensing/
 **
@@ -426,8 +426,7 @@ void QProcessPrivate::startProcess()
         // otherwise it searches $PATH; returns empty if not found (we handle
         // that case much later)
         const QString &exeFilePath = QStandardPaths::findExecutable(program);
-        const QByteArray &tmp = QFile::encodeName(exeFilePath);
-        argv[0] = ::strdup(tmp.constData());
+        argv[0] = ::strdup(QFile::encodeName(exeFilePath).constData());
     } else {
         argv[0] = ::strdup(encodedProgramName.constData());
     }
@@ -984,16 +983,17 @@ bool QProcessPrivate::startDetached(qint64 *pid)
                 envp = _q_dupEnvironment(environment.d.constData()->vars, &envc);
             }
 
+            QByteArray tmp;
             if (!program.contains(QLatin1Char('/'))) {
                 // findExecutable() returns its argument if it's an absolute path,
                 // otherwise it searches $PATH; returns empty if not found (we handle
                 // that case much later)
                 const QString &exeFilePath = QStandardPaths::findExecutable(program);
-                const QByteArray &tmp = QFile::encodeName(exeFilePath);
-                argv[0] = ::strdup(tmp.constData());
+                tmp = QFile::encodeName(exeFilePath);
             } else {
-                argv[0] = ::strdup(QFile::encodeName(program));
+                tmp = QFile::encodeName(program);
             }
+            argv[0] = tmp.data();
 
             if (envp)
                 qt_safe_execve(argv[0], argv, envp);

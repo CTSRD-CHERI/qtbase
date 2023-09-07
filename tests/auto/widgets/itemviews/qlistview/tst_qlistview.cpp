@@ -166,9 +166,12 @@ private slots:
     void taskQTBUG_7232_AllowUserToControlSingleStep();
     void taskQTBUG_51086_skippingIndexesInSelectedIndexes();
     void taskQTBUG_47694_indexOutOfBoundBatchLayout();
+    void moveLastRow();
     void itemAlignment();
     void internalDragDropMove_data();
     void internalDragDropMove();
+    void scrollOnRemove_data();
+    void scrollOnRemove();
 };
 
 // Testing get/set functions
@@ -2512,6 +2515,222 @@ void tst_QListView::taskQTBUG_47694_indexOutOfBoundBatchLayout()
     view.scrollTo(model.index(batchSize - 1, 0));
 }
 
+class TstMoveItem
+{
+    friend class TstMoveModel;
+public:
+    TstMoveItem(TstMoveItem *parent = nullptr)
+        : parentItem(parent)
+    {
+        if (parentItem)
+            parentItem->childItems.append(this);
+    }
+
+    ~TstMoveItem()
+    {
+        QList<TstMoveItem *> delItms;
+        delItms.swap(childItems);
+        qDeleteAll(delItms);
+
+        if (parentItem)
+            parentItem->childItems.removeAll(this);
+    }
+
+    int row()
+    {
+        if (parentItem)
+            return  parentItem->childItems.indexOf(this);
+        return -1;
+    }
+
+public:
+    TstMoveItem *parentItem = nullptr;
+    QList<TstMoveItem *> childItems;
+    QHash<int, QVariant> data;
+};
+
+/*!
+    Test that removing the last row in an IconView mode QListView
+    doesn't crash. The model is specifically crafted to provoke a
+    stale QBspTree by returning a 0 column count for indexes without
+    children, which changes the column count after moving the last row.
+
+    See QTBUG_95463.
+*/
+class TstMoveModel : public QAbstractItemModel
+{
+    Q_OBJECT
+public:
+    TstMoveModel(QObject *parent = nullptr)
+        : QAbstractItemModel(parent)
+    {
+        rootItem = new TstMoveItem;
+        rootItem->data.insert(Qt::DisplayRole, "root");
+
+        TstMoveItem *itm = new TstMoveItem(rootItem);
+        itm->data.insert(Qt::DisplayRole, "parentItem1");
+
+        TstMoveItem *itmCh = new TstMoveItem(itm);
+        itmCh->data.insert(Qt::DisplayRole, "childItem");
+
+        itm = new TstMoveItem(rootItem);
+        itm->data.insert(Qt::DisplayRole, "parentItem2");
+    }
+
+    ~TstMoveModel()
+    {
+        delete rootItem;
+    }
+
+    QModelIndex index(int row, int column, const QModelIndex &idxPar = QModelIndex()) const override
+    {
+        QModelIndex idx;
+        if (hasIndex(row, column, idxPar)) {
+            TstMoveItem *parentItem = nullptr;
+            if (idxPar.isValid())
+                parentItem = static_cast<TstMoveItem *>(idxPar.internalPointer());
+            else
+                parentItem = rootItem;
+
+            Q_ASSERT(parentItem);
+            TstMoveItem *childItem = parentItem->childItems.at(row);
+            if (childItem)
+                idx = createIndex(row, column, childItem);
+        }
+        return idx;
+    }
+
+    QModelIndex parent(const QModelIndex &index) const override
+    {
+        QModelIndex idxPar;
+        if (index.isValid()) {
+            TstMoveItem *childItem = static_cast<TstMoveItem *>(index.internalPointer());
+            TstMoveItem *parentItem = childItem->parentItem;
+            if (parentItem != rootItem)
+                idxPar = createIndex(parentItem->row(), 0, parentItem);
+        }
+        return idxPar;
+    }
+
+    int columnCount(const QModelIndex &idxPar = QModelIndex()) const override
+    {
+        int cnt = 0;
+        if (idxPar.isValid()) {
+            TstMoveItem *parentItem = static_cast<TstMoveItem *>(idxPar.internalPointer());
+            Q_ASSERT(parentItem);
+            cnt = parentItem->childItems.isEmpty() ? 0 : 1;
+        } else {
+            cnt = rootItem->childItems.isEmpty() ? 0 : 1;
+        }
+        return cnt;
+    }
+
+    int rowCount(const QModelIndex &idxPar = QModelIndex()) const override
+    {
+        int cnt = 0;
+        if (idxPar.isValid()) {
+            TstMoveItem *parentItem = static_cast<TstMoveItem *>(idxPar.internalPointer());
+            Q_ASSERT(parentItem);
+            cnt = parentItem->childItems.count();
+        } else {
+            cnt = rootItem->childItems.count();
+        }
+        return cnt;
+    }
+
+    Qt::ItemFlags flags(const QModelIndex &index) const override
+    {
+        Q_UNUSED(index)
+        return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    }
+
+    bool hasChildren(const QModelIndex &parent = QModelIndex()) const override
+    {
+        bool ret = false;
+        if (parent.isValid()) {
+            TstMoveItem *parentItem = static_cast<TstMoveItem *>(parent.internalPointer());
+            Q_ASSERT(parentItem);
+            ret = parentItem->childItems.count() > 0;
+        } else {
+            ret = rootItem->childItems.count() > 0;
+        }
+        return ret;
+    }
+
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override
+    {
+        QVariant dt;
+        if (index.isValid()) {
+            TstMoveItem *item = static_cast<TstMoveItem *>(index.internalPointer());
+            if (item)
+                dt = item->data.value(role);
+        }
+        return dt;
+    }
+
+    bool moveRows(const QModelIndex &sourceParent, int sourceRow, int count, const QModelIndex &destinationParent, int destinationChild) override
+    {
+        TstMoveItem *itmSrcParent = itemAt(sourceParent);
+        TstMoveItem *itmDestParent = itemAt(destinationParent);
+
+        if (itmSrcParent && sourceRow >= 0
+            && sourceRow + count <= itmSrcParent->childItems.count()
+            && itmDestParent && destinationChild <= itmDestParent->childItems.count()) {
+            beginMoveRows(sourceParent, sourceRow, sourceRow + count - 1,
+                          destinationParent, destinationChild);
+            QList<TstMoveItem *> itemsToMove;
+            for (int i = 0; i < count; ++i) {
+                TstMoveItem *itm = itmSrcParent->childItems.at(sourceRow+i);
+                itemsToMove.append(itm);
+            }
+            for (int i = itemsToMove.count() -1; i >= 0; --i) {
+                TstMoveItem *itm = itemsToMove.at(i);
+                itm->parentItem->childItems.removeAll(itm);
+                itm->parentItem = itmDestParent;
+                itmDestParent->childItems.insert(destinationChild, itm);
+            }
+            endMoveRows();
+            return true;
+        }
+        return false;
+    }
+
+private:
+    TstMoveItem *itemAt(const QModelIndex &index) const
+    {
+        TstMoveItem *item = nullptr;
+        if (index.isValid()) {
+            Q_ASSERT(index.model() == this);
+            item = static_cast<TstMoveItem *>(index.internalPointer());
+        } else {
+            item = rootItem;
+        }
+        return item;
+    }
+
+private:
+    TstMoveItem *rootItem = nullptr;
+};
+
+void tst_QListView::moveLastRow()
+{
+    TstMoveModel model;
+    QListView view;
+    view.setModel(&model);
+    view.setRootIndex(model.index(0, 0, QModelIndex()));
+    view.setViewMode(QListView::IconMode);
+    view.show();
+
+    QApplication::setActiveWindow(&view);
+    QVERIFY(QTest::qWaitForWindowActive(&view));
+
+    QModelIndex sourceParent = model.index(0, 0);
+    QModelIndex destinationParent = model.index(1, 0);
+    // must not crash when paint event is processed
+    model.moveRow(sourceParent, 0, destinationParent, 0);
+    QTest::qWait(100);
+}
+
 void tst_QListView::itemAlignment()
 {
     auto item1 = new QStandardItem("111");
@@ -2550,6 +2769,7 @@ void tst_QListView::internalDragDropMove_data()
                                      | Qt::ItemIsEditable
                                      | Qt::ItemIsDragEnabled;
 
+    const QStringList unchanged = QStringList{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
     const QStringList reordered = QStringList{"0", "2", "3", "4", "5", "6", "7", "8", "9", "1"};
     const QStringList replaced = QStringList{"0", "2", "3", "4", "1", "6", "7", "8", "9"};
 
@@ -2564,7 +2784,8 @@ void tst_QListView::internalDragDropMove_data()
                 << Qt::MoveAction
                 << defaultFlags
                 << modelMoves
-                << reordered;
+                // listview in IconMode doesn't change the model
+                << ((viewMode == QListView::IconMode && !modelMoves) ? unchanged : reordered);
 
             QTest::newRow((rowName + ", only move").constData())
                 << viewMode
@@ -2573,7 +2794,8 @@ void tst_QListView::internalDragDropMove_data()
                 << Qt::MoveAction
                 << defaultFlags
                 << modelMoves
-                << reordered;
+                // listview in IconMode doesn't change the model
+                << ((viewMode == QListView::IconMode && !modelMoves) ? unchanged : reordered);
 
             QTest::newRow((rowName + ", replace item").constData())
                 << viewMode
@@ -2716,6 +2938,73 @@ void tst_QListView::internalDragDropMove()
         const QStringList actualSelected = getSelectedTexts();
         QTRY_COMPARE(actualSelected, expectedSelected);
     }
+}
+
+
+void tst_QListView::scrollOnRemove_data()
+{
+    QTest::addColumn<QListView::ViewMode>("viewMode");
+    QTest::addColumn<QAbstractItemView::SelectionMode>("selectionMode");
+
+    const QMetaObject &mo = QListView::staticMetaObject;
+    const auto viewModeEnum = mo.enumerator(mo.indexOfEnumerator("ViewMode"));
+    const auto selectionModeEnum = mo.enumerator(mo.indexOfEnumerator("SelectionMode"));
+    for (auto viewMode : { QListView::ListMode, QListView::IconMode }) {
+        const char *viewModeName = viewModeEnum.valueToKey(viewMode);
+        for (int index = 0; index < selectionModeEnum.keyCount(); ++index) {
+            const auto selectionMode = QAbstractItemView::SelectionMode(selectionModeEnum.value(index));
+            const char *selectionModeName = selectionModeEnum.valueToKey(selectionMode);
+            QTest::addRow("%s, %s", viewModeName, selectionModeName) << viewMode << selectionMode;
+        }
+    }
+}
+
+void tst_QListView::scrollOnRemove()
+{
+    QFETCH(QListView::ViewMode, viewMode);
+    QFETCH(QAbstractItemView::SelectionMode, selectionMode);
+
+    QPixmap pixmap;
+    if (viewMode == QListView::IconMode) {
+        pixmap = QPixmap(25, 25);
+        pixmap.fill(Qt::red);
+    }
+
+    QStandardItemModel model;
+    for (int i = 0; i < 50; ++i) {
+        QStandardItem *item = new QStandardItem(QString::number(i));
+        item->setIcon(pixmap);
+        model.appendRow(item);
+    }
+
+    QWidget widget;
+    QListView view(&widget);
+    view.setFixedSize(100, 100);
+    view.setAutoScroll(true);
+    if (viewMode == QListView::IconMode)
+        view.setWrapping(true);
+    view.setModel(&model);
+    view.setSelectionMode(selectionMode);
+    view.setViewMode(viewMode);
+
+    widget.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&widget));
+
+    QCOMPARE(view.verticalScrollBar()->value(), 0);
+    const QModelIndex item25 = model.index(25, 0);
+    view.scrollTo(item25);
+    QTRY_VERIFY(view.verticalScrollBar()->value() > 0); // layout and scrolling are delayed
+    const int item25Position = view.verticalScrollBar()->value();
+    // selecting a fully visible item shouldn't scroll
+    view.selectionModel()->setCurrentIndex(item25, QItemSelectionModel::SelectCurrent);
+    QTRY_COMPARE(view.verticalScrollBar()->value(), item25Position);
+
+    // removing the selected item might scroll if another item is selected
+    model.removeRow(25);
+
+    // if nothing is selected now, then the view should not have scrolled
+    if (!view.selectionModel()->selectedIndexes().count())
+        QTRY_COMPARE(view.verticalScrollBar()->value(), item25Position);
 }
 
 

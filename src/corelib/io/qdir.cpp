@@ -408,7 +408,7 @@ inline void QDirPrivate::initFileEngine()
     \snippet code/src_corelib_io_qdir.cpp 0
 
     On Windows, the second example above will be translated to
-    \c{C:\Documents and Settings} when used to access files.
+    \c{C:\Users} when used to access files.
 
     Examples of relative paths:
 
@@ -2010,6 +2010,8 @@ QChar QDir::separator()
     Sets the application's current working directory to \a path.
     Returns \c true if the directory was successfully changed; otherwise
     returns \c false.
+
+    \snippet code/src_corelib_io_qdir.cpp 16
 
     \sa current(), currentPath(), home(), root(), temp()
 */

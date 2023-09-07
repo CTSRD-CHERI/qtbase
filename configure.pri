@@ -22,18 +22,27 @@ defineTest(qtConfCommandline_cxxstd) {
             qtConfCommandlineSetInput("c++14", "no")
             qtConfCommandlineSetInput("c++1z", "no")
             qtConfCommandlineSetInput("c++2a", "no")
+            qtConfCommandlineSetInput("c++2b", "no")
         } else: contains(val, "(c\+\+)?(14|1y)") {
             qtConfCommandlineSetInput("c++14", "yes")
             qtConfCommandlineSetInput("c++1z", "no")
             qtConfCommandlineSetInput("c++2a", "no")
+            qtConfCommandlineSetInput("c++2b", "no")
         } else: contains(val, "(c\+\+)?(17|1z)") {
             qtConfCommandlineSetInput("c++14", "yes")
             qtConfCommandlineSetInput("c++1z", "yes")
             qtConfCommandlineSetInput("c++2a", "no")
+            qtConfCommandlineSetInput("c++2b", "no")
         } else: contains(val, "(c\+\+)?(2a)") {
             qtConfCommandlineSetInput("c++14", "yes")
             qtConfCommandlineSetInput("c++1z", "yes")
             qtConfCommandlineSetInput("c++2a", "yes")
+            qtConfCommandlineSetInput("c++2b", "no")
+        } else: contains(val, "(c\+\+)?(2b)") {
+            qtConfCommandlineSetInput("c++14", "yes")
+            qtConfCommandlineSetInput("c++1z", "yes")
+            qtConfCommandlineSetInput("c++2a", "yes")
+            qtConfCommandlineSetInput("c++2b", "yes")
         } else {
             qtConfAddError("Invalid argument $$val to command line parameter $$arg")
         }
@@ -662,6 +671,13 @@ defineTest(qtConfOutput_commitOptions) {
     write_file($$QT_BUILD_TREE/mkspecs/qdevice.pri, $${currentConfig}.output.devicePro)|error()
 }
 
+# Output is written after configuring each Qt module,
+# but some tests within a module might depend on the
+# configuration output of previous tests.
+defineTest(qtConfOutput_commitConfig) {
+    qtConfProcessOutput()
+}
+
 # type (empty or 'host'), option name, default value
 defineTest(processQtPath) {
     out_var = config.rel_input.$${2}
@@ -995,6 +1011,12 @@ defineTest(qtConfOutput_architecture) {
     subarch = $$qtConfEvaluate('tests.architecture.subarch')
     buildabi = $$qtConfEvaluate("tests.architecture.buildabi")
 
+    macos {
+        eval($$config.input.qmakeArgs)
+        apple_archs = $$QMAKE_APPLE_DEVICE_ARCHS
+        isEmpty(apple_archs): apple_archs = "\$\$QT_ARCH"
+    }
+
     $$qtConfEvaluate("features.cross_compile") {
         host_arch = $$qtConfEvaluate("tests.host_architecture.arch")
         host_buildabi = $$qtConfEvaluate("tests.host_architecture.buildabi")
@@ -1016,12 +1038,22 @@ defineTest(qtConfOutput_architecture) {
             "    QT_BUILDABI = $$buildabi" \
             "}"
 
+        macos {
+            publicPro += \
+                "host_build {" \
+                "    QT_ARCHS = \$\$QT_ARCH" \
+                "} else {" \
+                "    QT_ARCHS = $$apple_archs" \
+                "}"
+        }
     } else {
         privatePro = \
             "QT_CPU_FEATURES.$$arch = $$subarch"
         publicPro = \
             "QT_ARCH = $$arch" \
             "QT_BUILDABI = $$buildabi"
+
+        macos: publicPro += "QT_ARCHS = $$apple_archs"
     }
 
     $${currentConfig}.output.publicPro += $$publicPro

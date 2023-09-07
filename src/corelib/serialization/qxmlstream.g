@@ -516,7 +516,16 @@ public:
     int fastScanLiteralContent();
     int fastScanSpace();
     int fastScanContentCharList();
-    int fastScanName(int *prefix = nullptr);
+
+    struct FastScanNameResult {
+        FastScanNameResult() : ok(false) {}
+        explicit FastScanNameResult(int len) : addToLen(len), ok(true) { }
+        operator bool() { return ok; }
+        int operator*() { Q_ASSERT(ok); return addToLen; }
+        int addToLen;
+        bool ok;
+    };
+    FastScanNameResult fastScanName(Value *val = nullptr);
     inline int fastScanNMTOKEN();
 
 
@@ -525,6 +534,7 @@ public:
 
     void raiseError(QXmlStreamReader::Error error, const QString& message = QString());
     void raiseWellFormedError(const QString &message);
+    void raiseNamePrefixTooLongError();
 
     QXmlStreamEntityResolver *entityResolver;
 
@@ -557,6 +567,7 @@ bool QXmlStreamReaderPrivate::parse()
             setType(QXmlStreamReader::EndElement);
             Tag &tag = tagStack_pop();
             namespaceUri = tag.namespaceDeclaration.namespaceUri;
+            prefix = tag.namespaceDeclaration.prefix;
             name = tag.name;
             qualifiedName = tag.qualifiedName;
             isEmptyElement = false;
@@ -1617,6 +1628,7 @@ etag ::= LANGLE SLASH qname space_opt RANGLE;
             Tag &tag = tagStack_pop();
 
             namespaceUri = tag.namespaceDeclaration.namespaceUri;
+            prefix = tag.namespaceDeclaration.prefix;
             name = tag.name;
             qualifiedName = tag.qualifiedName;
             if (qualifiedName != symName(3))
@@ -1809,7 +1821,12 @@ space_opt ::= space;
 qname ::= LETTER;
 /.
         case $rule_number: {
-            sym(1).len += fastScanName(&sym(1).prefix);
+            Value &val = sym(1);
+            if (auto res = fastScanName(&val))
+                val.len += *res;
+            else
+                return false;
+
             if (atEnd) {
                 resume($rule_number);
                 return false;
@@ -1820,7 +1837,11 @@ qname ::= LETTER;
 name ::= LETTER;
 /.
         case $rule_number:
-            sym(1).len += fastScanName();
+            if (auto res = fastScanName())
+                sym(1).len += *res;
+            else
+                return false;
+
             if (atEnd) {
                 resume($rule_number);
                 return false;

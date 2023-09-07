@@ -801,6 +801,18 @@ bool QWidgetRepaintManager::syncAllowed()
     return true;
 }
 
+static bool isDrawnInEffect(const QWidget *w)
+{
+#if QT_CONFIG(graphicseffect)
+    do {
+        if (w->graphicsEffect())
+            return true;
+        w = w->parentWidget();
+    } while (w);
+#endif
+    return false;
+}
+
 void QWidgetRepaintManager::paintAndFlush()
 {
     qCInfo(lcWidgetPainting) << "Painting and flushing dirty"
@@ -888,7 +900,8 @@ void QWidgetRepaintManager::paintAndFlush()
         }
 #endif
 
-        if (!hasDirtySiblingsAbove && wd->isOpaque && !dirty.intersects(widgetDirty.boundingRect())) {
+        if (!isDrawnInEffect(w) && !hasDirtySiblingsAbove && wd->isOpaque
+                && !dirty.intersects(widgetDirty.boundingRect())) {
             opaqueNonOverlappedWidgets.append(w);
         } else {
             resetWidget(w);
@@ -1005,7 +1018,8 @@ void QWidgetRepaintManager::paintAndFlush()
 
     // Paint the rest with composition.
     if (repaintAllWidgets || !dirtyCopy.isEmpty()) {
-        QWidgetPrivate::DrawWidgetFlags flags = QWidgetPrivate::DrawAsRoot | QWidgetPrivate::DrawRecursive;
+        QWidgetPrivate::DrawWidgetFlags flags = QWidgetPrivate::DrawAsRoot | QWidgetPrivate::DrawRecursive
+                | QWidgetPrivate::UseEffectRegionBounds;
         tlw->d_func()->drawWidget(store->paintDevice(), dirtyCopy, QPoint(), flags, nullptr, this);
     }
 
@@ -1396,3 +1410,4 @@ void QWidgetPrivate::invalidateBackingStore_resizeHelper(const QPoint &oldPos, c
 QT_END_NAMESPACE
 
 #include "qwidgetrepaintmanager.moc"
+#include "moc_qwidgetrepaintmanager_p.cpp"

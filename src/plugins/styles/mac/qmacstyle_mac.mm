@@ -1163,6 +1163,8 @@ static QStyleHelper::WidgetSizePolicy qt_aqua_guess_size(const QWidget *widg, QS
 
 void QMacStylePrivate::drawFocusRing(QPainter *p, const QRectF &targetRect, int hMargin, int vMargin, const CocoaControl &cw) const
 {
+    const bool isBigSurOrAbove = QOperatingSystemVersion::current() >= QOperatingSystemVersion::MacOSBigSur;
+
     QPainterPath focusRingPath;
     focusRingPath.setFillRule(Qt::OddEvenFill);
 
@@ -1212,7 +1214,6 @@ void QMacStylePrivate::drawFocusRing(QPainter *p, const QRectF &targetRect, int 
     }
     case Button_PullDown:
     case Button_PushButton: {
-        const bool isBigSurOrAbove = QOperatingSystemVersion::current() >= QOperatingSystemVersion::MacOSBigSur;
         QRectF focusRect;
         auto *pb = static_cast<NSButton *>(cocoaControl(cw));
         const QRectF frameRect = cw.adjustedControlFrame(targetRect.adjusted(hMargin, vMargin, -hMargin, -vMargin));
@@ -1243,11 +1244,16 @@ void QMacStylePrivate::drawFocusRing(QPainter *p, const QRectF &targetRect, int 
     }
     case Button_PopupButton:
     case SegmentedControl_Single: {
+        QRectF focusRect = targetRect;
+        if (isBigSurOrAbove)
+            focusRect.translate(0, -1.5);
+        else if (QOperatingSystemVersion::current() >= QOperatingSystemVersion::MacOSCatalina)
+            focusRect.adjust(0, 0, 0, -1);
         const qreal innerRadius = 4;
         const qreal outerRadius = innerRadius + focusRingWidth;
-        hOffset = targetRect.left();
-        vOffset = targetRect.top();
-        const auto innerRect = targetRect.translated(-targetRect.topLeft());
+        hOffset = focusRect.left();
+        vOffset = focusRect.top();
+        const auto innerRect = focusRect.translated(-focusRect.topLeft());
         const auto outerRect = innerRect.adjusted(-hMargin, -vMargin, hMargin, vMargin);
         focusRingPath.addRoundedRect(innerRect, innerRadius, innerRadius);
         focusRingPath.addRoundedRect(outerRect, outerRadius, outerRadius);
@@ -1674,8 +1680,8 @@ bool QMacStylePrivate::CocoaControl::getCocoaButtonTypeAndBezelStyle(NSButtonTyp
         *bezelStyle = NSShadowlessSquareBezelStyle;
         break;
     case Button_PushButton:
-        *buttonType = NSPushOnPushOffButton;
-        *bezelStyle = NSRoundedBezelStyle;
+        *buttonType = NSButtonTypeMomentaryPushIn;
+        *bezelStyle = NSBezelStyleRounded;
         break;
     default:
         return false;
@@ -3719,8 +3725,20 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             pb.frame = frameRect.toCGRect();
 
             pb.enabled = isEnabled;
+
+            // With the 'momentary push in' type this gives an impression of a
+            // button in a 'pressed' state (the 'momentary push in' does
+            // not show its state otherwise):
             [pb highlight:isPressed];
-            pb.state = isHighlighted && !isPressed ? NSOnState : NSOffState;
+
+            if (cw.type == QMacStylePrivate::Button_SquareButton) {
+                pb.state = isHighlighted && !isPressed ? NSControlStateValueOn : NSControlStateValueOff;
+            } else {
+                // For default/checked button this will give the required
+                // button accent color:
+                pb.keyEquivalent = isHighlighted ? @"\r" : @"";
+            }
+
             d->drawNSViewInRect(pb, frameRect, p, ^(CGContextRef, const CGRect &r) {
                 [pb.cell drawBezelWithFrame:r inView:pb.superview];
             });
@@ -3762,16 +3780,22 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             const bool hasText = !btn.text.isEmpty();
             const bool isActive = btn.state & State_Active;
             const bool isPressed = btn.state & State_Sunken;
+            const bool isDefault = (btn.features & QStyleOptionButton::DefaultButton && !d->autoDefaultButton)
+                                                || d->autoDefaultButton == btn.styleObject;
 
             const auto ct = cocoaControlType(&btn, w);
 
             if (!hasMenu && ct != QMacStylePrivate::Button_SquareButton) {
-                if (isPressed
-                    || (isActive && isEnabled
-                        && ((btn.state & State_On)
-                            || ((btn.features & QStyleOptionButton::DefaultButton) && !d->autoDefaultButton)
-                            || d->autoDefaultButton == btn.styleObject)))
-                btn.palette.setColor(QPalette::ButtonText, Qt::white);
+                if (isPressed || (isActive && isEnabled && ((btn.state & State_On) || isDefault)))
+                    btn.palette.setColor(QPalette::ButtonText, Qt::white);
+            }
+
+            if (isEnabled && !isDarkMode() && QOperatingSystemVersion::current() > QOperatingSystemVersion::MacOSBigSur) {
+                if (!isDefault && !(btn.state & State_On)) {
+                    // On macOS 12 it's a gray button, white text color (if set in the
+                    // previous statement) would be almost invisible.
+                    btn.palette.setColor(QPalette::ButtonText, Qt::black);
+                }
             }
 
             if ((!hasIcon && !hasMenu) || (hasIcon && !hasText)) {
@@ -3949,6 +3973,13 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
             }
             pb.frame = frameRect.toCGRect();
 
+            if (!isPopupButton) {
+                // Note: these days we use 'momentary push in' for Button_PushButton,
+                // but tabs are also rendered using NSButton/ButtonPushButton, and
+                // here we need 'push on/off' to make it work (tab highlight colors).
+                pb.buttonType = NSButtonTypePushOnPushOff;
+            }
+
             pb.enabled = isEnabled;
             [pb highlight:isPressed];
             // Set off state when inactive. See needsInactiveHack for when it's selected
@@ -4066,27 +4097,6 @@ void QMacStyle::drawControl(ControlElement ce, const QStyleOption *opt, QPainter
                                        opt->rect.right(), opt->rect.bottom() - 0.5));
                 }
                 p->restore();
-            }
-
-            // TODO Needs size adjustment to fit the focus ring
-            if (tabOpt->state & State_HasFocus) {
-                QMacStylePrivate::CocoaControlType focusRingType;
-                switch (tp) {
-                case QStyleOptionTab::Beginning:
-                    focusRingType = verticalTabs ? QMacStylePrivate::SegmentedControl_Last
-                                                 : QMacStylePrivate::SegmentedControl_First;
-                    break;
-                case QStyleOptionTab::Middle:
-                    focusRingType = QMacStylePrivate::SegmentedControl_Middle;
-                    break;
-                case QStyleOptionTab::End:
-                    focusRingType = verticalTabs ? QMacStylePrivate::SegmentedControl_First
-                                                 : QMacStylePrivate::SegmentedControl_Last;
-                    break;
-                case QStyleOptionTab::OnlyOneTab:
-                    focusRingType = QMacStylePrivate::SegmentedControl_Single;
-                    break;
-                }
             }
         }
         break;

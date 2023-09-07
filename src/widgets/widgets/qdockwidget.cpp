@@ -975,7 +975,7 @@ bool QDockWidgetPrivate::mouseMoveEvent(QMouseEvent *event)
                 > QApplication::startDragDistance()) {
 
 #ifdef Q_OS_MACOS
-            if (windowHandle()) {
+            if (windowHandle() && !q->isFloating()) {
                 // When using native widgets on mac, we have not yet been successful in
                 // starting a drag on an NSView that belongs to one window (QMainWindow),
                 // but continue the drag on another (QDockWidget). This is what happens if
@@ -1235,6 +1235,11 @@ void QDockWidgetPrivate::setWindowState(bool floating, bool unplug, const QRect 
     should not be set on the QDockWidget itself, because they change depending
     on whether it is docked; a docked QDockWidget has no frame and a smaller title
     bar.
+
+    \note On macOS, if the QDockWidget has a native window handle (for example,
+    if winId() is called on it or the child widget), then due to a limitation it will not be
+    possible to drag the dock widget when undocking. Starting the drag will undock
+    the dock widget, but a second drag will be needed to move the dock widget itself.
 
     \sa QMainWindow, {Dock Widgets Example}
 */

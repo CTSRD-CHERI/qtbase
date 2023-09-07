@@ -188,7 +188,7 @@
     behavior is identical to QTcpSocket.
 
     \value SslClientMode The socket is a client-side SSL socket.
-    It is either alreayd encrypted, or it is in the SSL handshake
+    It is either already encrypted, or it is in the SSL handshake
     phase (see QSslSocket::isEncrypted()).
 
     \value SslServerMode The socket is a server-side SSL socket.
@@ -2221,6 +2221,10 @@ QSslSocketPrivate::QSslSocketPrivate()
     , flushTriggered(false)
 {
     QSslConfigurationPrivate::deepCopyDefaultConfiguration(&configuration);
+    // If the global configuration doesn't allow root certificates to be loaded
+    // on demand then we have to disable it for this socket as well.
+    if (!configuration.allowRootCertOnDemandLoading)
+        allowRootCertOnDemandLoading = false;
 }
 
 /*!
@@ -2470,6 +2474,7 @@ void QSslConfigurationPrivate::deepCopyDefaultConfiguration(QSslConfigurationPri
     ptr->sessionProtocol = global->sessionProtocol;
     ptr->ciphers = global->ciphers;
     ptr->caCertificates = global->caCertificates;
+    ptr->allowRootCertOnDemandLoading = global->allowRootCertOnDemandLoading;
     ptr->protocol = global->protocol;
     ptr->peerVerifyMode = global->peerVerifyMode;
     ptr->peerVerifyDepth = global->peerVerifyDepth;

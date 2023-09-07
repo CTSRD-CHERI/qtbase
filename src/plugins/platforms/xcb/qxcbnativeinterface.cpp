@@ -679,3 +679,5 @@ QString QXcbNativeInterface::dumpNativeWindows(WId root) const
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qxcbnativeinterface.cpp"

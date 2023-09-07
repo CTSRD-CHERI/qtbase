@@ -245,11 +245,18 @@
 
     "testTypeDependencies": {
         "linkerSupportsFlag": [ "use_bfd_linker", "use_gold_linker", "use_lld_linker" ],
-        "verifySpec": [ "shared", "use_bfd_linker", "use_gold_linker", "use_lld_linker", "compiler-flags", "qmakeargs", "commit" ],
+        "verifySpec": [
+            "shared",
+            "use_bfd_linker", "use_gold_linker", "use_lld_linker",
+            "compiler-flags", "qmakeargs",
+            "simulator_and_device",
+            "thread",
+            "commit" ],
         "compile": [ "verifyspec" ],
         "detectPkgConfig": [ "cross_compile", "machineTuple" ],
         "library": [ "pkg-config", "compiler-flags" ],
-        "getPkgConfigVariable": [ "pkg-config" ]
+        "getPkgConfigVariable": [ "pkg-config" ],
+        "architecture" : [ "verifyspec" ]
     },
 
     "testTypeAliases": {
@@ -372,6 +379,20 @@
                     "#endif"
                 ],
                 "qmake": "CONFIG += c++11 c++14 c++17 c++2a"
+            }
+        },
+        "cxx2b": {
+            "label": "C++2b support",
+            "type": "compile",
+            "test": {
+                "head": [
+                    "#if __cplusplus > 202002L",
+                    "// Compiler claims to support experimental C++2b, trust it",
+                    "#else",
+                    "#  error __cplusplus must be > 202002L (the value for C++20)",
+                    "#endif"
+                ],
+                "qmake": "CONFIG += c++11 c++14 c++17 c++2a c++2b"
             }
         },
         "precompile_header": {
@@ -763,7 +784,7 @@
         },
         "architecture": {
             "label": "Architecture",
-            "output": [ "architecture" ]
+            "output": [ "architecture", "commitConfig" ]
         },
         "pkg-config": {
             "label": "Using pkg-config",
@@ -994,6 +1015,12 @@
             "label": "C++2a",
             "autoDetect": false,
             "condition": "features.c++17 && tests.cxx2a",
+            "output": [ "publicFeature", "publicQtConfig" ]
+        },
+        "c++2b": {
+            "label": "C++2b",
+            "autoDetect": false,
+            "condition": "features.c++2a && tests.cxx2b",
             "output": [ "publicFeature", "publicQtConfig" ]
         },
         "c89": {
@@ -1548,7 +1575,7 @@ Configure with '-qreal float' to create a build that is binary-compatible with 5
                 {
                     "message": "Using C++ standard",
                     "type": "firstAvailableFeature",
-                    "args": "c++2a c++17 c++14 c++11"
+                    "args": "c++2b c++2a c++17 c++14 c++11"
                 },
                 {
                     "type": "feature",

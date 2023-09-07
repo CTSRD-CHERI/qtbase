@@ -1317,7 +1317,8 @@ void tst_QTextTable::columnWidthWithImage_data()
         QBuffer buffer(&imageBytes);
         buffer.open(QIODevice::WriteOnly);
         image.save(&buffer, "png");
-        return QString("<td><img src='data:image/png;base64,%1'/></td>").arg(QString(imageBytes.toBase64()));
+        return QString("<td><img src='data:image/png;base64,%1'/></td>")
+                       .arg(QString::fromLatin1(imageBytes.toBase64()));
     };
 
     QTest::addColumn<QString>("leftHtml");
@@ -1363,7 +1364,6 @@ void tst_QTextTable::columnWidthWithImage()
     QVERIFY(rightRect.left() > leftRect.right());
 }
 #endif
-
 
 QTEST_MAIN(tst_QTextTable)
 #include "tst_qtexttable.moc"

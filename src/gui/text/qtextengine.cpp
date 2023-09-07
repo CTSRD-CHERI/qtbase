@@ -1373,9 +1373,15 @@ static void applyVisibilityRules(ushort ucs, QGlyphLayout *glyphs, uint glyphPos
         if (!fontEngine->symbol) {
             // U+00AD [SOFT HYPHEN] is a default ignorable codepoint,
             // so we replace its glyph and metrics with ones for
-            // U+002D [HYPHEN-MINUS] and make it visible if it appears at line-break
+            // U+002D [HYPHEN-MINUS] or U+2010 [HYPHEN] and make
+            // it visible if it appears at line-break
             const uint engineIndex = glyphs->glyphs[glyphPosition] & 0xff000000;
-            glyphs->glyphs[glyphPosition] = fontEngine->glyphIndex('-');
+            glyph_t glyph = fontEngine->glyphIndex(0x002d);
+            if (glyph == 0)
+                glyph = fontEngine->glyphIndex(0x2010);
+            if (glyph == 0)
+                glyph = fontEngine->glyphIndex(0x00ad);
+            glyphs->glyphs[glyphPosition] = glyph;
             if (Q_LIKELY(glyphs->glyphs[glyphPosition] != 0)) {
                 glyphs->glyphs[glyphPosition] |= engineIndex;
                 QGlyphLayout tmp = glyphs->mid(glyphPosition, 1);
@@ -2196,10 +2202,15 @@ void QTextEngine::itemize() const
                         : formatCollection()->defaultFont().capitalization();
                 if (s) {
                     for (const auto &range : qAsConst(s->formats)) {
-                        if (range.start >= prevPosition && range.start < position && range.format.hasProperty(QTextFormat::FontCapitalization)) {
-                            itemizer.generate(prevPosition, range.start - prevPosition, capitalization);
-                            itemizer.generate(range.start, range.length, range.format.fontCapitalization());
-                            prevPosition = range.start + range.length;
+                        if (range.start + range.length <= prevPosition || range.start >= position)
+                            continue;
+                        if (range.format.hasProperty(QTextFormat::FontCapitalization)) {
+                            if (range.start > prevPosition)
+                                itemizer.generate(prevPosition, range.start - prevPosition, capitalization);
+                            int newStart = std::max(prevPosition, range.start);
+                            int newEnd = std::min(position, range.start + range.length);
+                            itemizer.generate(newStart, newEnd - newStart, range.format.fontCapitalization());
+                            prevPosition = newEnd;
                         }
                     }
                 }

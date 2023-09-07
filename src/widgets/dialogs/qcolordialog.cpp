@@ -78,7 +78,10 @@
 #include "qwindow.h"
 
 #include "private/qdialog_p.h"
+#include "private/qguiapplication_p.h"
 
+#include <qpa/qplatformservices.h>
+#include <qpa/qplatformintegration.h>
 #include <algorithm>
 
 QT_BEGIN_NAMESPACE
@@ -801,6 +804,10 @@ QColorLuminancePicker::~QColorLuminancePicker()
 
 void QColorLuminancePicker::mouseMoveEvent(QMouseEvent *m)
 {
+    if (m->buttons() == Qt::NoButton) {
+        m->ignore();
+        return;
+    }
     setVal(y2val(m->y()));
 }
 void QColorLuminancePicker::mousePressEvent(QMouseEvent *m)
@@ -935,6 +942,10 @@ void QColorPicker::setCol(int h, int s)
 void QColorPicker::mouseMoveEvent(QMouseEvent *m)
 {
     QPoint p = m->pos() - contentsRect().topLeft();
+    if (m->buttons() == Qt::NoButton) {
+        m->ignore();
+        return;
+    }
     setCol(p);
     emit newCol(hue, sat);
 }
@@ -1611,6 +1622,20 @@ void QColorDialogPrivate::_q_newStandard(int r, int c)
 void QColorDialogPrivate::_q_pickScreenColor()
 {
     Q_Q(QColorDialog);
+
+    auto *platformServices = QGuiApplicationPrivate::platformIntegration()->services();
+    if (platformServices->hasCapability(QPlatformServices::Capability::ColorPicking)) {
+        if (auto *colorPicker = platformServices->colorPicker(q->windowHandle())) {
+            q->connect(colorPicker, &QPlatformServiceColorPicker::colorPicked, q,
+                       [q, colorPicker](const QColor &color) {
+                           colorPicker->deleteLater();
+                           q->setCurrentColor(color);
+                       });
+            colorPicker->pickColor();
+            return;
+        }
+    }
+
     if (!colorPickingEventFilter)
         colorPickingEventFilter = new QColorPickingEventFilter(this, q);
     q->installEventFilter(colorPickingEventFilter);

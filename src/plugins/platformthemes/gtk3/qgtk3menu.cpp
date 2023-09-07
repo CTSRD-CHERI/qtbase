@@ -484,3 +484,5 @@ void QGtk3Menu::onHide(GtkWidget *, void *data)
 }
 
 QT_END_NAMESPACE
+
+#include "moc_qgtk3menu.cpp"

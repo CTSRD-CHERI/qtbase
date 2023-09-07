@@ -2047,7 +2047,7 @@ HDC QWindowsWindow::getDC()
 }
 
 /*!
-    Relases the HDC for the window or does nothing in
+    Releases the HDC for the window or does nothing in
     case it was obtained from WinAPI BeginPaint within a WM_PAINT event.
 
     \sa getDC()
@@ -2683,32 +2683,30 @@ void QWindowsWindow::getSizeHints(MINMAXINFO *mmi) const
 
     // This block fixes QTBUG-8361, QTBUG-4362: Frameless/title-less windows shouldn't cover the
     // taskbar when maximized
-    if ((testFlag(WithinMaximize) || window()->windowStates().testFlag(Qt::WindowMinimized))
-        && (m_data.flags.testFlag(Qt::FramelessWindowHint)
-            || (m_data.flags.testFlag(Qt::CustomizeWindowHint) && !m_data.flags.testFlag(Qt::WindowTitleHint)))) {
-        const QScreen *screen = window()->screen();
-
-        // Documentation of MINMAXINFO states that it will only work for the primary screen
-        if (screen && screen == QGuiApplication::primaryScreen()) {
-            const QRect availableGeometry = QHighDpi::toNativePixels(screen->availableGeometry(), screen);
+    if (m_data.flags.testFlag(Qt::FramelessWindowHint)
+        || (m_data.flags.testFlag(Qt::CustomizeWindowHint) && !m_data.flags.testFlag(Qt::WindowTitleHint))) {
+        if (QPlatformScreen *currentScreen = screen()) {
+            const QRect geometry = currentScreen->geometry();
+            const QRect availableGeometry = currentScreen->availableGeometry();
             mmi->ptMaxSize.y = availableGeometry.height();
 
             // Width, because you can have the taskbar on the sides too.
             mmi->ptMaxSize.x = availableGeometry.width();
 
             // If you have the taskbar on top, or on the left you don't want it at (0,0):
-            mmi->ptMaxPosition.x = availableGeometry.x();
-            mmi->ptMaxPosition.y = availableGeometry.y();
+            QPoint availablePositionDiff = availableGeometry.topLeft() - geometry.topLeft();
+            mmi->ptMaxPosition.x = availablePositionDiff.x();
+            mmi->ptMaxPosition.y = availablePositionDiff.y();
             if (!m_data.flags.testFlag(Qt::FramelessWindowHint)) {
-                const int borderWidth = getBorderWidth(screen->handle());
+                const int borderWidth = getBorderWidth(currentScreen);
                 mmi->ptMaxSize.x += borderWidth * 2;
                 mmi->ptMaxSize.y += borderWidth * 2;
                 mmi->ptMaxTrackSize = mmi->ptMaxSize;
                 mmi->ptMaxPosition.x -= borderWidth;
                 mmi->ptMaxPosition.y -= borderWidth;
             }
-        } else if (!screen){
-            qWarning("window()->screen() returned a null screen");
+        } else {
+            qWarning("screen() returned a null screen");
         }
     }
 
@@ -2820,7 +2818,14 @@ void QWindowsWindow::applyCursor()
 void QWindowsWindow::setCursor(const CursorHandlePtr &c)
 {
 #ifndef QT_NO_CURSOR
-    if (c->handle() != m_cursor->handle()) {
+    bool changed = c->handle() != m_cursor->handle();
+    // QTBUG-98856: Cursors can get out of sync after restoring override
+    // cursors on native windows. Force an update.
+    if (testFlag(RestoreOverrideCursor)) {
+        clearFlag(RestoreOverrideCursor);
+        changed = true;
+    }
+    if (changed) {
         const bool apply = applyNewCursor(window());
         qCDebug(lcQpaWindows) << window() << __FUNCTION__
             << c->handle() << " doApply=" << apply;

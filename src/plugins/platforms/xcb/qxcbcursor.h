@@ -122,6 +122,7 @@ private:
                                            void *handle);
 #endif
     bool m_gtkCursorThemeInitialized;
+    bool m_callbackForPropertyRegistered;
 };
 
 QT_END_NAMESPACE

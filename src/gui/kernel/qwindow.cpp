@@ -458,7 +458,7 @@ void QWindowPrivate::updateSiblingPosition(SiblingPosition position)
     siblings.move(currentPosition, targetPosition);
 }
 
-inline bool QWindowPrivate::windowRecreationRequired(QScreen *newScreen) const
+bool QWindowPrivate::windowRecreationRequired(QScreen *newScreen) const
 {
     Q_Q(const QWindow);
     const QScreen *oldScreen = q->screen();
@@ -466,7 +466,7 @@ inline bool QWindowPrivate::windowRecreationRequired(QScreen *newScreen) const
         && !(oldScreen && oldScreen->virtualSiblings().contains(newScreen));
 }
 
-inline void QWindowPrivate::disconnectFromScreen()
+void QWindowPrivate::disconnectFromScreen()
 {
     if (topLevelScreen)
         topLevelScreen = nullptr;
@@ -614,6 +614,13 @@ QWindow::SurfaceType QWindow::surfaceType() const
     By default, the window is not visible, you must call setVisible(true), or
     show() or similar to make it visible.
 
+    \note Hiding a window does not remove the window from the windowing system,
+    it only hides it. On windowing systems that give full screen applications a
+    dedicated desktop (such as macOS), hiding a full screen window will not remove
+    that desktop, but leave it blank. Another window from the same application
+    might be shown full screen, and will fill that desktop. Use QWindow::close to
+    completely remove a window from the windowing system.
+
     \sa show()
 */
 void QWindow::setVisible(bool visible)
@@ -637,7 +644,7 @@ bool QWindow::isVisible() const
     into an actual native surface. However, the window remains hidden until setVisible() is called.
 
     Note that it is not usually necessary to call this function directly, as it will be implicitly
-    called by show(), setVisible(), and other functions that require access to the platform
+    called by show(), setVisible(), winId(), and other functions that require access to the platform
     resources.
 
     Call destroy() to free the platform resources if necessary.
@@ -653,6 +660,9 @@ void QWindow::create()
 /*!
     Returns the window's platform id.
 
+    \note This function will cause the platform window to be created if it is not already.
+    Returns 0, if the platform window creation failed.
+
     For platforms where this id might be useful, the value returned
     will uniquely represent the window inside the corresponding screen.
 
@@ -664,6 +674,9 @@ WId QWindow::winId() const
 
     if(!d->platformWindow)
         const_cast<QWindow *>(this)->create();
+
+    if (!d->platformWindow)
+        return 0;
 
     return d->platformWindow->winId();
 }
@@ -1224,10 +1237,12 @@ bool QWindow::isExposed() const
 */
 
 /*!
-    Returns \c true if the window should appear active from a style perspective.
+    Returns \c true if the window is active.
 
     This is the case for the window that has input focus as well as windows
     that are in the same parent / transient parent chain as the focus window.
+
+    Typically active windows should appear active from a style perspective.
 
     To get the window that currently has focus, use QGuiApplication::focusWindow().
 */
@@ -1926,7 +1941,12 @@ void QWindow::resize(const QSize &newSize)
     Q_D(QWindow);
     d->positionPolicy = QWindowPrivate::WindowFrameExclusive;
     if (d->platformWindow) {
-        d->platformWindow->setGeometry(QHighDpi::toNativePixels(QRect(position(), newSize), this));
+        if (isTopLevel()) {
+            d->platformWindow->setGeometry(QHighDpi::toNativePixels(QRect(position(), newSize), this));
+        } else {
+            d->platformWindow->setGeometry(QRect(QHighDpi::toNativeLocalPosition(position(), this),
+                                                 QHighDpi::toNativePixels(newSize, this)));
+        }
     } else {
         const QSize oldSize = d->geometry.size();
         d->geometry.setSize(newSize);
@@ -2200,6 +2220,9 @@ void QWindow::showMaximized()
 
     Equivalent to calling setWindowStates(Qt::WindowFullScreen) and then
     setVisible(true).
+
+    See the \l{QWidget::showFullScreen()} documentation for platform-specific
+    considerations and limitations.
 
     \sa setWindowStates(), setVisible()
 */

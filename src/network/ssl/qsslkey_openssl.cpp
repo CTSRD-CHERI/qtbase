@@ -349,11 +349,9 @@ static QByteArray doCrypt(QSslKeyPrivate::Cipher cipher, const QByteArray &data,
     EVP_CIPHER_CTX *ctx = q_EVP_CIPHER_CTX_new();
     q_EVP_CIPHER_CTX_reset(ctx);
     if (q_EVP_CipherInit(ctx, type, nullptr, nullptr, enc) != 1) {
-        q_EVP_CIPHER_CTX_free(ctx);
         QSslSocketBackendPrivate::logAndClearErrorQueue();
-        return {};
+        return QByteArray();
     }
-
     q_EVP_CIPHER_CTX_set_key_length(ctx, key.size());
     if (cipher == QSslKeyPrivate::Rc2Cbc)
         q_EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_SET_RC2_KEY_BITS, 8 * key.size(), nullptr);

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2019 The Qt Company Ltd.
+** Copyright (C) 2022 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
@@ -761,6 +761,11 @@ QDateTimeParser::parseSection(const QDateTime &currentValue, int sectionIndex,
     const int sectionmaxsize = sectionMaxSize(sectionIndex);
     QStringRef sectionTextRef = text->midRef(offset, sectionmaxsize);
 
+    // If the fields we've read thus far imply a time in a spring-forward,
+    // coerce to a nearby valid time:
+    const QDateTime defaultValue = currentValue.isValid() ? currentValue
+        : QDateTime::fromMSecsSinceEpoch(currentValue.toMSecsSinceEpoch());
+
     QDTPDEBUG << "sectionValue for" << sn.name()
               << "with text" << *text << "and (at" << offset
               << ") st:" << sectionTextRef;
@@ -793,7 +798,7 @@ QDateTimeParser::parseSection(const QDateTime &currentValue, int sectionIndex,
             text->replace(offset, used, sectiontext.constData(), used);
         break; }
     case TimeZoneSection:
-        result = findTimeZone(sectionTextRef, currentValue,
+        result = findTimeZone(sectionTextRef, defaultValue,
                               absoluteMax(sectionIndex),
                               absoluteMin(sectionIndex));
         break;
@@ -805,7 +810,7 @@ QDateTimeParser::parseSection(const QDateTime &currentValue, int sectionIndex,
             int num = 0, used = 0;
             if (sn.type == MonthSection) {
                 const QDate minDate = getMinimum().date();
-                const int year = currentValue.date().year(calendar);
+                const int year = defaultValue.date().year(calendar);
                 const int min = (year == minDate.year(calendar)) ? minDate.month(calendar) : 1;
                 num = findMonth(sectiontext.toLower(), min, sectionIndex, year, &sectiontext, &used);
             } else {
@@ -887,7 +892,7 @@ QDateTimeParser::parseSection(const QDateTime &currentValue, int sectionIndex,
                     else
                         QDTPDEBUG << "invalid because" << last << "is less than absoluteMin" << absMin;
                 } else if (unfilled && (fi & (FixedWidth|Numeric)) == (FixedWidth|Numeric)) {
-                    if (skipToNextSection(sectionIndex, currentValue, digitsStr)) {
+                    if (skipToNextSection(sectionIndex, defaultValue, digitsStr)) {
                         const int missingZeroes = sectionmaxsize - digitsStr.size();
                         result = ParsedSection(Acceptable, last, sectionmaxsize, missingZeroes);
                         text->insert(offset, QString(missingZeroes, QLatin1Char('0')));
@@ -1385,21 +1390,34 @@ QDateTimeParser::scanString(const QDateTime &defaultValue,
 
     // If hour wasn't specified, check the default we're using exists on the
     // given date (which might be a spring-forward, skipping an hour).
-    if (parserType == QMetaType::QDateTime && !(isSet & HourSectionMask) && !when.isValid()) {
-        qint64 msecs = when.toMSecsSinceEpoch();
-        // Fortunately, that gets a useful answer, even though when is invalid ...
-        const QDateTime replace =
+    if (!(isSet & HourSectionMask) && !when.isValid()) {
+        switch (parserType) {
+        case QMetaType::QDateTime: {
+            qint64 msecs = when.toMSecsSinceEpoch();
+            // Fortunately, that gets a useful answer, even though when is invalid ...
+            const QDateTime replace =
 #if QT_CONFIG(timezone)
-            tspec == Qt::TimeZone
-            ? QDateTime::fromMSecsSinceEpoch(msecs, timeZone) :
+                tspec == Qt::TimeZone ? QDateTime::fromMSecsSinceEpoch(msecs, timeZone) :
 #endif
-            QDateTime::fromMSecsSinceEpoch(msecs, tspec, zoneOffset);
-        const QTime tick = replace.time();
-        if (replace.date() == date
-            && (!(isSet & MinuteSection) || tick.minute() == minute)
-            && (!(isSet & SecondSection) || tick.second() == second)
-            && (!(isSet & MSecSection)   || tick.msec() == msec)) {
-            return StateNode(replace, state, padding, conflicts);
+                QDateTime::fromMSecsSinceEpoch(msecs, tspec, zoneOffset);
+            const QTime tick = replace.time();
+            if (replace.date() == date
+                && (!(isSet & MinuteSection) || tick.minute() == minute)
+                && (!(isSet & SecondSection) || tick.second() == second)
+                && (!(isSet & MSecSection)   || tick.msec() == msec)) {
+                return StateNode(replace, state, padding, conflicts);
+            }
+        } break;
+        case QMetaType::QDate:
+            // Don't care about time, so just use start of day (and ignore spec):
+            return StateNode(date.startOfDay(Qt::UTC), state, padding, conflicts);
+            break;
+        case QMetaType::QTime:
+            // Don't care about date or spec, so pick a safe spec:
+            return StateNode(QDateTime(date, time, Qt::UTC), state, padding, conflicts);
+        default:
+            Q_UNREACHABLE();
+            return StateNode();
         }
     }
 
