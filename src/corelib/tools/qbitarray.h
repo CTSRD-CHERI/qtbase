@@ -84,9 +84,9 @@ public:
     bool toggleBit(int i);
 
     bool at(int i) const;
-    QBitRef operator[](int i);
+    inline QBitRef operator[](int i);
     bool operator[](int i) const;
-    QBitRef operator[](uint i);
+    inline QBitRef operator[](uint i);
     bool operator[](uint i) const;
 
     QBitArray& operator&=(const QBitArray &);
@@ -156,9 +156,9 @@ public:
     QBitRef& operator=(bool val) { a.setBit(i, val); return *this; }
 };
 
-inline QBitRef QBitArray::operator[](int i)
+QBitRef QBitArray::operator[](int i)
 { Q_ASSERT(i >= 0); return QBitRef(*this, i); }
-inline QBitRef QBitArray::operator[](uint i)
+QBitRef QBitArray::operator[](uint i)
 { return QBitRef(*this, i); }
 
 

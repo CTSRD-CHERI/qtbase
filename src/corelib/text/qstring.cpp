@@ -647,6 +647,8 @@ void qt_from_latin1(ushort *dst, const char *str, size_t size) noexcept
 #  endif
 #endif
 #if defined(__mips_dsp)
+    static_assert(sizeof(qsizetype) == sizeof(int),
+                  "oops, the assembler implementation needs to be called in a loop");
     if (size > 20)
         qt_fromlatin1_mips_asm_unroll8(dst, str, size);
     else
@@ -802,6 +804,8 @@ static void qt_to_latin1_internal(uchar *dst, const ushort *src, qsizetype lengt
     }
 #endif
 #if defined(__mips_dsp)
+    static_assert(sizeof(qsizetype) == sizeof(int),
+                  "oops, the assembler implementation needs to be called in a loop");
     qt_toLatin1_mips_dsp_asm(dst, src, length);
 #else
     while (length--) {
@@ -2944,8 +2948,7 @@ static void removeStringImpl(QString &s, const T &needle, Qt::CaseSensitivity cs
 QString &QString::remove(const QString &str, Qt::CaseSensitivity cs)
 {
     const auto s = reinterpret_cast<const ushort *>(str.data());
-    const std::less<const ushort *> less = {};
-    if (!less(s, d->data()) && less(s, d->data() + d->alloc)) {
+    if (QtPrivate::q_points_into_range(s, d->data(), d->data() + d->alloc)) {
         // Part of me - take a copy
         const QVarLengthArray<ushort> copy(s, s + str.size());
         removeStringImpl(*this, QStringView{copy.data(), copy.size()}, cs);

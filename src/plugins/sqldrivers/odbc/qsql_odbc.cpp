@@ -125,7 +125,6 @@ inline static QVarLengthArray<SQLTCHAR> toSQLTCHAR(const QString &input)
 {
     QVarLengthArray<SQLTCHAR> result;
     toSQLTCHARImpl(result, input);
-    result.append(0); // make sure it's null terminated, doesn't matter if it already is, it does if it isn't.
     return result;
 }
 
@@ -746,10 +745,15 @@ static QSqlField qMakeFieldInfo(const SQLHANDLE hStmt, int i, QString *errorMess
     f.setAutoValue(isAutoValue(hStmt, i));
     QVarLengthArray<SQLTCHAR> tableName(TABLENAMESIZE);
     SQLSMALLINT tableNameLen;
-    r = SQLColAttribute(hStmt, i + 1, SQL_DESC_BASE_TABLE_NAME, tableName.data(),
-                        TABLENAMESIZE, &tableNameLen, 0);
+    r = SQLColAttribute(hStmt,
+                        i + 1,
+                        SQL_DESC_BASE_TABLE_NAME,
+                        tableName.data(),
+                        SQLSMALLINT(tableName.size() * sizeof(SQLTCHAR)), // SQLColAttribute needs/returns size in bytes
+                        &tableNameLen,
+                        0);
     if (r == SQL_SUCCESS)
-        f.setTableName(fromSQLTCHAR(tableName, tableNameLen));
+        f.setTableName(fromSQLTCHAR(tableName, tableNameLen / sizeof(SQLTCHAR)));
     return f;
 }
 
@@ -1323,7 +1327,7 @@ bool QODBCResult::isNull(int field)
     Q_D(const QODBCResult);
     if (field < 0 || field >= d->fieldCache.size())
         return true;
-    if (field <= d->fieldCacheIdx) {
+    if (field >= d->fieldCacheIdx) {
         // since there is no good way to find out whether the value is NULL
         // without fetching the field we'll fetch it here.
         // (data() also sets the NULL flag)
@@ -2111,7 +2115,10 @@ void QODBCDriverPrivate::checkUnicode()
                                   hDbc,
                                   &hStmt);
 
-    r = SQLExecDirect(hStmt, toSQLTCHAR(QLatin1String("select 'test'")).data(), SQL_NTS);
+    {
+        auto encoded = toSQLTCHAR(QLatin1String("select 'test'"));
+        r = SQLExecDirect(hStmt, encoded.data(), SQLINTEGER(encoded.size()));
+    }
     if(r == SQL_SUCCESS) {
         r = SQLFetch(hStmt);
         if(r == SQL_SUCCESS) {

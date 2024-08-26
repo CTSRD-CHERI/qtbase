@@ -74,10 +74,13 @@ QT_BEGIN_NAMESPACE
 
 using namespace QWindowsUiAutomation;
 
+QMutex QWindowsUiaMainProvider::m_mutex;
 
 // Returns a cached instance of the provider for a specific acessible interface.
 QWindowsUiaMainProvider *QWindowsUiaMainProvider::providerForAccessible(QAccessibleInterface *accessible)
 {
+    QMutexLocker locker(&m_mutex);
+
     if (!accessible)
         return nullptr;
 
@@ -169,27 +172,11 @@ void QWindowsUiaMainProvider::notifyValueChange(QAccessibleValueChangeEvent *eve
         }
         if (event->value().type() == QVariant::String) {
             if (QWindowsUiaMainProvider *provider = providerForAccessible(accessible)) {
-
-                // Tries to notify the change using UiaRaiseNotificationEvent(), which is only available on
-                // Windows 10 version 1709 or newer. Otherwise uses UiaRaiseAutomationPropertyChangedEvent().
-
-                BSTR displayString = bStrFromQString(event->value().toString());
-                BSTR activityId = bStrFromQString(QString());
-
-                HRESULT hr = QWindowsUiaWrapper::instance()->raiseNotificationEvent(provider, NotificationKind_Other,
-                                                                                    NotificationProcessing_ImportantMostRecent,
-                                                                                    displayString, activityId);
-
-                ::SysFreeString(displayString);
-                ::SysFreeString(activityId);
-
-                if (hr == static_cast<HRESULT>(UIA_E_NOTSUPPORTED)) {
-                    VARIANT oldVal, newVal;
-                    clearVariant(&oldVal);
-                    setVariantString(event->value().toString(), &newVal);
-                    QWindowsUiaWrapper::instance()->raiseAutomationPropertyChangedEvent(provider, UIA_ValueValuePropertyId, oldVal, newVal);
-                    ::SysFreeString(newVal.bstrVal);
-                }
+                // Notifies changes in string values.
+                VARIANT oldVal, newVal;
+                clearVariant(&oldVal);
+                setVariantString(event->value().toString(), &newVal);
+                QWindowsUiaWrapper::instance()->raiseAutomationPropertyChangedEvent(provider, UIA_ValueValuePropertyId, oldVal, newVal);
             }
         } else if (QAccessibleValueInterface *valueInterface = accessible->valueInterface()) {
             if (QWindowsUiaMainProvider *provider = providerForAccessible(accessible)) {
@@ -271,6 +258,8 @@ ULONG QWindowsUiaMainProvider::AddRef()
 
 ULONG STDMETHODCALLTYPE QWindowsUiaMainProvider::Release()
 {
+    QMutexLocker locker(&m_mutex);
+
     if (!--m_ref) {
         delete this;
         return 0;

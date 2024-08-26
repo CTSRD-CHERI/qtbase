@@ -130,7 +130,9 @@ static QIcon messageIcon2qIcon(QSystemTrayIcon::MessageIcon icon)
 
     Only on X11, when a tooltip is requested, the QSystemTrayIcon receives a QHelpEvent
     of type QEvent::ToolTip. Additionally, the QSystemTrayIcon receives wheel events of
-    type QEvent::Wheel. These are not supported on any other platform.
+    type QEvent::Wheel. These are not supported on any other platform. Note: Since GNOME
+    Shell version 3.26, not all QSystemTrayIcon::ActivationReason are supported by the
+    system without shell extensions installed.
 
     \sa QDesktopServices, QDesktopWidget, {Desktop Integration}, {System Tray Icon Example}
 */
@@ -206,7 +208,7 @@ void QSystemTrayIcon::setContextMenu(QMenu *menu)
     if (oldMenu != menu && d->qpa_sys) {
         // Show the QMenu-based menu for QPA plugins that do not provide native menus
         if (oldMenu && !oldMenu->platformMenu())
-            QObject::disconnect(d->qpa_sys, &QPlatformSystemTrayIcon::contextMenuRequested, menu, nullptr);
+            QObject::disconnect(d->qpa_sys, &QPlatformSystemTrayIcon::contextMenuRequested, oldMenu, nullptr);
         if (menu && !menu->platformMenu()) {
             QObject::connect(d->qpa_sys, &QPlatformSystemTrayIcon::contextMenuRequested,
                              menu,

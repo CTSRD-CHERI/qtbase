@@ -191,15 +191,19 @@ char *qstrcpy(char *dst, const char *src)
     A safe \c strncpy() function.
 
     Copies at most \a len bytes from \a src (stopping at \a len or the
-    terminating '\\0' whichever comes first) into \a dst and returns a
-    pointer to \a dst. Guarantees that \a dst is '\\0'-terminated. If
-    \a src or \a dst is \nullptr, returns \nullptr immediately.
+    terminating '\\0' whichever comes first) into \a dst. Guarantees that \a
+    dst is '\\0'-terminated, except when \a dst is \nullptr or \a len is 0. If
+    \a src is \nullptr, returns \nullptr, otherwise returns \a dst.
 
     This function assumes that \a dst is at least \a len characters
     long.
 
     \note If \a dst and \a src overlap, the behavior is undefined.
 
+    \note Unlike strncpy(), this function does \e not write '\\0' to all \a
+    len bytes of \a dst, but stops after the terminating '\\0'. In this sense,
+    it's similar to C11's strncpy_s().
+    
     \note When compiling with Visual C++ compiler version 14.00
     (Visual C++ 2005) or later, internally the function strncpy_s
     will be used.
@@ -209,9 +213,11 @@ char *qstrcpy(char *dst, const char *src)
 
 char *qstrncpy(char *dst, const char *src, uint len)
 {
-    if (!src || !dst)
-        return nullptr;
-    if (len > 0) {
+    if (dst && len > 0) {
+        if (!src) {
+            *dst = '\0';
+            return nullptr;
+        }
 #ifdef Q_CC_MSVC
         strncpy_s(dst, len, src, len - 1);
 #else
@@ -219,7 +225,7 @@ char *qstrncpy(char *dst, const char *src, uint len)
 #endif
         dst[len-1] = '\0';
     }
-    return dst;
+    return src ? dst : nullptr;
 }
 
 /*! \fn uint qstrlen(const char *str)
@@ -1274,7 +1280,7 @@ QByteArray &QByteArray::operator=(const char *str)
     functions that expect '\\0'-terminated strings. If the QByteArray object
     was created from a \l{fromRawData()}{raw data} that didn't include the
     trailing null-termination character then QByteArray doesn't add it
-    automaticall unless the \l{deep copy} is created.
+    automatically unless the \l{deep copy} is created.
 
     Example:
     \snippet code/src_corelib_tools_qbytearray.cpp 6
@@ -4154,19 +4160,21 @@ QByteArray QByteArray::toBase64(Base64Options options) const
     const char padchar = '=';
     int padlen = 0;
 
-    QByteArray tmp((d->size + 2) / 3 * 4, Qt::Uninitialized);
+    const int sz = size();
+
+    QByteArray tmp((sz + 2) / 3 * 4, Qt::Uninitialized);
 
     int i = 0;
     char *out = tmp.data();
-    while (i < d->size) {
+    while (i < sz) {
         // encode 3 bytes at a time
         int chunk = 0;
         chunk |= int(uchar(d->data()[i++])) << 16;
-        if (i == d->size) {
+        if (i == sz) {
             padlen = 2;
         } else {
             chunk |= int(uchar(d->data()[i++])) << 8;
-            if (i == d->size)
+            if (i == sz)
                 padlen = 1;
             else
                 chunk |= int(uchar(data()[i++]));

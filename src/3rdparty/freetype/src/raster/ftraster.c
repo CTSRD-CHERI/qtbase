@@ -4,7 +4,7 @@
  *
  *   The FreeType glyph rasterizer (body).
  *
- * Copyright (C) 1996-2022 by
+ * Copyright (C) 1996-2023 by
  * David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  * This file is part of the FreeType project, and may only be used,
@@ -366,14 +366,8 @@
   typedef PProfile*  PProfileList;
 
 
-#ifdef __CHERI_PURE_CAPABILITY__
-//XXXKG: assumes that _MIPS_SZCAP/8 is a multiple of sizeof(Long)
-#define AlignProfileSize \
-  ( __builtin_align_up( sizeof ( TProfile ), sizeof (__uintcap_t) ) / sizeof ( Long ) )
-#else
 #define AlignProfileSize \
   ( ( sizeof ( TProfile ) + sizeof ( Alignment ) - 1 ) / sizeof ( Long ) )
-#endif
 
 
 #undef RAS_ARG
@@ -726,12 +720,6 @@
       }
 
       oldProfile   = ras.cProfile;
-#ifdef __CHERI_PURE_CAPABILITY__
-      //XXXKG: re-align ras.top, as it may have become unaligned (e.g. due to
-      //       calls to Line_Up)
-      ras.top = __builtin_align_up(ras.top, sizeof (__uintcap_t));
-#endif
-
       ras.cProfile = (PProfile)ras.top;
 
       ras.top += AlignProfileSize;
@@ -841,12 +829,7 @@
 
 
         if ( n > 1 )
-#ifdef __CHERI_PURE_CAPABILITY__
-          //XXXKG: align link so that it correctly points to the next Profile
-          p->link = (PProfile)__builtin_align_up( p->offset + p->height, sizeof (__uintcap_t) );
-#else
           p->link = (PProfile)( p->offset + p->height );
-#endif
         else
           p->link = NULL;
 
@@ -860,12 +843,7 @@
           bottom     = (Int)( p->start - p->height + 1 );
           top        = (Int)p->start;
           p->start   = bottom;
-#ifdef __CHERI_PURE_CAPABILITY__
-          //XXXKG: align offset so that it correctly points to the Profile's data
-          p->offset = __builtin_align_up( p->offset + p->height - 1, sizeof (__uintcap_t) );
-#else
           p->offset += p->height - 1;
-#endif
         }
 
         if ( Insert_Y_Turn( RAS_VARS bottom )  ||
@@ -2241,8 +2219,8 @@
     /* represent multiples of 1/(1<<12) = 1/4096                    */
     FT_TRACE7(( "  y=%d x=[% .12f;% .12f]",
                 y,
-                x1 / (double)ras.precision,
-                x2 / (double)ras.precision ));
+                (double)x1 / (double)ras.precision,
+                (double)x2 / (double)ras.precision ));
 
     /* Drop-out control */
 
@@ -2316,8 +2294,8 @@
 
     FT_TRACE7(( "  y=%d x=[% .12f;% .12f]",
                 y,
-                x1 / (double)ras.precision,
-                x2 / (double)ras.precision ));
+                (double)x1 / (double)ras.precision,
+                (double)x2 / (double)ras.precision ));
 
     /* Drop-out control */
 
@@ -2499,8 +2477,8 @@
 
     FT_TRACE7(( "  x=%d y=[% .12f;% .12f]",
                 y,
-                x1 / (double)ras.precision,
-                x2 / (double)ras.precision ));
+                (double)x1 / (double)ras.precision,
+                (double)x2 / (double)ras.precision ));
 
     /* We should not need this procedure but the vertical sweep   */
     /* mishandles horizontal lines through pixel centers.  So we  */
@@ -2570,8 +2548,8 @@
 
     FT_TRACE7(( "  x=%d y=[% .12f;% .12f]",
                 y,
-                x1 / (double)ras.precision,
-                x2 / (double)ras.precision ));
+                (double)x1 / (double)ras.precision,
+                (double)x2 / (double)ras.precision ));
 
     /* During the horizontal sweep, we only take care of drop-outs */
 

@@ -2591,7 +2591,8 @@ QDBusConnectionPrivate::findMetaObject(const QString &service, const QString &pa
             return mo;
     }
     if (path.isEmpty()) {
-        error = QDBusError(QDBusError::InvalidObjectPath, QLatin1String("Object path cannot be empty"));
+        error = QDBusError(QDBusError::InvalidObjectPath,
+                           QLatin1String("Object path cannot be empty"));
         lastError = error;
         return nullptr;
     }

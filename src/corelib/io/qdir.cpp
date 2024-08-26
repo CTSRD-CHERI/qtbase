@@ -329,7 +329,7 @@ bool QDirSortItemComparator::operator()(const QDirSortItem &n1, const QDirSortIt
     return r < 0;
 }
 
-inline void QDirPrivate::sortFileList(QDir::SortFlags sort, QFileInfoList &l,
+inline void QDirPrivate::sortFileList(QDir::SortFlags sort, const QFileInfoList &l,
                                       QStringList *names, QFileInfoList *infos)
 {
     // names and infos are always empty lists or 0 here
@@ -554,6 +554,10 @@ inline void QDirPrivate::initFileEngine()
 
     \snippet qdir-listfiles/main.cpp 0
 
+    \section1 Platform Specific Issues
+
+    \include android-content-uri-limitations.qdocinc
+
     \sa QFileInfo, QFile, QFileDialog, QCoreApplication::applicationDirPath(), {Find Files Example}
 */
 
@@ -673,8 +677,12 @@ QString QDir::path() const
 QString QDir::absolutePath() const
 {
     const QDirPrivate* d = d_ptr.constData();
-    d->resolveAbsoluteEntry();
-    return d->absoluteDirEntry.filePath();
+    if (!d->fileEngine) {
+        d->resolveAbsoluteEntry();
+        return d->absoluteDirEntry.filePath();
+    }
+
+    return d->fileEngine->fileName(QAbstractFileEngine::AbsoluteName);
 }
 
 /*!
@@ -717,7 +725,9 @@ QString QDir::canonicalPath() const
 QString QDir::dirName() const
 {
     const QDirPrivate* d = d_ptr.constData();
-    return d->dirEntry.fileName();
+    if (!d_ptr->fileEngine)
+        return d->dirEntry.fileName();
+    return d->fileEngine->fileName(QAbstractFileEngine::BaseName);
 }
 
 
@@ -1037,6 +1047,9 @@ bool QDir::cd(const QString &dirName)
     otherwise returns \c false. Note that the logical cdUp() operation is
     not performed if the new directory does not exist.
 
+    \note On Android, this is not supported for content URIs. For more information,
+    see \l {Android: DocumentFile.getParentFile()}{DocumentFile.getParentFile()}.
+
     \sa cd(), isReadable(), exists(), path()
 */
 bool QDir::cdUp()
@@ -1246,9 +1259,9 @@ QDir::Filters QDir::filter() const
     files that the application can read, write, or execute, and symlinks
     to such files/directories can be listed.
 
-    To retrieve the permissons for a directory, use the
+    To retrieve the permissions for a directory, use the
     entryInfoList() function to get the associated QFileInfo objects
-    and then use the QFileInfo::permissons() to obtain the permissions
+    and then use the QFileInfo::permissions() to obtain the permissions
     and ownership for each file.
 */
 
@@ -1961,7 +1974,8 @@ bool QDir::isEmpty(Filters filters) const
     Returns a list of the root directories on this system.
 
     On Windows this returns a list of QFileInfo objects containing "C:/",
-    "D:/", etc. On other operating systems, it returns a list containing
+    "D:/", etc. This does not return drives with ejectable media that are empty.
+    On other operating systems, it returns a list containing
     just one root directory (i.e. "/").
 
     \sa root(), rootPath()

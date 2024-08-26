@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2022 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
@@ -131,7 +131,8 @@ struct Q_CORE_EXPORT QArrayData
 #ifndef __CHERI_PURE_CAPABILITY__
         Q_UNUSED(objsize);
         Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(this) + offset);
+        const quintptr self = reinterpret_cast<qintptr>(this);
+        return reinterpret_cast<void *>(self + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
         return cheri_get_arraydata(this, _internal_cheri_offset, objsize);
@@ -142,7 +143,8 @@ struct Q_CORE_EXPORT QArrayData
 #ifndef __CHERI_PURE_CAPABILITY__
         Q_UNUSED(objsize);
         Q_ASSERT(size == 0 || offset < 0 || size_t(offset) >= sizeof(QArrayData));
-        return reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(this) + offset);
+        const quintptr self = reinterpret_cast<qintptr>(this);
+        return reinterpret_cast<const void *>(self + offset);
 #else
         Q_ASSERT(size == 0 || reinterpret_cast<void *>(_internal_cheri_offset));
         return cheri_get_arraydata(this, _internal_cheri_offset, objsize);

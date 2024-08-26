@@ -49,6 +49,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <new>
 #include <string.h>
 #include <stdlib.h>
@@ -236,6 +237,20 @@ public:
 
 private:
     void realloc(int size, int alloc);
+
+    void resize_impl(int newSize, const T &t)
+    {
+        const auto increment = newSize - size();
+        if (increment > 0 && QtPrivate::q_points_into_range(&t, cbegin(), cend())) {
+            resize_impl(newSize, T(t));
+            return;
+        }
+        realloc(qMin(size(), newSize), qMax(newSize, capacity()));
+
+        if (increment > 0)
+            std::uninitialized_fill_n(end(), increment, t);
+        s = newSize;
+    }
 
     int a;      // capacity
     int s;      // size
@@ -476,28 +491,12 @@ Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthA
 {
     Q_ASSERT_X(isValidIterator(before), "QVarLengthArray::insert", "The specified const_iterator argument 'before' is invalid");
 
-    int offset = int(before - ptr);
-    reserve(s + 1);
-    if (!QTypeInfo<T>::isRelocatable) {
-        T *b = ptr + offset;
-        T *i = ptr + s;
-        T *j = i + 1;
-        // The new end-element needs to be constructed, the rest must be move assigned
-        if (i != b) {
-            new (--j) T(std::move(*--i));
-            while (i != b)
-                *--j = std::move(*--i);
-            *b = std::move(t);
-        } else {
-            new (b) T(std::move(t));
-        }
-    } else {
-        T *b = ptr + offset;
-        memmove(static_cast<void *>(b + 1), static_cast<const void *>(b), (s - offset) * sizeof(T));
-        new (b) T(std::move(t));
-    }
-    s += 1;
-    return ptr + offset;
+    const int offset = int(before - ptr);
+    append(std::move(t));
+    const auto b = begin() + offset;
+    const auto e = end();
+    QtPrivate::q_rotate(b, e - 1, e);
+    return b;
 }
 
 template <class T, int Prealloc>
@@ -505,28 +504,12 @@ Q_OUTOFLINE_TEMPLATE typename QVarLengthArray<T, Prealloc>::iterator QVarLengthA
 {
     Q_ASSERT_X(isValidIterator(before), "QVarLengthArray::insert", "The specified const_iterator argument 'before' is invalid");
 
-    int offset = int(before - ptr);
-    if (n != 0) {
-        const T copy(t); // `t` could alias an element in [begin(), end()[
-        resize(s + n);
-        if (!QTypeInfoQuery<T>::isRelocatable) {
-            T *b = ptr + offset;
-            T *j = ptr + s;
-            T *i = j - n;
-            while (i != b)
-                *--j = *--i;
-            i = b + n;
-            while (i != b)
-                *--i = copy;
-        } else {
-            T *b = ptr + offset;
-            T *i = b + n;
-            memmove(static_cast<void *>(i), static_cast<const void *>(b), (s - offset - n) * sizeof(T));
-            while (i != b)
-                new (--i) T(copy);
-        }
-    }
-    return ptr + offset;
+    const int offset = int(before - cbegin());
+    resize_impl(size() + n, t);
+    const auto b = begin() + offset;
+    const auto e = end();
+    QtPrivate::q_rotate(b, e - n, e);
+    return b;
 }
 
 template <class T, int Prealloc>

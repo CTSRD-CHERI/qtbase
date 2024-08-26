@@ -210,8 +210,7 @@ static inline QDBusMessage xdgDesktopPortalOpenFile(const QUrl &url)
     // handle_token (s) -  A string that will be used as the last element of the @handle.
     // writable (b) - Whether to allow the chosen application to write to the file.
 
-#ifdef O_PATH
-    const int fd = qt_safe_open(QFile::encodeName(url.toLocalFile()), O_PATH);
+    const int fd = qt_safe_open(QFile::encodeName(url.toLocalFile()), O_RDONLY);
     if (fd != -1) {
         QDBusMessage message = QDBusMessage::createMethodCall(QLatin1String("org.freedesktop.portal.Desktop"),
                                                               QLatin1String("/org/freedesktop/portal/desktop"),
@@ -221,16 +220,13 @@ static inline QDBusMessage xdgDesktopPortalOpenFile(const QUrl &url)
         QDBusUnixFileDescriptor descriptor;
         descriptor.giveFileDescriptor(fd);
 
-        const QVariantMap options = {{QLatin1String("writable"), true}};
+        const QVariantMap options = {};
 
         // FIXME parent_window_id
         message << QString() << QVariant::fromValue(descriptor) << options;
 
         return QDBusConnection::sessionBus().call(message);
     }
-#else
-    Q_UNUSED(url)
-#endif
 
     return QDBusMessage::createError(QDBusError::InternalError, qt_error_string());
 }

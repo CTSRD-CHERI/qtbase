@@ -46,6 +46,9 @@
 #include "qmimeprovider_p.h"
 #include "qmimetype_p.h"
 
+#include <private/qduplicatetracker_p.h>
+#include <private/qfilesystementry_p.h>
+
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QSet>
@@ -445,6 +448,7 @@ QList<QMimeType> QMimeDatabasePrivate::allMimeTypes()
 bool QMimeDatabasePrivate::inherits(const QString &mime, const QString &parent)
 {
     const QString resolvedParent = resolveAlias(parent);
+    QDuplicateTracker<QString> seen;
     std::stack<QString, QStringList> toCheck;
     toCheck.push(mime);
     while (!toCheck.empty()) {
@@ -453,8 +457,11 @@ bool QMimeDatabasePrivate::inherits(const QString &mime, const QString &parent)
         const QString mimeName = toCheck.top();
         toCheck.pop();
         const auto parentList = parents(mimeName);
-        for (const QString &par : parentList)
-            toCheck.push(resolveAlias(par));
+        for (const QString &par : parentList) {
+            const QString resolvedPar = resolveAlias(par);
+            if (!seen.hasSeen(resolvedPar))
+                toCheck.push(resolvedPar);
+        }
     }
     return false;
 }

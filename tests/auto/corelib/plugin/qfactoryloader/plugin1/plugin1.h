@@ -35,7 +35,7 @@
 class Plugin1 : public QObject, public PluginInterface1
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "org.qt-project.Qt.autotests.plugininterface1")
+    Q_PLUGIN_METADATA(IID "org.qt-project.Qt.autotests.plugininterface1" FILE "plugin1.json")
     Q_INTERFACES(PluginInterface1)
 
 public:

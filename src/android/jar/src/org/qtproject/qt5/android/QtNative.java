@@ -45,8 +45,6 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
-import java.io.IOException;
-import java.util.HashMap;
 
 import android.app.Activity;
 import android.app.Service;
@@ -115,9 +113,6 @@ public class QtNative
     private static Boolean m_tabletEventSupported = null;
     private static boolean m_usePrimaryClip = false;
     public static QtThread m_qtThread = new QtThread();
-    private static HashMap<String, Uri> m_cachedUris = new HashMap<String, Uri>();
-    private static ArrayList<String> m_knownDirs = new ArrayList<String>();
-    private static final String NoPermissionErrorMessage = "No permissions to open Uri";
 
     private static final Runnable runPendingCppRunnablesRunnable = new Runnable() {
         @Override
@@ -125,6 +120,13 @@ public class QtNative
             runPendingCppRunnables();
         }
     };
+
+    public static boolean isStarted()
+    {
+        boolean hasActivity = m_activity != null && m_activityDelegate != null;
+        boolean hasService = m_service != null && m_serviceDelegate != null;
+        return m_started && (hasActivity || hasService);
+    }
 
     private static ClassLoader m_classLoader = null;
     public static ClassLoader classLoader()
@@ -237,190 +239,6 @@ public class QtNative
         }
     }
 
-    public static int openFdForContentUrl(Context context, String contentUrl, String openMode)
-    {
-        Uri uri = m_cachedUris.get(contentUrl);
-        if (uri == null)
-            uri = getUriWithValidPermission(context, contentUrl, openMode);
-        int error = -1;
-
-        if (uri == null) {
-            Log.e(QtTAG, "openFdForContentUrl(): " + NoPermissionErrorMessage);
-            return error;
-        }
-
-        try {
-            ContentResolver resolver = context.getContentResolver();
-            ParcelFileDescriptor fdDesc = resolver.openFileDescriptor(uri, openMode);
-            return fdDesc.detachFd();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            Log.e(QtTAG, "openFdForContentUrl(): Invalid Uri");
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-        }
-        return error;
-    }
-
-    public static long getSize(Context context, String contentUrl)
-    {
-        long size = -1;
-        Uri uri = m_cachedUris.get(contentUrl);
-        if (uri == null)
-            uri = getUriWithValidPermission(context, contentUrl, "r");
-
-        if (uri == null) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-            return size;
-        } else if (!m_cachedUris.containsKey(contentUrl)) {
-            m_cachedUris.put(contentUrl, uri);
-        }
-
-        try {
-            ContentResolver resolver = context.getContentResolver();
-            Cursor cur = resolver.query(uri, new String[] { DocumentsContract.Document.COLUMN_SIZE }, null, null, null);
-            if (cur != null) {
-                if (cur.moveToFirst())
-                    size = cur.getLong(0);
-                cur.close();
-            }
-            return size;
-        } catch (IllegalArgumentException e) {
-            Log.e(QtTAG, "getSize(): Invalid Uri");
-            e.printStackTrace();
-        }  catch (UnsupportedOperationException e) {
-            Log.e(QtTAG, "getSize(): Unsupported operation for given Uri");
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-        }
-        return size;
-    }
-
-    public static boolean checkFileExists(Context context, String contentUrl)
-    {
-        boolean exists = false;
-        Uri uri = m_cachedUris.get(contentUrl);
-        if (uri == null)
-            uri = getUriWithValidPermission(context, contentUrl, "r");
-        if (uri == null) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-            return exists;
-        } else {
-            if (!m_cachedUris.containsKey(contentUrl))
-                m_cachedUris.put(contentUrl, uri);
-        }
-
-        try {
-            ContentResolver resolver = context.getContentResolver();
-            Cursor cur = resolver.query(uri, null, null, null, null);
-            if (cur != null) {
-                exists = true;
-                cur.close();
-            }
-            return exists;
-        } catch (IllegalArgumentException e) {
-            Log.e(QtTAG, "checkFileExists(): Invalid Uri");
-            e.printStackTrace();
-        } catch (UnsupportedOperationException e) {
-            Log.e(QtTAG, "checkFileExists(): Unsupported operation for given Uri");
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-        }
-        return exists;
-    }
-
-    public static boolean checkIfWritable(Context context, String contentUrl)
-    {
-        return getUriWithValidPermission(context, contentUrl, "w") != null;
-    }
-
-    public static boolean checkIfDir(Context context, String contentUrl)
-    {
-        boolean isDir = false;
-        Uri uri = m_cachedUris.get(contentUrl);
-        if (m_knownDirs.contains(contentUrl))
-            return true;
-        if (uri == null) {
-            uri = getUriWithValidPermission(context, contentUrl, "r");
-        }
-        if (uri == null) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-            return isDir;
-        } else {
-            if (!m_cachedUris.containsKey(contentUrl))
-                m_cachedUris.put(contentUrl, uri);
-        }
-
-        try {
-            final List<String> paths = uri.getPathSegments();
-            // getTreeDocumentId will throw an exception if it is not a directory so check manually
-            if (!paths.get(0).equals("tree"))
-                return false;
-            ContentResolver resolver = context.getContentResolver();
-            Uri docUri = DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri));
-            if (!docUri.toString().startsWith(uri.toString()))
-                return false;
-            Cursor cur = resolver.query(docUri, new String[] { DocumentsContract.Document.COLUMN_MIME_TYPE }, null, null, null);
-            if (cur != null) {
-                if (cur.moveToFirst()) {
-                    final String dirStr = new String(DocumentsContract.Document.MIME_TYPE_DIR);
-                    isDir = cur.getString(0).equals(dirStr);
-                    if (isDir)
-                        m_knownDirs.add(contentUrl);
-                }
-                cur.close();
-            }
-            return isDir;
-        } catch (IllegalArgumentException e) {
-            Log.e(QtTAG, "checkIfDir(): Invalid Uri");
-            e.printStackTrace();
-        } catch (UnsupportedOperationException e) {
-            Log.e(QtTAG, "checkIfDir(): Unsupported operation for given Uri");
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            Log.e(QtTAG, NoPermissionErrorMessage);
-        }
-        return false;
-    }
-    public static String[] listContentsFromTreeUri(Context context, String contentUrl)
-    {
-        Uri treeUri = Uri.parse(contentUrl);
-        final ArrayList<String> results = new ArrayList<String>();
-        if (treeUri == null) {
-            Log.e(QtTAG, "listContentsFromTreeUri(): Invalid uri");
-            return results.toArray(new String[results.size()]);
-        }
-        final ContentResolver resolver = context.getContentResolver();
-        final Uri docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri,
-                DocumentsContract.getTreeDocumentId(treeUri));
-        final Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(docUri,
-                                DocumentsContract.getDocumentId(docUri));
-        Cursor c = null;
-        final String dirStr = new String(DocumentsContract.Document.MIME_TYPE_DIR);
-        try {
-            c = resolver.query(childrenUri, new String[] {
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME, DocumentsContract.Document.COLUMN_MIME_TYPE }, null, null, null);
-            while (c.moveToNext()) {
-                final String fileString = c.getString(1);
-                if (!m_cachedUris.containsKey(contentUrl + "/" + fileString)) {
-                    m_cachedUris.put(contentUrl + "/" + fileString,
-                                     DocumentsContract.buildDocumentUriUsingTree(treeUri, c.getString(0)));
-                }
-                results.add(fileString);
-                if (c.getString(2).equals(dirStr))
-                    m_knownDirs.add(contentUrl + "/" + fileString);
-            }
-            c.close();
-        } catch (Exception e) {
-            Log.w(QtTAG, "Failed query: " + e);
-            return results.toArray(new String[results.size()]);
-        }
-        return results.toArray(new String[results.size()]);
-    }
     // this method loads full path libs
     public static void loadQtLibraries(final ArrayList<String> libraries)
     {
@@ -678,9 +496,10 @@ public class QtNative
     public static native void quitQtCoreApplication();
     public static native void quitQtAndroidPlugin();
     public static native void terminateQt();
+    public static native boolean updateNativeActivity();
     // application methods
 
-    private static void quitApp()
+    public static void quitApp()
     {
         runAction(new Runnable() {
             @Override
@@ -690,6 +509,8 @@ public class QtNative
                      m_activity.finish();
                  if (m_service != null)
                      m_service.stopSelf();
+
+                 m_started = false;
             }
         });
     }
@@ -871,6 +692,11 @@ public class QtNative
         });
     }
 
+    private static int getSelectHandleWidth()
+    {
+        return m_activityDelegate.getSelectHandleWidth();
+    }
+
     private static void updateHandles(final int mode,
                                       final int editX,
                                       final int editY,
@@ -991,6 +817,18 @@ public class QtNative
             public void run() {
                 if (m_activityDelegate != null) {
                     m_activityDelegate.notifyValueChanged(viewId, value);
+                }
+            }
+        });
+    }
+
+    private static void notifyScrolledEvent(final int viewId)
+    {
+        runAction(new Runnable() {
+            @Override
+            public void run() {
+                if (m_activityDelegate != null) {
+                    m_activityDelegate.notifyScrolledEvent(viewId);
                 }
             }
         });

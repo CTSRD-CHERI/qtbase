@@ -245,6 +245,13 @@ Q_AUTOTEST_EXPORT void q_OPENSSL_sk_push(OPENSSL_STACK *st, void *data);
 Q_AUTOTEST_EXPORT void q_OPENSSL_sk_free(OPENSSL_STACK *a);
 Q_AUTOTEST_EXPORT void * q_OPENSSL_sk_value(OPENSSL_STACK *a, int b);
 int q_SSL_session_reused(SSL *a);
+
+#if OPENSSL_VERSION_MAJOR < 3
+using qssloptions = unsigned long;
+#else
+using qssloptions = uint64_t;
+#endif // OPENSSL_VERSION_MAJOR
+
 qssloptions q_SSL_CTX_set_options(SSL_CTX *ctx, qssloptions op);
 int q_OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings);
 size_t q_SSL_get_client_random(SSL *a, unsigned char *out, size_t outlen);
@@ -381,6 +388,17 @@ BN_ULONG q_BN_mod_word(const BIGNUM *a, BN_ULONG w);
 const EC_GROUP* q_EC_KEY_get0_group(const EC_KEY* k);
 int q_EC_GROUP_get_degree(const EC_GROUP* g);
 #endif // OPENSSL_NO_EC
+
+// Here we have the ones that make difference between OpenSSL pre/post v3:
+#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
+X509 *q_SSL_get1_peer_certificate(SSL *a);
+#define q_SSL_get_peer_certificate q_SSL_get1_peer_certificate
+int q_EVP_PKEY_get_base_id(const EVP_PKEY *pkey);
+#define q_EVP_PKEY_base_id q_EVP_PKEY_get_base_id
+#else
+X509 *q_SSL_get_peer_certificate(SSL *a);
+int q_EVP_PKEY_base_id(EVP_PKEY *a);
+#endif // OPENSSL_VERSION_MAJOR >= 3
 
 DSA *q_DSA_new();
 void q_DSA_free(DSA *a);
@@ -748,17 +766,6 @@ void q_CRYPTO_free(void *str, const char *file, int line);
 
 int q_SSL_CTX_get_security_level(const SSL_CTX *ctx);
 void q_SSL_CTX_set_security_level(SSL_CTX *ctx, int level);
-
-// Here we have the ones that make difference between OpenSSL pre/post v3:
-#if defined(OPENSSL_VERSION_MAJOR) && OPENSSL_VERSION_MAJOR >= 3
-X509 *q_SSL_get1_peer_certificate(SSL *a);
-#define q_SSL_get_peer_certificate q_SSL_get1_peer_certificate
-int q_EVP_PKEY_get_base_id(const EVP_PKEY *pkey);
-#define q_EVP_PKEY_base_id q_EVP_PKEY_get_base_id
-#else
-X509 *q_SSL_get_peer_certificate(SSL *a);
-int q_EVP_PKEY_base_id(EVP_PKEY *a);
-#endif // OPENSSL_VERSION_MAJOR >= 3
 
 QT_END_NAMESPACE
 

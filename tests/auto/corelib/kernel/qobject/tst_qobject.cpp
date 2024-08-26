@@ -7745,14 +7745,10 @@ signals:
 void tst_QObject::declarativeData()
 {
 #ifdef QT_BUILD_INTERNAL
-    QScopedValueRollback destroyed(QAbstractDeclarativeData::destroyed,
-                                   QtDeclarative::destroyed);
-    QScopedValueRollback signalEmitted(QAbstractDeclarativeData::signalEmitted,
-                                       QtDeclarative::signalEmitted);
-    QScopedValueRollback receivers(QAbstractDeclarativeData::receivers,
-                                   QtDeclarative::receivers);
-    QScopedValueRollback isSignalConnected(QAbstractDeclarativeData::isSignalConnected,
-                                           QtDeclarative::isSignalConnected);
+    QAbstractDeclarativeData::destroyed = QtDeclarative::destroyed;
+    QAbstractDeclarativeData::signalEmitted = QtDeclarative::signalEmitted;
+    QAbstractDeclarativeData::receivers = QtDeclarative::receivers;
+    QAbstractDeclarativeData::isSignalConnected = QtDeclarative::isSignalConnected;
 
     QtDeclarative::Object p;
     QObjectPrivate *priv = QObjectPrivate::get(&p);

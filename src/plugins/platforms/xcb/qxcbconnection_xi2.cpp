@@ -591,8 +591,12 @@ void QXcbConnection::xi2HandleEvent(xcb_ge_event_t *event)
                         event->event_type, xiDeviceEvent->sequence, xiDeviceEvent->detail,
                         fixed1616ToReal(xiDeviceEvent->event_x), fixed1616ToReal(xiDeviceEvent->event_y),
                         fixed1616ToReal(xiDeviceEvent->root_x), fixed1616ToReal(xiDeviceEvent->root_y),xiDeviceEvent->event);
-            if (QXcbWindow *platformWindow = platformWindowFromId(xiDeviceEvent->event))
+            if (QXcbWindow *platformWindow = platformWindowFromId(xiDeviceEvent->event)) {
                 xi2ProcessTouch(xiDeviceEvent, platformWindow);
+            } else { // When the window cannot be matched, delete it from touchPoints
+                if (TouchDeviceData *dev = touchDeviceForId(xiDeviceEvent->sourceid))
+                    dev->touchPoints.remove((xiDeviceEvent->detail % INT_MAX));
+            }
             break;
         }
     } else if (xiEnterEvent && !xi2MouseEventsDisabled() && eventListener) {
@@ -1251,16 +1255,14 @@ void QXcbConnection::xi2ReportTabletEvent(const void *event, TabletData *tabletD
             if (Q_LIKELY(useValuators)) {
                 const qreal value = scaleOneValuator(normalizedValue, physicalScreenArea.x(), physicalScreenArea.width());
                 global.setX(value);
-                // mapFromGlobal is ok for nested/embedded windows, but works only with whole-number QPoint;
-                // so map it first, then add back the sub-pixel position
-                local.setX(window->mapFromGlobal(QPoint(int(value), 0)).x() + (value - int(value)));
+                local.setX(xcbWindow->mapFromGlobal(QPoint(int(value), 0)).x() + (value - int(value)));
             }
             break;
         case QXcbAtom::AbsY:
             if (Q_LIKELY(useValuators)) {
                 qreal value = scaleOneValuator(normalizedValue, physicalScreenArea.y(), physicalScreenArea.height());
                 global.setY(value);
-                local.setY(window->mapFromGlobal(QPoint(0, int(value))).y() + (value - int(value)));
+                local.setY(xcbWindow->mapFromGlobal(QPoint(0, int(value))).y() + (value - int(value)));
             }
             break;
         case QXcbAtom::AbsPressure:

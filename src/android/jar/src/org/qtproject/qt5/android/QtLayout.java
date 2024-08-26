@@ -42,12 +42,20 @@ package org.qtproject.qt5.android;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Build;
+import android.util.Log;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.WindowMetrics;
+import android.view.WindowInsets;
+import android.graphics.Insets;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 
 public class QtLayout extends ViewGroup
 {
@@ -91,26 +99,42 @@ public class QtLayout extends ViewGroup
     @Override
     protected void onSizeChanged (int w, int h, int oldw, int oldh)
     {
-        DisplayMetrics metrics = new DisplayMetrics();
-        Display display = (Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
-                ? ((Activity)getContext()).getWindowManager().getDefaultDisplay()
-                : ((Activity)getContext()).getDisplay();
-        display.getMetrics(metrics);
-
-        if ((metrics.widthPixels > metrics.heightPixels) != (w > h)) {
-            // This is an intermediate state during display rotation.
-            // The new size is still reported for old orientation, while
-            // metrics contain sizes for new orientation. Setting
-            // such parameters will produce inconsistent results, so
-            // we just skip them.
-            // We will have another onSizeChanged() with normal values
-            // a bit later.
+        Activity activity = (Activity)getContext();
+        if (activity == null)
             return;
+
+        final WindowManager windowManager = activity.getWindowManager();
+        Display display;
+
+
+        int maxWidth = 0;
+        int maxHeight = 0;
+
+        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            display = windowManager.getDefaultDisplay();
+
+            final DisplayMetrics maxMetrics = new DisplayMetrics();
+            display.getRealMetrics(maxMetrics);
+            maxWidth = maxMetrics.widthPixels;
+            maxHeight = maxMetrics.heightPixels;
+        } else {
+            display = activity.getDisplay();
+
+            final WindowMetrics maxMetrics = windowManager.getMaximumWindowMetrics();
+            maxWidth = maxMetrics.getBounds().width();
+            maxHeight = maxMetrics.getBounds().height();
         }
 
-        QtNative.setApplicationDisplayMetrics(metrics.widthPixels, metrics.heightPixels, w, h,
-                                              metrics.xdpi, metrics.ydpi, metrics.scaledDensity,
-                                              metrics.density, display.getRefreshRate());
+        final DisplayMetrics displayMetrics = activity.getResources().getDisplayMetrics();
+        double xdpi = displayMetrics.xdpi;
+        double ydpi = displayMetrics.ydpi;
+        double density = displayMetrics.density;
+        double scaledDensity = displayMetrics.scaledDensity;
+        float refreshRate = display.getRefreshRate();
+
+        QtNative.setApplicationDisplayMetrics(maxWidth, maxHeight, w, h,
+                                              xdpi,ydpi,scaledDensity, density,
+                                              refreshRate);
 
         int newRotation = display.getRotation();
         if (m_ownDisplayRotation != m_activityDisplayRotation
@@ -121,8 +145,8 @@ public class QtLayout extends ViewGroup
             // orientation change now.
             QtNative.handleOrientationChanged(newRotation, m_nativeOrientation);
         }
-        m_ownDisplayRotation = newRotation;
 
+        m_ownDisplayRotation = newRotation;
         if (m_startApplicationRunnable != null) {
             m_startApplicationRunnable.run();
             m_startApplicationRunnable = null;

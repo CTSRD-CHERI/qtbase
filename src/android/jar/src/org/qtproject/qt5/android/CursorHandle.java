@@ -124,8 +124,7 @@ public class CursorHandle implements ViewTreeObserver.OnPreDrawListener
         m_id = id;
         m_attr = attr;
         m_layout = layout;
-        DisplayMetrics metrics = new DisplayMetrics();
-        activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        DisplayMetrics metrics = activity.getResources().getDisplayMetrics();
         m_yShift = (int)TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_MM, 1f, metrics);
         tolerance = Math.min(1, (int)(m_yShift / 2f));
         m_lastX = m_lastY = -1 - tolerance;
@@ -162,12 +161,14 @@ public class CursorHandle implements ViewTreeObserver.OnPreDrawListener
         final int[] layoutLocation = new int[2];
         m_layout.getLocationOnScreen(layoutLocation);
 
-        // This value is used for handling split screen case
+        // These values are used for handling split screen case
         final int[] activityLocation = new int[2];
+        final int[] activityLocationInWindow = new int[2];
         m_activity.getWindow().getDecorView().getLocationOnScreen(activityLocation);
+        m_activity.getWindow().getDecorView().getLocationInWindow(activityLocationInWindow);
 
         int x2 = x + layoutLocation[0] - activityLocation[0];
-        int y2 = y + layoutLocation[1] + m_yShift - activityLocation[1];
+        int y2 = y + layoutLocation[1] + m_yShift + (activityLocationInWindow[1] - activityLocation[1]);
 
         if (m_id == QtNative.IdCursorHandle) {
             x2 -= m_popup.getWidth() / 2 ;
@@ -200,6 +201,10 @@ public class CursorHandle implements ViewTreeObserver.OnPreDrawListener
         if (m_popup != null) {
             m_popup.dismiss();
         }
+    }
+
+    public int width() {
+        return m_cursorView.getDrawable().getIntrinsicWidth();
     }
 
     // The handle was dragged by a given relative position

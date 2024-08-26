@@ -45,8 +45,8 @@ private slots:
     void swap();
     void qChecksum_data();
     void qChecksum();
-    void qCompress_data();
 #ifndef QT_NO_COMPRESS
+    void qCompress_data();
     void qCompress();
     void qUncompressCorruptedData_data();
     void qUncompressCorruptedData();
@@ -274,6 +274,7 @@ void tst_QByteArray::qChecksum()
     QCOMPARE(::qChecksum(data.constData(), len, standard), static_cast<quint16>(checksum));
 }
 
+#ifndef QT_NO_COMPRESS
 void tst_QByteArray::qCompress_data()
 {
     QTest::addColumn<QByteArray>("ba");
@@ -300,7 +301,6 @@ void tst_QByteArray::qCompress_data()
     QTest::newRow( "04" ) << file.readAll();
 }
 
-#ifndef QT_NO_COMPRESS
 void tst_QByteArray::qCompress()
 {
     QFETCH( QByteArray, ba );
@@ -915,7 +915,10 @@ void tst_QByteArray::qstrncpy()
 
     // src == nullptr
     QCOMPARE(::qstrncpy(dst.data(), 0,  0), (char*)0);
+    QCOMPARE(*dst.data(), 'b'); // must not have written to dst
     QCOMPARE(::qstrncpy(dst.data(), 0, 10), (char*)0);
+    QCOMPARE(*dst.data(), '\0'); // must have written to dst
+    *dst.data() = 'b'; // restore
 
     // valid pointers, but len == 0
     QCOMPARE(::qstrncpy(dst.data(), src.data(), 0), dst.data());

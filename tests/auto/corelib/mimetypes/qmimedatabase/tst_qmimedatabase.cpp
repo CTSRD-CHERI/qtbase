@@ -49,10 +49,12 @@ static const char *const additionalMimeFiles[] = {
     "yast2-metapackage-handler-mimetypes.xml",
     "qml-again.xml",
     "text-x-objcsrc.xml",
+    "text-plain-subclass.xml",
     "invalid-magic1.xml",
     "invalid-magic2.xml",
     "invalid-magic3.xml",
     "magic-and-hierarchy.xml",
+    "circular-inheritance.xml",
     0
 };
 
@@ -390,6 +392,13 @@ void tst_QMimeDatabase::inheritance()
     const QMimeType mswordTemplate = db.mimeTypeForName(QString::fromLatin1("application/msword-template"));
     QVERIFY(mswordTemplate.isValid());
     QVERIFY(mswordTemplate.inherits(QLatin1String("application/msword")));
+
+    // Check that buggy type definitions that have circular inheritance don't cause an infinite
+    // loop, especially when resolving a conflict between the file's name and its contents
+    const QMimeType ecmascript = db.mimeTypeForName(QString::fromLatin1("application/ecmascript"));
+    QVERIFY(ecmascript.allAncestors().contains("text/plain"));
+    const QMimeType javascript = db.mimeTypeForFileNameAndData("xml.js", "<?xml?>");
+    QVERIFY(javascript.inherits(QString::fromLatin1("text/javascript")));
 }
 
 void tst_QMimeDatabase::aliases()
@@ -1069,6 +1078,8 @@ void tst_QMimeDatabase::installNewLocalMimeType()
         QVERIFY(objcsrc.isValid());
         QCOMPARE(objcsrc.globPatterns(), QStringList());
     }
+    QCOMPARE(db.mimeTypeForFile(QLatin1String("foo.txt"), QMimeDatabase::MatchExtension).name(),
+             QString::fromLatin1("text/plain"));
 
     // Test that a double-definition of a mimetype doesn't lead to sniffing ("conflicting globs").
     const QString qmlTestFile = QLatin1String(RESOURCE_PREFIX "test.qml");

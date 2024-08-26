@@ -562,7 +562,7 @@ xcb_cursor_t QXcbCursor::createFontCursor(int cshape)
     xcb_cursor_t cursor = XCB_NONE;
 
 #if QT_CONFIG(xcb_xlib) && QT_CONFIG(library)
-    if (m_screen->xSettings()->initialized()) {
+    if (!m_callbackForPropertyRegistered && m_screen->xSettings()->initialized()) {
         m_screen->xSettings()->registerCallbackForProperty("Gtk/CursorThemeName",cursorThemePropertyChanged,this);
         m_callbackForPropertyRegistered = true;
     }

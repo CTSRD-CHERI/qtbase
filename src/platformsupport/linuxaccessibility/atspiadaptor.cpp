@@ -1606,11 +1606,12 @@ bool AtSpiAdaptor::inheritsQAction(QObject *object)
 // Component
 static QAccessibleInterface * getWindow(QAccessibleInterface * interface)
 {
-    if (interface->role() == QAccessible::Window)
+    if (interface->role() == QAccessible::Dialog || interface->role() == QAccessible::Window)
         return interface;
 
     QAccessibleInterface * parent = interface->parent();
-    while (parent && parent->role() != QAccessible::Window)
+    while (parent && parent->role() != QAccessible::Dialog
+            && parent->role() != QAccessible::Window)
         parent = parent->parent();
 
     return parent;
@@ -1628,7 +1629,7 @@ static QRect getRelativeRect(QAccessibleInterface *interface)
         wr = window->rect();
 
         cr.setX(cr.x() - wr.x());
-        cr.setY(cr.x() - wr.y());
+        cr.setY(cr.y() - wr.y());
     }
     return cr;
 }
@@ -1882,7 +1883,7 @@ bool AtSpiAdaptor::textInterface(QAccessibleInterface *interface, const QString 
         uint coordType = message.arguments().at(2).toUInt();
         if (coordType == ATSPI_COORD_TYPE_WINDOW) {
             QWindow *win = interface->window();
-            point -= QPoint(win->x(), win->y());
+            point += QPoint(win->x(), win->y());
         }
         int offset = interface->textInterface()->offsetAtPoint(point);
         sendReply(connection, message, offset);
@@ -2439,13 +2440,14 @@ bool AtSpiAdaptor::tableInterface(QAccessibleInterface *interface, const QString
         if (cols > 0) {
             row = index / cols;
             col = index % cols;
-            QAccessibleTableCellInterface *cell = interface->tableInterface()->cellAt(row, col)->tableCellInterface();
-            if (cell) {
-                row = cell->rowIndex();
-                col = cell->columnIndex();
-                rowExtents = cell->rowExtent();
-                colExtents = cell->columnExtent();
-                isSelected = cell->isSelected();
+            QAccessibleInterface *cell = interface->tableInterface()->cellAt(row, col);
+            QAccessibleTableCellInterface *cellIface = cell ? cell->tableCellInterface() : nullptr;
+            if (cellIface) {
+                row = cellIface->rowIndex();
+                col = cellIface->columnIndex();
+                rowExtents = cellIface->rowExtent();
+                colExtents = cellIface->columnExtent();
+                isSelected = cellIface->isSelected();
                 success = true;
             }
         }
@@ -2456,12 +2458,22 @@ bool AtSpiAdaptor::tableInterface(QAccessibleInterface *interface, const QString
     } else if (function == QLatin1String("GetColumnExtentAt")) {
         int row = message.arguments().at(0).toInt();
         int column = message.arguments().at(1).toInt();
-        connection.send(message.createReply(interface->tableInterface()->cellAt(row, column)->tableCellInterface()->columnExtent()));
+        int columnExtent = 0;
+        QAccessibleInterface *cell = interface->tableInterface()->cellAt(row, column);
+        QAccessibleTableCellInterface *cellIface = cell ? cell->tableCellInterface() : nullptr;
+        if (cellIface)
+            columnExtent = cellIface->columnExtent();
+        connection.send(message.createReply(columnExtent));
 
     } else if (function == QLatin1String("GetRowExtentAt")) {
         int row = message.arguments().at(0).toInt();
         int column = message.arguments().at(1).toInt();
-        connection.send(message.createReply(interface->tableInterface()->cellAt(row, column)->tableCellInterface()->rowExtent()));
+        int rowExtent = 0;
+        QAccessibleInterface *cell = interface->tableInterface()->cellAt(row, column);
+        QAccessibleTableCellInterface *cellIface = cell ? cell->tableCellInterface() : nullptr;
+        if (cellIface)
+            rowExtent = cellIface->rowExtent();
+        connection.send(message.createReply(rowExtent));
 
     } else if (function == QLatin1String("GetColumnHeader")) {
         int column = message.arguments().at(0).toInt();
@@ -2501,8 +2513,12 @@ bool AtSpiAdaptor::tableInterface(QAccessibleInterface *interface, const QString
     } else if (function == QLatin1String("IsSelected")) {
         int row = message.arguments().at(0).toInt();
         int column = message.arguments().at(1).toInt();
-        QAccessibleTableCellInterface* cell = interface->tableInterface()->cellAt(row, column)->tableCellInterface();
-        connection.send(message.createReply(cell->isSelected()));
+        bool isSelected = false;
+        QAccessibleInterface *cell = interface->tableInterface()->cellAt(row, column);
+        QAccessibleTableCellInterface *cellIface = cell ? cell->tableCellInterface() : nullptr;
+        if (cellIface)
+            isSelected = cellIface->isSelected();
+        connection.send(message.createReply(isSelected));
     } else if (function == QLatin1String("AddColumnSelection")) {
         int column = message.arguments().at(0).toInt();
         connection.send(message.createReply(interface->tableInterface()->selectColumn(column)));
