@@ -3769,7 +3769,7 @@ bool qEnvironmentVariableIsSet(const char *varName) noexcept
 bool qputenv(const char *varName, const QByteArray& value)
 {
     // protect against non-NUL-terminated QByteArrays:
-    #define IS_RAW_DATA(d) ((d)->offset != sizeof(QByteArrayData)) // copied from qbytearray.cpp
+    #define IS_RAW_DATA(d) ((d)->dataOffset() != sizeof(QByteArrayData)) // copied from qbytearray.cpp
     if (IS_RAW_DATA(const_cast<QByteArray&>(value).data_ptr())) {
         QByteArray copy(value);
         copy.detach(); // ensures NUL termination
